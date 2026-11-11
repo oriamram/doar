@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import { signOut } from '../lib/auth'
-import { formatListDate, initials } from '../lib/format'
 import { archiveThread, listInbox, setThreadStarred, setThreadUnread } from '../lib/gmail'
 import { ReauthRequiredError } from '../lib/googleToken'
 import { onAndroidBack } from '../lib/platform'
 import type { Thread } from '../types'
 import { ArchiveIcon, DraftIcon, InboxIcon, LogoutIcon, RefreshIcon, SendIcon, StarIcon } from './icons'
+import { DoarMark, Postmark } from './Postal'
 import { SwipeRow } from './SwipeRow'
 import { ThreadView } from './ThreadView'
 
+const todayLine = new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })
+
 const folders = [
-  { id: 'inbox', label: 'Inbox', icon: <InboxIcon /> },
-  { id: 'starred', label: 'Starred', icon: <StarIcon /> },
-  { id: 'sent', label: 'Sent', icon: <SendIcon /> },
-  { id: 'drafts', label: 'Drafts', icon: <DraftIcon /> },
-  { id: 'archive', label: 'Archive', icon: <ArchiveIcon /> },
+  { id: 'inbox', label: 'דואר נכנס', icon: <InboxIcon /> },
+  { id: 'starred', label: 'מסומנים בכוכב', icon: <StarIcon /> },
+  { id: 'sent', label: 'נשלחו', icon: <SendIcon /> },
+  { id: 'drafts', label: 'טיוטות', icon: <DraftIcon /> },
+  { id: 'archive', label: 'ארכיון', icon: <ArchiveIcon /> },
 ]
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -128,8 +130,8 @@ export function Inbox({ email }: { email: string }) {
     <div className="app" data-view={selected ? 'thread' : 'list'}>
       <aside className="sidebar">
         <div className="brand">
-          <img src="/logo.svg" alt="" width={28} height={28} />
-          Doar
+          <DoarMark size={30} />
+          דואר
         </div>
         <nav>
           {folders.map((f) => (
@@ -144,30 +146,42 @@ export function Inbox({ email }: { email: string }) {
           <span className="muted account-email" title={email}>
             {email}
           </span>
-          <button className="icon-btn" onClick={() => void signOut()} aria-label="Sign out" title="Sign out">
+          <button className="icon-btn" onClick={() => void signOut()} aria-label="התנתקות" title="התנתקות">
             <LogoutIcon />
           </button>
         </div>
       </aside>
 
-      <section className="list" aria-label="Inbox">
+      <section className="list" aria-label="דואר נכנס">
         <header className="list-header">
-          <h1>Inbox</h1>
-          <button
-            className="icon-btn"
-            onClick={() => void load()}
-            disabled={loading}
-            data-spinning={loading || undefined}
-            aria-label="Refresh"
-          >
-            <RefreshIcon />
-          </button>
+          <div className="list-title">
+            <span className="dateline">
+              דואר · {todayLine}
+              <button
+                className="refresh"
+                onClick={() => void load()}
+                disabled={loading}
+                data-spinning={loading || undefined}
+                aria-label="בדיקת דואר חדש"
+                title="בדיקת דואר חדש"
+              >
+                <RefreshIcon />
+              </button>
+            </span>
+            <h1>הדואר של היום</h1>
+          </div>
+          {unreadCount > 0 && (
+            <div className="stamp unread-stamp" aria-label={`${unreadCount} לא נקראו`}>
+              <strong aria-hidden="true">{unreadCount}</strong>
+              <span aria-hidden="true">לא נקראו</span>
+            </div>
+          )}
         </header>
 
         {error && (
           <div className="banner">
             <span>{error}</span>
-            <button onClick={() => void load()}>Retry</button>
+            <button onClick={() => void load()}>נסה שוב</button>
           </div>
         )}
 
@@ -181,24 +195,33 @@ export function Inbox({ email }: { email: string }) {
                   aria-current={t.id === selectedId || undefined}
                   onClick={() => open(t.id)}
                 >
-                  <span className="avatar">{initials(t.from.name)}</span>
+                  <Postmark iso={t.date} seed={t.id} faded={!t.unread} />
                   <span className="thread-main">
                     <span className="thread-top">
-                      <span className="sender">
+                      <span className="sender ellipsis" dir="auto">
                         {t.from.name}
-                        {t.messageCount > 1 && <span className="msg-count"> {t.messageCount}</span>}
                       </span>
-                      <span className="date">{formatListDate(t.date)}</span>
+                      {t.messageCount > 1 && <span className="msg-count">×{t.messageCount}</span>}
+                      {t.unread && <span className="seal" aria-label="לא נקרא" />}
+                      {t.starred && (
+                        <span className="star-mark" aria-label="מסומן בכוכב">
+                          <StarIcon filled />
+                        </span>
+                      )}
                     </span>
-                    <span className="subject">{t.subject}</span>
-                    <span className="snippet">{t.snippet}</span>
+                    <span className="subject ellipsis" dir="auto">
+                      {t.subject}
+                    </span>
+                    <span className="snippet ellipsis" dir="auto">
+                      {t.snippet}
+                    </span>
                   </span>
                 </button>
               </SwipeRow>
             </li>
           ))}
-          {threads === null && !error && <li className="empty">Loading your inbox…</li>}
-          {threads?.length === 0 && <li className="empty">Inbox zero. Nice.</li>}
+          {threads === null && !error && <li className="empty">אוספים את הדואר של היום…</li>}
+          {threads?.length === 0 && <li className="empty">אין דואר היום. תיהנה מהשקט.</li>}
         </ul>
       </section>
 
@@ -213,10 +236,10 @@ export function Inbox({ email }: { email: string }) {
           />
         ) : (
           <div className="reader-empty">
-            <img src="/logo.svg" alt="" width={56} height={56} />
-            <p>Select an email to read it</p>
+            <img src="/logo.svg" alt="" width={64} height={64} />
+            <p className="big">בחר מכתב כדי לפתוח אותו</p>
             <p className="muted hint">
-              <kbd>j</kbd>/<kbd>k</kbd> to move · <kbd>e</kbd> to archive
+              <kbd>j</kbd>/<kbd>k</kbd> למעבר · <kbd>e</kbd> לתיוק
             </p>
           </div>
         )}

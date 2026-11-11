@@ -12,11 +12,11 @@ export function EmailBody({ html }: { html: string }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <base target="_blank">
 <style>
-  html { overflow: hidden; }
-  body { margin: 0; padding: 20px; font: 15px/1.55 system-ui, sans-serif; color: #1d2321; word-wrap: break-word; }
+  html { overflow: hidden; background: #fffdf8; }
+  body { margin: 0; padding: 18px; font: 16px/1.6 system-ui, sans-serif; color: #1f2a3a; word-wrap: break-word; }
   img { max-width: 100%; height: auto; }
-  a { color: #1f5f5b; }
-</style></head><body>${html}</body></html>`
+  a { color: #a63a26; }
+</style></head><body dir="auto">${html}</body></html>`
 
   // Grow the iframe to fit its content so the whole thread scrolls as one page,
   // and keep fitting as images load or the window is resized.
@@ -33,7 +33,7 @@ export function EmailBody({ html }: { html: string }) {
     <iframe
       ref={frameRef}
       className="email-body"
-      title="Email content"
+      title="תוכן המייל"
       sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
       srcDoc={doc}
       onLoad={fitHeight}

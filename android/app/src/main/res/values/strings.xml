@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Doar</string>
-    <string name="title_activity_main">Doar</string>
+    <string name="app_name">דואר</string>
+    <string name="title_activity_main">דואר</string>
     <string name="package_name">app.doar.mail</string>
     <string name="custom_url_scheme">app.doar.mail</string>
 </resources>

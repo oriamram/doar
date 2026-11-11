@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { formatFullDate, initials } from '../lib/format'
+import { formatFullDate, formatListDate as formatShortDate } from '../lib/format'
 import { getThreadMessages } from '../lib/gmail'
 import type { Message, Thread } from '../types'
 import { EmailBody } from './EmailBody'
 import { ArchiveIcon, BackIcon, StarIcon } from './icons'
+import { DoarMark, Postmark } from './Postal'
 
 // Opened conversations stay cached while the app is open, so going back and forth is instant.
 const messageCache = new Map<string, Message[]>()
@@ -48,41 +49,73 @@ export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
   return (
     <article className="thread">
       <header className="reader-bar">
-        <button className="icon-btn back" onClick={onBack} aria-label="Back to inbox">
+        <button className="icon-btn back" onClick={onBack} aria-label="חזרה לדואר">
           <BackIcon />
         </button>
         <span className="spacer" />
         <button
           className="icon-btn"
-          aria-label={thread.starred ? 'Unstar' : 'Star'}
+          aria-label={thread.starred ? 'הסרת כוכב' : 'סימון בכוכב'}
           aria-pressed={thread.starred}
           onClick={onToggleStar}
         >
           <StarIcon filled={thread.starred} />
         </button>
-        <button className="icon-btn" aria-label="Archive" onClick={onArchive}>
+        <button className="pill-btn" onClick={onArchive}>
           <ArchiveIcon />
+          לתיוק
         </button>
       </header>
 
-      <h2 className="thread-subject">{thread.subject}</h2>
+      <h2 className="thread-subject" dir="auto">
+        {thread.subject}
+      </h2>
 
-      {error && <p className="error">Couldn't load this conversation. {error}</p>}
-      {!messages && !error && <p className="muted">Loading…</p>}
+      {error && <p className="error">לא הצלחנו לפתוח את המכתב. {error}</p>}
+      {!messages && !error && <p className="muted">פותחים את המעטפה…</p>}
 
       {messages?.map((message) => {
         const open = expanded.has(message.id) || messages.length === 1
+        if (!open) {
+          return (
+            <section key={message.id} className="message">
+              <button className="folded" onClick={() => toggle(message.id)} aria-expanded={false}>
+                <span className="folded-who">
+                  {message.from.name} · {formatShortDate(message.date)}
+                </span>
+                <span className="folded-snippet ellipsis" dir="auto">
+                  {message.snippet}
+                </span>
+              </button>
+            </section>
+          )
+        }
         return (
-          <section key={message.id} className="message" data-open={open || undefined}>
-            <button className="message-meta" onClick={() => toggle(message.id)} aria-expanded={open}>
-              <span className="avatar">{initials(message.from.name)}</span>
-              <span className="message-who">
-                <span className="sender">{message.from.name}</span>
-                <span className="muted">{open ? message.from.email : message.snippet}</span>
+          <section key={message.id} className="message">
+            <button
+              className="envelope"
+              onClick={() => messages.length > 1 && toggle(message.id)}
+              aria-expanded={true}
+              aria-label={`מאת ${message.from.name}, ${formatFullDate(message.date)}`}
+            >
+              <span className="envelope-label">מאת</span>
+              <span className="envelope-name ellipsis" dir="auto">
+                {message.from.name}
               </span>
-              <span className="muted date">{formatFullDate(message.date)}</span>
+              <span className="envelope-addr ellipsis">{message.from.email}</span>
+              {message.to && (
+                <span className="envelope-addr ellipsis" style={{ marginTop: 8 }}>
+                  אל: {message.to}
+                </span>
+              )}
+              <span className="stamp" aria-hidden="true">
+                <DoarMark size={34} />
+              </span>
+              <Postmark iso={message.date} seed={message.id} />
             </button>
-            {open && <EmailBody html={message.bodyHtml} />}
+            <div className="letter">
+              <EmailBody html={message.bodyHtml} />
+            </div>
           </section>
         )
       })}

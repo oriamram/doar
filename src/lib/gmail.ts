@@ -26,7 +26,23 @@ type GmailMessage = {
 }
 type GmailThread = { id: string; messages: GmailMessage[] }
 
-async function gmail<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+/** A Gmail error with a message fit to show the user. */
+export class GmailError extends Error {
+  readonly status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Gmail signals "slow down" with 429, or 403 and a rate-limit reason. */
+function isRateLimited(status: number, body: string) {
+  return status === 429 || (status === 403 && /rateLimitExceeded|RATE_LIMIT_EXCEEDED|userRateLimit/i.test(body))
+}
+
+async function gmail<T>(path: string, init: RequestInit = {}, attempt = 0): Promise<T> {
   const token = await getGoogleAccessToken()
   const response = await fetch(`${API}${path}`, {
     ...init,
@@ -35,24 +51,39 @@ async function gmail<T>(path: string, init: RequestInit = {}, retried = false): 
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
     },
   })
-  if (response.status === 401 && !retried) {
+  if (response.ok) return response.json() as Promise<T>
+
+  const body = await response.text()
+  if (response.status === 401 && attempt === 0) {
     // The access token expired early; get a fresh one and try once more.
     clearGoogleAccessToken()
-    return gmail(path, init, true)
+    return gmail(path, init, attempt + 1)
   }
-  if (!response.ok) {
-    throw new Error(`Gmail request failed (${response.status}): ${await response.text()}`)
+  if (isRateLimited(response.status, body)) {
+    // Back off and retry: 1s, 2s, 4s, 8s (plus a little jitter).
+    if (attempt < 4) {
+      await sleep(1000 * 2 ** attempt + Math.random() * 300)
+      return gmail(path, init, attempt + 1)
+    }
+    throw new GmailError(response.status, 'Gmail ביקש שנאט קצת. נסה שוב בעוד דקה.')
   }
-  return response.json() as Promise<T>
+  let message = `הבקשה ל־Gmail נכשלה (${response.status}).`
+  try {
+    message = JSON.parse(body).error?.message ?? message
+  } catch {
+    // Not JSON; keep the generic message.
+  }
+  throw new GmailError(response.status, message)
 }
 
 // ---------- Reading ----------
 
-export async function listInbox(maxResults = 40): Promise<Thread[]> {
+export async function listInbox(maxResults = 30): Promise<Thread[]> {
   const list = await gmail<{ threads?: { id: string; snippet: string }[] }>(
     `/threads?labelIds=INBOX&maxResults=${maxResults}`,
   )
-  return mapLimit(list.threads ?? [], 8, async ({ id, snippet }) => {
+  // Each thread costs a request; a few at a time keeps us well under Gmail's per-minute limit.
+  return mapLimit(list.threads ?? [], 5, async ({ id, snippet }) => {
     const thread = await gmail<GmailThread>(
       `/threads/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`,
     )
@@ -105,7 +136,7 @@ function toThread(thread: GmailThread, snippet: string): Thread {
   return {
     id: thread.id,
     from: parseContact(header(last.payload, 'From')),
-    subject: header(first.payload, 'Subject') || '(no subject)',
+    subject: header(first.payload, 'Subject') || '(ללא נושא)',
     snippet: decodeEntities(snippet),
     date: new Date(Number(last.internalDate)).toISOString(),
     unread: hasLabel('UNREAD'),

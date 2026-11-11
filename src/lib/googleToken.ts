@@ -13,7 +13,7 @@ let cached: { token: string; expiresAt: number } | null = null
 /** Raised when Google no longer accepts our refresh token; the user must sign in again. */
 export class ReauthRequiredError extends Error {
   constructor() {
-    super('Google access expired. Please sign in again.')
+    super('הגישה ל־Google פגה. צריך להתחבר מחדש.')
   }
 }
 

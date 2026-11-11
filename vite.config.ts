@@ -12,11 +12,13 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.ico', 'logo.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
-        name: 'Doar',
-        short_name: 'Doar',
-        description: 'A calmer client for Gmail',
-        theme_color: '#1f5f5b',
-        background_color: '#faf8f4',
+        name: 'דואר',
+        short_name: 'דואר',
+        lang: 'he',
+        dir: 'rtl',
+        description: 'הג׳ימייל שלך, עד הבית',
+        theme_color: '#a63a26',
+        background_color: '#f1ebdd',
         display: 'standalone',
         start_url: '/',
         icons: [
