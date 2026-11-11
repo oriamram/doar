@@ -255,19 +255,52 @@ body::after {
   font-weight: 600;
 }
 
-/* The sender in the inbox list: a plain round badge. */
-.avatar {
+/* The sender in the inbox list: a small upright stamp. The perforation holes are
+   dots of the row's own background (--hole), so they read as punched through. */
+.mini-stamp {
+  --hole: var(--paper);
+  position: relative;
   flex: none;
+  width: 40px;
+  height: 46px;
+  padding: 3px;
+  background: radial-gradient(circle, var(--hole) 1.9px, var(--stamp-paper) 2.3px) -3px -3px / 6px 6px;
+}
+
+.mini-face {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
+  height: 100%;
   background: var(--stamp);
   color: #fffdf6;
   font-weight: 800;
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1;
+}
+
+/* Read: a used stamp, faded and cancelled with an ink X. */
+.mini-stamp[data-read] .mini-face {
+  filter: saturate(0.3) brightness(0.85);
+}
+
+.mini-cancel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+
+.thread-row[data-unread] .mini-stamp {
+  --hole: var(--paper-card);
+}
+
+.thread-row[aria-current='true'] .mini-stamp {
+  --hole: var(--paper-deep);
 }
 
 /* Duplex cancel: dated ring + heavy bars. */
@@ -756,6 +789,8 @@ body::after {
 
 .reader {
   background: var(--paper);
+  /* Nothing in a letter may push the page sideways; that made the sides uneven. */
+  overflow-x: hidden;
 }
 
 .thread {
@@ -833,6 +868,7 @@ body::after {
   font-weight: 900;
   font-size: 1.95rem;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .message + .message {
@@ -848,7 +884,7 @@ body::after {
   padding-block: 14px;
   padding-inline: 16px 150px;
   text-align: start;
-  background: var(--paper-card);
+  background: url('/paper.svg') 0 0 / 420px, var(--paper-card);
   border: 9px solid transparent;
   border-image: repeating-linear-gradient(
       -45deg,
@@ -951,17 +987,22 @@ body::after {
   position: relative;
   margin: -14px 10px 0;
   padding: 6px;
-  background: var(--letter);
-  box-shadow: 0 -6px 18px rgba(31, 42, 58, 0.12);
+  background: url('/paper.svg') 0 0 / 420px, var(--letter);
+  /* Edges darkened with age, plus the shadow it casts on the envelope. */
+  box-shadow:
+    inset 0 0 36px rgba(122, 88, 38, 0.16),
+    0 -6px 18px rgba(31, 42, 58, 0.12);
   transform: rotate(-0.6deg);
 }
 
+/* Transparent, so the letter's paper shows through emails without their own background. */
 .email-body {
   display: block;
   width: 100%;
   min-height: 80px;
   border: 0;
-  background: var(--letter);
+  background: transparent;
+  color-scheme: light;
 }
 
 .reader-empty {
@@ -1124,6 +1165,19 @@ body::after {
   position: relative;
 }
 
+/* On the night envelope the stains read as dirt, so it stays plain there. */
+@media (prefers-color-scheme: dark) {
+  .envelope {
+    background: var(--paper-card);
+  }
+}
+
+/* The sign-in screen and the loader sit on a sheet of old paper. */
+.login,
+.loader {
+  background: url('/paper.svg') 0 0 / 420px, var(--paper);
+}
+
 .list-header > .airmail-band {
   height: 4px;
 }
@@ -1189,9 +1243,9 @@ body::after {
   color: var(--ink-soft);
 }
 
-.thread-row:not([data-unread]) .avatar {
-  opacity: 0.55;
-  filter: grayscale(0.6);
+/* Hovered rows change color, so their stamp holes follow. */
+.thread-row:not([data-unread]):hover .mini-stamp {
+  --hole: var(--paper-card);
 }
 
 /* ---------- First-open loader ---------- */
@@ -1202,7 +1256,6 @@ body::after {
   justify-items: center;
   gap: 18px;
   height: 100%;
-  background: var(--paper);
 }
 
 .loader-envelope {

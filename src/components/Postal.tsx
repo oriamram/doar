@@ -21,11 +21,24 @@ function stampLetter(name: string): string {
   return (name.match(/[\p{L}\p{N}]/u)?.[0] ?? '·').toUpperCase()
 }
 
-/** A plain round badge with the sender's color and initial, for the inbox list. */
-export function SenderAvatar({ contact }: { contact: Contact }) {
+/**
+ * The sender in the inbox list: a small upright stamp in their color with their
+ * initial. Once read, it's cancelled with an X, like a used stamp.
+ */
+export function SenderAvatar({ contact, read }: { contact: Contact; read?: boolean }) {
   return (
-    <span className="avatar" style={{ '--stamp': stampColor(contact) } as CSSProperties} aria-hidden="true">
-      {stampLetter(contact.name)}
+    <span
+      className="mini-stamp"
+      data-read={read || undefined}
+      style={{ '--stamp': stampColor(contact) } as CSSProperties}
+      aria-hidden="true"
+    >
+      <span className="mini-face">{stampLetter(contact.name)}</span>
+      {read && (
+        <svg className="mini-cancel" viewBox="0 0 40 46" preserveAspectRatio="none">
+          <path d="M7 7L33 39M33 7L7 39" />
+        </svg>
+      )}
     </span>
   )
 }

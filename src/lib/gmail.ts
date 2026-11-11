@@ -181,11 +181,21 @@ function extractBody(payload: GmailPart): string {
   return ''
 }
 
-/** Gmail sends bodies as base64url bytes in the part's own charset. */
+/**
+ * Gmail sends bodies as base64url bytes in the part's declared charset. Senders
+ * often mislabel UTF-8 as windows-1255 or iso-8859-8, which turns Hebrew into
+ * gibberish. Bytes that are valid UTF-8 almost never come from those encodings,
+ * so like Gmail we trust the bytes over the label.
+ */
 function decodePart(part: GmailPart): string {
-  const charset = header(part, 'Content-Type').match(/charset="?([^";\s]+)/i)?.[1] ?? 'utf-8'
   const binary = atob(part.body!.data!.replace(/-/g, '+').replace(/_/g, '/'))
   const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0))
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    // Not UTF-8: use the declared charset.
+  }
+  const charset = header(part, 'Content-Type').match(/charset="?([^";\s]+)/i)?.[1] ?? 'utf-8'
   try {
     return new TextDecoder(charset).decode(bytes)
   } catch {

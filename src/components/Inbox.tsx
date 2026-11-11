@@ -87,6 +87,8 @@ export function Inbox({ email }: { email: string }) {
 
   const selected = threads?.find((t) => t.id === selectedId) ?? null
   const inInbox = view.id === 'inbox' || view.id === 'unread'
+  // The filter row stays up on every view it can switch to, so there's always a way back.
+  const showFilters = inInbox || view.id === 'starred'
 
   const handleError = useCallback((e: unknown) => {
     if (e instanceof ReauthRequiredError) {
@@ -333,7 +335,7 @@ export function Inbox({ email }: { email: string }) {
             </div>
           )}
 
-          {inInbox && !searching && (
+          {showFilters && !searching && (
             <div className="filters" role="tablist" aria-label="סינון">
               {filters.map((f) => (
                 <button
@@ -370,7 +372,7 @@ export function Inbox({ email }: { email: string }) {
                   aria-current={t.id === selectedId || undefined}
                   onClick={() => open(t.id)}
                 >
-                  <SenderAvatar contact={t.from} />
+                  <SenderAvatar contact={t.from} read={!t.unread} />
                   <span className="thread-main">
                     <span className="thread-top">
                       <span className="sender ellipsis" dir="auto">
