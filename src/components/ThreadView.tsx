@@ -110,7 +110,7 @@ export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
                 </span>
               )}
               <span className="envelope-stamp">
-                <SenderStamp contact={message.from} seed={message.id} size="lg" />
+                <SenderStamp contact={message.from} seed={message.id} />
                 <DuplexCancel iso={message.date} />
               </span>
             </button>

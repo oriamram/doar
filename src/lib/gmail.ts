@@ -78,9 +78,16 @@ async function gmail<T>(path: string, init: RequestInit = {}, attempt = 0): Prom
 
 // ---------- Reading ----------
 
-export async function listInbox(maxResults = 30): Promise<Thread[]> {
+/** Unread conversations in the whole inbox (not just the ones loaded). */
+export async function inboxUnreadCount(): Promise<number> {
+  const label = await gmail<{ threadsUnread?: number }>('/labels/INBOX')
+  return label.threadsUnread ?? 0
+}
+
+/** Conversations matching a Gmail search, e.g. "in:inbox is:unread", newest first. */
+export async function listThreads(query: string, maxResults = 30): Promise<Thread[]> {
   const list = await gmail<{ threads?: { id: string; snippet: string }[] }>(
-    `/threads?labelIds=INBOX&maxResults=${maxResults}`,
+    `/threads?q=${encodeURIComponent(query)}&maxResults=${maxResults}`,
   )
   // Each thread costs a request; a few at a time keeps us well under Gmail's per-minute limit.
   return mapLimit(list.threads ?? [], 5, async ({ id, snippet }) => {

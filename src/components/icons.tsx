@@ -63,6 +63,19 @@ export const LogoutIcon = () => (
   </svg>
 )
 
+export const SearchIcon = () => (
+  <svg {...base}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-4-4" />
+  </svg>
+)
+
+export const CloseIcon = () => (
+  <svg {...base}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+)
+
 export const DraftIcon = () => (
   <svg {...base}>
     <path d="M4 20h4L19 9l-4-4L4 16z" />

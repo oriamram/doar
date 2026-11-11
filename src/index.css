@@ -207,7 +207,6 @@ body::after {
 
 /* Perforated stamp paper: holes are dots of the page color, centered on the edges. */
 .sender-stamp,
-.count-stamp,
 .login-stamp {
   width: 104px;
   height: 120px;
@@ -230,10 +229,15 @@ body::after {
   color: #fffdf6;
 }
 
-/* A sender's stamp: their color and initial. */
+/* The sender's stamp on an opened envelope: their color and initial. */
 .sender-stamp {
-  width: 46px;
-  height: 54px;
+  width: 58px;
+  height: 68px;
+  margin: 0;
+  padding: 5px;
+  background-size: 10px 10px;
+  background-position: -5px -5px;
+  background-image: radial-gradient(circle, var(--paper-card) 3px, var(--stamp-paper) 3.5px);
 }
 
 .sender-stamp .stamp-face {
@@ -242,50 +246,28 @@ body::after {
 
 .stamp-letter {
   font-weight: 800;
-  font-size: 22px;
+  font-size: 28px;
   line-height: 1;
 }
 
 .stamp-word {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
 }
 
-.sender-stamp[data-size='lg'] {
-  width: 58px;
-  height: 68px;
-  padding: 5px;
-  background-size: 10px 10px;
-  background-position: -5px -5px;
-  background-image: radial-gradient(circle, var(--paper-card) 3px, var(--stamp-paper) 3.5px);
-}
-
-.sender-stamp[data-size='lg'] .stamp-letter {
-  font-size: 28px;
-}
-
-.sender-stamp[data-size='lg'] .stamp-word {
-  font-size: 9px;
-}
-
-/* Read mail: the stamp has done its job; faded and cancelled. */
-.sender-stamp[data-cancelled] {
-  box-shadow: 0 1px 3px rgba(31, 42, 58, 0.1);
-}
-
-.sender-stamp[data-cancelled] .stamp-face {
-  filter: saturate(0.45) brightness(1.1);
-}
-
-.cancel-waves {
-  position: absolute;
-  top: 12px;
-  left: -16px;
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 2;
-  stroke-linecap: round;
-  opacity: 0.72;
+/* The sender in the inbox list: a plain round badge. */
+.avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--stamp);
+  color: #fffdf6;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1;
 }
 
 /* Duplex cancel: dated ring + heavy bars. */
@@ -332,33 +314,6 @@ body::after {
   width: 44px;
   height: 4px;
   background: currentColor;
-}
-
-/* The unread count, as a carmine stamp. */
-.count-stamp {
-  width: 62px;
-  height: 72px;
-  padding: 5px;
-  background-size: 10px 10px;
-  background-position: -5px -5px;
-  background-image: radial-gradient(circle, var(--paper) 3px, var(--stamp-paper) 3.5px);
-  transform: rotate(-5deg);
-}
-
-.count-stamp .stamp-face {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.count-stamp strong {
-  font-weight: 800;
-  font-size: 28px;
-  line-height: 1;
-}
-
-.count-stamp span span {
-  font-size: 11px;
-  font-weight: 600;
 }
 
 /* Rubber stamp shown behind swiped rows. */
@@ -458,66 +413,217 @@ body::after {
 .list-header {
   position: sticky;
   top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 22px 20px 14px;
-  padding-top: max(22px, calc(env(safe-area-inset-top) + 14px));
+  z-index: 3;
+  padding: 10px 12px 0 8px;
+  padding-top: max(10px, calc(env(safe-area-inset-top) + 6px));
   background: var(--paper);
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 1px solid var(--line);
 }
 
-.list-title {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.dateline {
+.header-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
+  gap: 2px;
+  min-height: 48px;
 }
 
-.list-header h1 {
+.view-title {
+  flex: 1;
+  min-width: 0;
+  padding-inline-start: 8px;
   font-family: var(--serif);
   font-weight: 900;
-  font-size: 2.4rem;
-  line-height: 1.05;
+  font-size: 1.6rem;
+  line-height: 1.1;
 }
 
-.refresh {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin: -6px 0;
-  border-radius: 50%;
+.header-row .icon-btn {
   color: var(--muted);
 }
 
-.refresh:hover {
-  background: var(--paper-deep);
+.header-row .icon-btn:hover {
   color: var(--ink);
 }
 
-.refresh svg {
-  width: 16px;
-  height: 16px;
+.icon-btn:disabled {
+  cursor: default;
+}
+
+/* Search replaces the title row. */
+.search-row {
+  gap: 8px;
+  margin-block: 2px;
+  padding-inline-start: 14px;
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--muted);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  background: none;
+  outline: none;
+  font: inherit;
+  font-size: 16px; /* 16px stops phones from zooming in on focus */
+  color: var(--ink);
+}
+
+.search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* Your own initial: opens the account menu (the sidebar has it on PC). */
+.account-menu {
+  position: relative;
+}
+
+.me {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 5px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+@media (min-width: 1024px) {
+  .account-menu {
+    display: none;
+  }
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  cursor: default;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  inset-inline-end: 0;
+  z-index: 5;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-card);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.menu-email {
+  display: block;
+  padding: 8px 10px 10px;
+  border-bottom: 1px dashed var(--perf);
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.menu-item:hover {
+  background: var(--paper-deep);
+}
+
+/* Inbox filters: all / unread / starred. */
+.filters {
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.filter[aria-selected='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.filter-count {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Thin airmail stripe running along the header's bottom edge while loading. */
+.progress {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--accent) 0 8px,
+    transparent 8px 12px,
+    var(--airmail) 12px 20px,
+    transparent 20px 24px
+  );
+  background-size: 34px 100%;
+  animation: airmail-run 0.8s linear infinite;
+}
+
+.progress[data-active] {
+  opacity: 1;
+}
+
+@keyframes airmail-run {
+  to {
+    background-position: 34px 0;
+  }
 }
 
 .threads {
   list-style: none;
   margin: 0;
   padding: 0 0 env(safe-area-inset-bottom);
+  transition: opacity 0.2s;
+}
+
+/* Switching filters: the old list fades until the new one arrives. */
+.threads[data-stale] {
+  opacity: 0.45;
 }
 
 .threads > li {
@@ -548,8 +654,7 @@ body::after {
 }
 
 .thread-row[aria-current='true'] {
-  background: var(--paper-card);
-  box-shadow: inset -3px 0 0 var(--accent);
+  background: var(--paper-deep);
 }
 
 .thread-row:focus-visible {
@@ -580,10 +685,15 @@ body::after {
   line-height: 1.25;
 }
 
+/* How many messages in the conversation, as a small tag. */
 .msg-count {
   flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 16px;
   color: var(--muted);
 }
 
@@ -886,11 +996,6 @@ body::after {
 
 /* ---------- Sign-in & states ---------- */
 
-.splash {
-  height: 100%;
-  background: var(--paper);
-}
-
 .login {
   display: grid;
   place-content: center;
@@ -1019,17 +1124,8 @@ body::after {
   position: relative;
 }
 
-/* Night sorting office: a faint pigeonhole rack behind the title. */
-@media (prefers-color-scheme: dark) {
-  .list-header {
-    background-image: linear-gradient(to left, rgba(237, 230, 214, 0.06) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(237, 230, 214, 0.06) 1px, transparent 1px);
-    background-size: 48px 34px;
-  }
-
-  .cancel-waves {
-    stroke: var(--ink);
-  }
+.list-header > .airmail-band {
+  height: 4px;
 }
 
 .row-date {
@@ -1037,22 +1133,173 @@ body::after {
   margin-inline-start: auto;
   font-family: var(--mono);
   font-size: 13px;
-  color: var(--muted);
 }
 
-.thread-row[data-unread] .row-date {
-  color: var(--ink);
-  font-weight: 700;
-}
+/* ---------- Read vs unread ----------
+   Unread: lit up, with a red bar on the reading edge, bold text and a dot.
+   Read: everything steps back, so the eye skips it. */
 
 .thread-row {
+  position: relative;
   align-items: center;
+}
+
+.thread-row[data-unread] {
+  background: var(--paper-card);
+  box-shadow: inset -4px 0 0 var(--accent);
 }
 
 .thread-row[data-unread] .sender {
   font-weight: 800;
+  color: var(--ink);
 }
 
 .thread-row[data-unread] .subject {
   font-weight: 600;
+  color: var(--ink);
+}
+
+.thread-row[data-unread] .row-date {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.thread-row[data-unread] .row-date::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
+}
+
+.thread-row:not([data-unread]) .sender {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.thread-row:not([data-unread]) .subject {
+  color: var(--muted);
+}
+
+.thread-row:not([data-unread]) .snippet,
+.thread-row:not([data-unread]) .row-date {
+  color: var(--ink-soft);
+}
+
+.thread-row:not([data-unread]) .avatar {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
+/* ---------- First-open loader ---------- */
+
+.loader {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  height: 100%;
+  background: var(--paper);
+}
+
+.loader-envelope {
+  overflow: visible;
+}
+
+.env-flap {
+  fill: var(--paper-deep);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.env-back {
+  fill: var(--paper-deep);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+}
+
+.env-front {
+  fill: var(--paper-card);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.letter-sheet {
+  fill: var(--letter);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.letter-stamp {
+  fill: var(--accent);
+}
+
+.letter-lines {
+  stroke: var(--line);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+@media (prefers-color-scheme: dark) {
+  .letter-sheet {
+    fill: #ede6d6;
+  }
+  .letter-lines {
+    stroke: #c9bfa9;
+  }
+}
+
+/* The letter rises out of the envelope, pauses, and slips back in. */
+.loader-letter {
+  animation: letter-rise 1.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes letter-rise {
+  0%,
+  12% {
+    transform: translateY(14px);
+  }
+  45%,
+  62% {
+    transform: translateY(-20px);
+  }
+  95%,
+  100% {
+    transform: translateY(14px);
+  }
+}
+
+.loader-label {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+.loader-track {
+  width: 148px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--paper-deep);
+}
+
+.loader-track .airmail-band {
+  display: block;
+  height: 100%;
+  background-size: 45px 100%;
+  animation: airmail-run 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-letter,
+  .loader-track .airmail-band,
+  .progress {
+    animation: none;
+  }
 }

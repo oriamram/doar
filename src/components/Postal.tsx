@@ -21,36 +21,24 @@ function stampLetter(name: string): string {
   return (name.match(/[\p{L}\p{N}]/u)?.[0] ?? '·').toUpperCase()
 }
 
-/** Wavy cancellation lines struck across a stamp once its letter has been read. */
-function CancelWaves() {
-  const wave = (y: number) => `M1 ${y} q 4 -5 8 0 t 8 0 t 8 0 t 8 0 t 8 0 t 8 0 t 8 0 t 8 0`
+/** A plain round badge with the sender's color and initial, for the inbox list. */
+export function SenderAvatar({ contact }: { contact: Contact }) {
   return (
-    <svg className="cancel-waves" width="66" height="34" viewBox="0 0 66 34" aria-hidden="true">
-      <path d={wave(7)} />
-      <path d={wave(17)} />
-      <path d={wave(27)} />
-    </svg>
+    <span className="avatar" style={{ '--stamp': stampColor(contact) } as CSSProperties} aria-hidden="true">
+      {stampLetter(contact.name)}
+    </span>
   )
 }
 
-type StampProps = {
-  contact: Contact
-  /** Read mail: the stamp is faded and struck through with cancellation waves. */
-  cancelled?: boolean
-  seed: string
-  size?: 'sm' | 'lg'
-}
-
-/** The sender's own postage stamp: their color and initial, with perforated edges. */
-export function SenderStamp({ contact, cancelled, seed, size = 'sm' }: StampProps) {
+/** The sender's postage stamp on an opened envelope: their color and initial, perforated. */
+export function SenderStamp({ contact, seed }: { contact: Contact; seed: string }) {
   const style = { '--stamp': stampColor(contact), transform: `rotate(${tilt(seed, 3)}deg)` } as CSSProperties
   return (
-    <span className="sender-stamp" data-size={size} data-cancelled={cancelled || undefined} style={style} aria-hidden="true">
+    <span className="sender-stamp" style={style} aria-hidden="true">
       <span className="stamp-face">
         <span className="stamp-letter">{stampLetter(contact.name)}</span>
         <span className="stamp-word">דואר</span>
       </span>
-      {cancelled && size === 'sm' && <CancelWaves />}
     </span>
   )
 }
@@ -69,18 +57,6 @@ export function DuplexCancel({ iso }: { iso: string }) {
         <span />
         <span />
         <span />
-      </span>
-    </span>
-  )
-}
-
-/** Perforated stamp showing a number (the unread count). */
-export function CountStamp({ count, label }: { count: number; label: string }) {
-  return (
-    <span className="count-stamp" aria-label={`${count} ${label}`}>
-      <span className="stamp-face">
-        <strong aria-hidden="true">{count}</strong>
-        <span aria-hidden="true">{label}</span>
       </span>
     </span>
   )
