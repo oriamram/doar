@@ -72,29 +72,58 @@ function cleanup() {
   spawnSync('npx', ['cap', 'copy', 'android'], { cwd: root, shell: true, stdio: 'ignore' })
 }
 
-// --- 1. Check a phone is connected ----------------------------------------
+// --- 1. Find the phone -----------------------------------------------------
 
-step('Looking for a connected Android device')
-const devices = connectedDevices()
-// Over Wi-Fi the same phone can be listed twice (by name and by IP), so dedupe by serial number.
-const seenSerials = new Set()
-const ready = devices
-  .filter(([, state]) => state === 'device')
-  .filter(([id]) => {
-    const serial = spawnSync(adb, ['-s', id, 'shell', 'getprop', 'ro.serialno'], { encoding: 'utf8' })
-      .stdout?.trim()
-    if (serial && seenSerials.has(serial)) return false
-    if (serial) seenSerials.add(serial)
-    return true
-  })
-for (const [id, state] of devices) {
+/** Phones that are connected and ready, each listed once. */
+function readyDevices() {
+  // Over Wi-Fi the same phone can be listed twice (by name and by IP), so dedupe by serial number.
+  const seenSerials = new Set()
+  return connectedDevices()
+    .filter(([, state]) => state === 'device')
+    .filter(([id]) => {
+      const serial = spawnSync(adb, ['-s', id, 'shell', 'getprop', 'ro.serialno'], { encoding: 'utf8' })
+        .stdout?.trim()
+      if (serial && seenSerials.has(serial)) return false
+      if (serial) seenSerials.add(serial)
+      return true
+    })
+}
+
+/**
+ * A phone paired once for Wireless debugging announces itself on the Wi-Fi
+ * (mDNS, "_adb-tls-connect") with whatever port it picked this time.
+ * Connect to every one we hear, so nobody has to type an address.
+ */
+function connectAnnouncedPhones() {
+  const result = spawnSync(adb, ['mdns', 'services'], { encoding: 'utf8' })
+  const addresses = (result.stdout ?? '')
+    .split(/\r?\n/)
+    .filter((line) => line.includes('_adb-tls-connect'))
+    .map((line) => line.trim().split(/\s+/).at(-1))
+    .filter((address) => /^[\d.]+:\d+$/.test(address ?? ''))
+  for (const address of new Set(addresses)) {
+    spawnSync(adb, ['connect', address], { encoding: 'utf8' })
+  }
+}
+
+step('Looking for your phone')
+let ready = readyDevices()
+if (ready.length === 0) {
+  console.log('  Turn on Wireless debugging on the phone (same Wi-Fi as this PC). Waiting up to 2 minutes…')
+  const deadline = Date.now() + 120_000
+  while (ready.length === 0 && Date.now() < deadline) {
+    connectAnnouncedPhones()
+    ready = readyDevices()
+    if (ready.length === 0) await new Promise((r) => setTimeout(r, 2000))
+  }
+}
+for (const [id, state] of connectedDevices()) {
   if (state === 'unauthorized') console.log(`  ${id}: tap "Allow" on the phone's debugging prompt`)
 }
 if (ready.length === 0) {
   fail(
-    'No phone found. Either:\n' +
-      '  • Wi-Fi: run `npm run android:pair` (phone and PC on the same Wi-Fi), or\n' +
-      '  • USB:   plug it in with USB debugging on, and accept the prompt on the phone.',
+    'No phone found. Check that Wireless debugging is on and the phone is on the same Wi-Fi.\n' +
+      '  First time with this phone? Pair it once: npm run android:pair',
   )
 }
 if (ready.length > 1) {

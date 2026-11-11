@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { signOut } from '../lib/auth'
 import { archiveThread, listInbox, setThreadStarred, setThreadUnread } from '../lib/gmail'
 import { ReauthRequiredError } from '../lib/googleToken'
+import { formatListDate } from '../lib/format'
 import { onAndroidBack } from '../lib/platform'
 import type { Thread } from '../types'
 import { ArchiveIcon, DraftIcon, InboxIcon, LogoutIcon, RefreshIcon, SendIcon, StarIcon } from './icons'
-import { DoarMark, Postmark } from './Postal'
+import { CountStamp, DoarMark, SenderStamp } from './Postal'
 import { SwipeRow } from './SwipeRow'
 import { ThreadView } from './ThreadView'
 
@@ -154,6 +155,7 @@ export function Inbox({ email }: { email: string }) {
 
       <section className="list" aria-label="דואר נכנס">
         <header className="list-header">
+          <div className="airmail-band" aria-hidden="true" />
           <div className="list-title">
             <span className="dateline">
               דואר · {todayLine}
@@ -170,12 +172,7 @@ export function Inbox({ email }: { email: string }) {
             </span>
             <h1>הדואר של היום</h1>
           </div>
-          {unreadCount > 0 && (
-            <div className="stamp unread-stamp" aria-label={`${unreadCount} לא נקראו`}>
-              <strong aria-hidden="true">{unreadCount}</strong>
-              <span aria-hidden="true">לא נקראו</span>
-            </div>
-          )}
+          {unreadCount > 0 && <CountStamp count={unreadCount} label="לא נקראו" />}
         </header>
 
         {error && (
@@ -195,19 +192,22 @@ export function Inbox({ email }: { email: string }) {
                   aria-current={t.id === selectedId || undefined}
                   onClick={() => open(t.id)}
                 >
-                  <Postmark iso={t.date} seed={t.id} faded={!t.unread} />
+                  <SenderStamp contact={t.from} cancelled={!t.unread} seed={t.id} />
                   <span className="thread-main">
                     <span className="thread-top">
                       <span className="sender ellipsis" dir="auto">
                         {t.from.name}
                       </span>
                       {t.messageCount > 1 && <span className="msg-count">×{t.messageCount}</span>}
-                      {t.unread && <span className="seal" aria-label="לא נקרא" />}
                       {t.starred && (
                         <span className="star-mark" aria-label="מסומן בכוכב">
                           <StarIcon filled />
                         </span>
                       )}
+                      <span className="row-date">
+                        {t.unread && <span className="visually-hidden">לא נקרא, </span>}
+                        {formatListDate(t.date)}
+                      </span>
                     </span>
                     <span className="subject ellipsis" dir="auto">
                       {t.subject}

@@ -38,6 +38,10 @@
   --on-accent: #faf6ec;
   --on-ink: #faf6ec;
   --letter: #fffdf8;
+  --airmail: #24407a;
+  --on-airmail: #faf6ec;
+  /* Stamp paper and the holes punched through it (the page shows through). */
+  --stamp-paper: #fffdf6;
 
   /* Headings and text both use Discovery; headings get its Black weight. */
   --serif: 'Discovery', system-ui, sans-serif;
@@ -69,6 +73,9 @@
     --accent: #e07a5f;
     --on-accent: #151b25;
     --on-ink: #151b25;
+    --airmail: #3b5fa8;
+    --on-airmail: #f3eee3;
+    --stamp-paper: #ede6d6;
     color-scheme: dark;
   }
 }
@@ -170,69 +177,207 @@ kbd {
 
 /* ---------- Postal pieces ---------- */
 
-/* Round postmark used for dates. */
-.postmark {
-  flex: none;
-  width: 54px;
+/* Paper grain over everything: felt more than seen. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  background: url('/grain.svg');
+  opacity: 0.07;
+}
+
+@media (prefers-color-scheme: dark) {
+  body::after {
+    opacity: 0.05;
+  }
+}
+
+/* Airmail stripes: red and blue diagonals. */
+.airmail-band {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--accent) 0 10px,
+    var(--paper) 10px 16px,
+    var(--airmail) 16px 26px,
+    var(--paper) 26px 32px
+  );
+}
+
+/* Perforated stamp paper: holes are dots of the page color, centered on the edges. */
+.sender-stamp,
+.count-stamp,
+.login-stamp {
+  width: 104px;
+  height: 120px;
+  margin-bottom: 14px;
+  padding: 7px;
+  background-size: 14px 14px;
+  background-position: -7px -7px;
+  background-image: radial-gradient(circle, var(--paper) 4px, var(--stamp-paper) 4.6px);
+  transform: rotate(-4deg);
+  display: grid;
+  place-items: center;
+}
+
+.stamp-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #fffdf6;
+}
+
+/* A sender's stamp: their color and initial. */
+.sender-stamp {
+  width: 46px;
   height: 54px;
+}
+
+.sender-stamp .stamp-face {
+  background: var(--stamp);
+}
+
+.stamp-letter {
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.stamp-word {
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.sender-stamp[data-size='lg'] {
+  width: 58px;
+  height: 68px;
+  padding: 5px;
+  background-size: 10px 10px;
+  background-position: -5px -5px;
+  background-image: radial-gradient(circle, var(--paper-card) 3px, var(--stamp-paper) 3.5px);
+}
+
+.sender-stamp[data-size='lg'] .stamp-letter {
+  font-size: 28px;
+}
+
+.sender-stamp[data-size='lg'] .stamp-word {
+  font-size: 9px;
+}
+
+/* Read mail: the stamp has done its job; faded and cancelled. */
+.sender-stamp[data-cancelled] {
+  box-shadow: 0 1px 3px rgba(31, 42, 58, 0.1);
+}
+
+.sender-stamp[data-cancelled] .stamp-face {
+  filter: saturate(0.45) brightness(1.1);
+}
+
+.cancel-waves {
+  position: absolute;
+  top: 12px;
+  left: -16px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.72;
+}
+
+/* Duplex cancel: dated ring + heavy bars. */
+.duplex {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink);
+  opacity: 0.85;
+  transform: rotate(-8deg);
+}
+
+.duplex-ring {
+  width: 56px;
+  height: 56px;
+  box-sizing: border-box;
   border-radius: 50%;
-  border: 3px double var(--ink);
+  border: 2.5px solid currentColor;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-family: var(--mono);
+  font-weight: 700;
   line-height: 1.1;
-  color: var(--ink);
-}
-
-.postmark[data-faded] {
-  border-color: var(--ink-soft);
-  color: var(--muted);
 }
 
 .pm-top {
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 12px;
 }
 
-.pm-bottom {
-  font-size: 13px;
-  font-weight: 700;
+.pm-small {
+  font-size: 8px;
 }
 
-/* Perforated postage stamp. */
-.stamp {
-  flex: none;
+.duplex-bars {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  gap: 5px;
+}
+
+.duplex-bars span {
+  display: block;
+  width: 44px;
+  height: 4px;
+  background: currentColor;
+}
+
+/* The unread count, as a carmine stamp. */
+.count-stamp {
+  width: 62px;
+  height: 72px;
   padding: 5px;
-  border: 2px dashed var(--accent);
-  background: var(--paper-card);
-  color: var(--accent);
+  background-size: 10px 10px;
+  background-position: -5px -5px;
+  background-image: radial-gradient(circle, var(--paper) 3px, var(--stamp-paper) 3.5px);
+  transform: rotate(-5deg);
+}
+
+.count-stamp .stamp-face {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.count-stamp strong {
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.count-stamp span span {
+  font-size: 11px;
+  font-weight: 600;
 }
 
 /* Rubber stamp shown behind swiped rows. */
 .rubber {
   display: inline-block;
-  padding: 6px 12px;
+  padding: 5px 12px;
   border: 2.5px solid currentColor;
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.2em;
+  border-radius: 3px;
+  font-weight: 800;
+  font-size: 18px;
 }
 
-/* Wax seal = unread. */
-.seal {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ---------- Sidebar (PC) ---------- */
@@ -347,26 +492,6 @@ kbd {
   font-weight: 900;
   font-size: 2.4rem;
   line-height: 1.05;
-}
-
-.unread-stamp {
-  width: 64px;
-  height: 74px;
-  transform: rotate(-4deg);
-}
-
-.unread-stamp strong {
-  font-family: var(--serif);
-  font-weight: 900;
-  font-size: 30px;
-  line-height: 1;
-}
-
-.unread-stamp span {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
 .refresh {
@@ -508,8 +633,8 @@ kbd {
 }
 
 .swipe-bg--archive {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--airmail);
+  color: var(--on-airmail);
   justify-content: flex-end;
 }
 
@@ -609,13 +734,21 @@ kbd {
   position: relative;
   display: block;
   width: 100%;
-  padding-block: 16px;
-  padding-inline: 18px 104px;
+  min-height: 150px;
+  padding-block: 14px;
+  padding-inline: 16px 150px;
   text-align: start;
   background: var(--paper-card);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  box-shadow: 0 1px 0 var(--line), 0 6px 16px rgba(31, 42, 58, 0.08);
+  border: 9px solid transparent;
+  border-image: repeating-linear-gradient(
+      -45deg,
+      var(--accent) 0 10px,
+      var(--paper-card) 10px 15px,
+      var(--airmail) 15px 25px,
+      var(--paper-card) 25px 30px
+    )
+    9;
+  box-shadow: 0 10px 22px rgba(31, 42, 58, 0.12);
 }
 
 .envelope-label {
@@ -641,24 +774,37 @@ kbd {
   color: var(--muted);
 }
 
-.envelope .stamp {
-  position: absolute;
-  top: 14px;
-  inset-inline-end: 16px;
-  width: 58px;
-  height: 68px;
-  padding: 4px;
-  background: var(--paper);
+/* Opened flap above the envelope, showing its security-tinted lining. */
+.flap {
+  display: block;
+  height: 56px;
+  margin: 0 0 -1px;
+  background-color: var(--paper-deep);
+  background-image: repeating-linear-gradient(45deg, rgba(36, 64, 122, 0.16) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgba(36, 64, 122, 0.16) 0 1px, transparent 1px 5px);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
-.envelope .postmark {
+/* Stamp in the corner, cancelled by the post office. */
+.envelope-stamp {
   position: absolute;
-  top: 46px;
-  inset-inline-end: 50px;
-  width: 66px;
-  height: 66px;
-  background: transparent;
-  opacity: 0.85;
+  top: 10px;
+  inset-inline-end: 12px;
+  width: 130px;
+  height: 110px;
+  pointer-events: none;
+}
+
+.envelope-stamp .sender-stamp {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+}
+
+.envelope-stamp .duplex {
+  position: absolute;
+  top: 36px;
+  inset-inline-end: 26px;
 }
 
 /* Folded older message. */
@@ -692,11 +838,12 @@ kbd {
 
 /* The letter itself. */
 .letter {
-  margin-top: 10px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  position: relative;
+  margin: -14px 10px 0;
+  padding: 6px;
   background: var(--letter);
+  box-shadow: 0 -6px 18px rgba(31, 42, 58, 0.12);
+  transform: rotate(-0.6deg);
 }
 
 .email-body {
@@ -857,4 +1004,55 @@ kbd {
 [dir='rtl'] .envelope-name,
 [dir='rtl'] .thread-subject {
   text-align: right;
+}
+
+/* Airmail stripe along the top edge of the inbox and sign-in screens. */
+.list-header > .airmail-band,
+.login > .airmail-band {
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 8px;
+}
+
+.login {
+  position: relative;
+}
+
+/* Night sorting office: a faint pigeonhole rack behind the title. */
+@media (prefers-color-scheme: dark) {
+  .list-header {
+    background-image: linear-gradient(to left, rgba(237, 230, 214, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(237, 230, 214, 0.06) 1px, transparent 1px);
+    background-size: 48px 34px;
+  }
+
+  .cancel-waves {
+    stroke: var(--ink);
+  }
+}
+
+.row-date {
+  flex: none;
+  margin-inline-start: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.thread-row[data-unread] .row-date {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.thread-row {
+  align-items: center;
+}
+
+.thread-row[data-unread] .sender {
+  font-weight: 800;
+}
+
+.thread-row[data-unread] .subject {
+  font-weight: 600;
 }

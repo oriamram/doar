@@ -21,6 +21,7 @@ export function LoginScreen() {
 
   return (
     <div className="login">
+      <div className="airmail-band" aria-hidden="true" />
       <div className="stamp login-stamp" aria-hidden="true">
         <DoarMark size={70} />
       </div>

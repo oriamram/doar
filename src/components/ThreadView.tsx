@@ -4,7 +4,7 @@ import { getThreadMessages } from '../lib/gmail'
 import type { Message, Thread } from '../types'
 import { EmailBody } from './EmailBody'
 import { ArchiveIcon, BackIcon, StarIcon } from './icons'
-import { DoarMark, Postmark } from './Postal'
+import { DuplexCancel, SenderStamp } from './Postal'
 
 // Opened conversations stay cached while the app is open, so going back and forth is instant.
 const messageCache = new Map<string, Message[]>()
@@ -92,6 +92,7 @@ export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
         }
         return (
           <section key={message.id} className="message">
+            <span className="flap" aria-hidden="true" />
             <button
               className="envelope"
               onClick={() => messages.length > 1 && toggle(message.id)}
@@ -108,10 +109,10 @@ export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
                   אל: {message.to}
                 </span>
               )}
-              <span className="stamp" aria-hidden="true">
-                <DoarMark size={34} />
+              <span className="envelope-stamp">
+                <SenderStamp contact={message.from} seed={message.id} size="lg" />
+                <DuplexCancel iso={message.date} />
               </span>
-              <Postmark iso={message.date} seed={message.id} />
             </button>
             <div className="letter">
               <EmailBody html={message.bodyHtml} />
