@@ -1,10 +1,17 @@
-import { useState } from 'react'
-import { signInWithGoogle } from '../lib/auth'
+import { useEffect, useState } from 'react'
+import { signInReturnError, signInWithGoogle } from '../lib/auth'
 import { DoarMark } from './Postal'
 
 export function LoginScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Coming back from Google without a session means finishing sign-in failed: say why.
+  useEffect(() => {
+    void signInReturnError().then((message) => {
+      if (message) setError(`ההתחברות לא הושלמה: ${message}`)
+    })
+  }, [])
 
   const signIn = async () => {
     setBusy(true)

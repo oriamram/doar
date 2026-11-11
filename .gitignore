@@ -25,3 +25,5 @@ dist-ssr
 
 # PWA dev service worker
 dev-dist
+
+.vercel

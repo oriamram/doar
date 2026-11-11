@@ -12,6 +12,24 @@ const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.modify'
 /** Deep link Google sends the Android app back to (registered in AndroidManifest.xml). */
 const NATIVE_REDIRECT = 'app.doar.mail://auth'
 
+/**
+ * Where Google sends the browser back to. It must match an entry in Supabase's
+ * Redirect URLs exactly, or Supabase silently falls back to its Site URL:
+ * the hosted site is listed as `https://…/**`, which needs the trailing slash;
+ * the local dev server is listed without one.
+ */
+function webRedirect(): string {
+  const { origin, hostname } = window.location
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+  return isLocal ? origin : `${origin}/`
+}
+
+/** Why finishing sign-in after returning from Google failed, if it did. */
+export async function signInReturnError(): Promise<string | null> {
+  const { error } = await supabase.auth.initialize()
+  return error ? error.message : null
+}
+
 export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -19,7 +37,7 @@ export async function signInWithGoogle() {
       scopes: GMAIL_SCOPE,
       // Ask Google for a refresh token, so the app stays signed in.
       queryParams: { access_type: 'offline', prompt: 'consent' },
-      redirectTo: isNative ? NATIVE_REDIRECT : window.location.origin,
+      redirectTo: isNative ? NATIVE_REDIRECT : webRedirect(),
       // Google blocks its sign-in page inside app WebViews, so on Android we open
       // the real browser ourselves instead of navigating the app.
       skipBrowserRedirect: isNative,
