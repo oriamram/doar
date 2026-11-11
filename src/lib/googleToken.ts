@@ -1,0 +1,58 @@
+import { supabase } from './supabase'
+
+/**
+ * Short-lived Google access tokens for the Gmail API.
+ *
+ * Google's long-lived refresh token is kept server-side by the `google-token` Edge
+ * Function (it needs the OAuth client secret to use it). The app only ever holds a
+ * one-hour access token, in memory.
+ */
+
+let cached: { token: string; expiresAt: number } | null = null
+
+/** Raised when Google no longer accepts our refresh token; the user must sign in again. */
+export class ReauthRequiredError extends Error {
+  constructor() {
+    super('Google access expired. Please sign in again.')
+  }
+}
+
+async function callTokenFunction<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('google-token', { body })
+  if (error) {
+    const status = (error as { context?: Response }).context?.status
+    if (status === 401) throw new ReauthRequiredError()
+    throw error
+  }
+  return data as T
+}
+
+/** Called once right after Google sign-in, while Supabase still hands us Google's tokens. */
+export async function rememberGoogleTokens(refreshToken: string | null | undefined, accessToken?: string | null) {
+  if (accessToken) cached = { token: accessToken, expiresAt: Date.now() + 50 * 60_000 }
+  if (refreshToken) await callTokenFunction({ action: 'store', refresh_token: refreshToken })
+}
+
+let inFlight: Promise<string> | null = null
+
+export async function getGoogleAccessToken(): Promise<string> {
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token
+  // Several Gmail requests may ask at once; fetch a single new token for all of them.
+  inFlight ??= callTokenFunction<{ access_token: string; expires_in: number }>({ action: 'access' })
+    .then(({ access_token, expires_in }) => {
+      cached = { token: access_token, expiresAt: Date.now() + expires_in * 1000 }
+      return access_token
+    })
+    .finally(() => (inFlight = null))
+  return inFlight
+}
+
+export function clearGoogleAccessToken() {
+  cached = null
+}
+
+/** Forget the stored refresh token (used on sign-out). */
+export async function forgetGoogleTokens() {
+  cached = null
+  await callTokenFunction({ action: 'forget' }).catch(() => {})
+}
