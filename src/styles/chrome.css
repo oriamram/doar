@@ -865,3 +865,39 @@
 .shortcuts dd {
   margin: 0;
 }
+
+/* "More": the folders you rarely need stay folded away. */
+.nav-more {
+  color: var(--text-soft);
+}
+
+.nav-more svg {
+  transition: rotate 0.15s;
+}
+
+.nav-more[aria-expanded='true'] svg {
+  rotate: 180deg;
+}
+
+/* The short guide: a numbered leaflet. */
+.guide {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding-inline-start: 22px;
+}
+
+.guide li::marker {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--ink-red);
+}
+
+.guide strong {
+  display: block;
+  font-weight: 800;
+}
+
+.guide span {
+  color: var(--text-muted);
+}

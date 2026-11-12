@@ -73,6 +73,8 @@ function emptyText(view: View): string {
       return 'אין טיוטות. מכתב שתתחילו לכתוב יישמר כאן.'
     case 'sent':
       return 'עוד לא שלחתם מכתבים.'
+    case 'archive':
+      return 'עוד לא תייקתם מכתבים. מכתב שמתייקים מחכה כאן.'
     case 'spam':
       return 'אין ספאם. יופי.'
     case 'trash':
@@ -136,7 +138,7 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
   const { pull, phase: pullPhase } = usePullToRefresh(listElement, mailbox.reload)
 
   const inInbox = isFolder(view, 'inbox')
-  const showFilters = (inInbox || isFolder(view, 'unread') || isFolder(view, 'starred')) && !searching && selection.size === 0
+  const showFilters = (inInbox || isFolder(view, 'unread')) && !searching && selection.size === 0
   const items = useMemo(
     () => buildItems(threads ?? [], inInbox && settings.bundles ? bundles : []),
     [threads, bundles, inInbox, settings.bundles],
@@ -179,7 +181,6 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
   const filters = [
     { view: INBOX, label: 'הכל' },
     { view: { kind: 'folder', id: 'unread' } as View, label: 'לא נקראו', count: unread },
-    { view: { kind: 'folder', id: 'starred' } as View, label: 'מסומנים' },
   ]
 
   return (

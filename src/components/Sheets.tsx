@@ -260,6 +260,49 @@ const SHORTCUTS: { keys: string[]; action: string }[] = [
   { keys: ['?'], action: 'הדף הזה' },
 ]
 
+const GUIDE: { title: string; text: string }[] = [
+  {
+    title: 'תיוק',
+    text: 'החלקה שמאלה על מכתב מוציאה אותו מהדואר הנכנס. הוא לא נמחק: הוא מחכה בתיקייה „מתויקים” ובחיפוש.',
+  },
+  {
+    title: 'נקרא ולא נקרא',
+    text: 'החלקה ימינה מסמנת מכתב כנקרא, או מחזירה אותו ללא נקרא.',
+  },
+  {
+    title: 'כמה מכתבים יחד',
+    text: 'לחיצה ארוכה על מכתב (או לחיצה על הבול שלו) בוחרת אותו. אחר כך בוחרים עוד, ומתייקים או מוחקים את כולם בבת אחת.',
+  },
+  {
+    title: 'צרורות',
+    text: 'עדכונים, פרסומות ורשתות חברתיות נקשרים לצרור אחד, כדי שהמכתבים האישיים יבלטו. אפשר לכבות בהגדרות.',
+  },
+  {
+    title: 'תוויות',
+    text: 'תווית היא מדבקה על מכתב, ואפשר לשים כמה. פותחים מכתב, לוחצים על שלוש הנקודות ובוחרים „תוויות”. כל תווית מופיעה בתפריט.',
+  },
+  {
+    title: 'בדיקת דואר',
+    text: 'הדואר מתעדכן לבד. בטלפון אפשר גם למשוך את הרשימה למטה.',
+  },
+]
+
+/** The few things worth knowing, in plain words. */
+export function GuideSheet({ onClose }: { onClose: () => void }) {
+  return (
+    <Sheet title="מדריך קצר" form="נספח ב׳ · למשתמש" onClose={onClose}>
+      <ol className="guide">
+        {GUIDE.map((item) => (
+          <li key={item.title}>
+            <strong>{item.title}</strong>
+            <span>{item.text}</span>
+          </li>
+        ))}
+      </ol>
+    </Sheet>
+  )
+}
+
 export function ShortcutsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet title="קיצורי מקלדת" form="נספח א׳ · למקלדת" onClose={onClose}>

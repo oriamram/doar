@@ -29,6 +29,7 @@ function swipes(thread: Thread, view: View): { left?: SwipeAction; right?: Swipe
   if (isFolder(view, 'trash')) return { left: { label: 'שוחזר', run: () => mailbox.untrash(ids) } }
   if (isFolder(view, 'spam')) return { left: { label: 'לא ספאם', run: () => mailbox.notSpam(ids) } }
   if (isFolder(view, 'drafts')) return {}
+  if (isFolder(view, 'archive')) return { left: { label: 'לדואר הנכנס', run: () => mailbox.moveToInbox(ids) }, right: read }
   if (thread.labelIds.includes('INBOX')) return { left: { label: 'תויק', run: () => mailbox.archive(ids) }, right: read }
   return { right: read }
 }

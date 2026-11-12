@@ -543,8 +543,11 @@ function notSpam(ids: string[]) {
 }
 
 function moveToInbox(ids: string[]) {
+  const next = isFolder(state.view, 'archive') ? successor(ids) : undefined
   change(ids, (thread) => ({ ...thread, labelIds: withLabel(thread.labelIds, 'INBOX') }))
-  set({ selection: EMPTY })
+  if (isFolder(state.view, 'archive')) drop(ids)
+  else set({ selection: EMPTY })
+  moveOn(next)
   settle(ids.map((id) => api.modifyThread(id, ['INBOX'], [])))
   toast(many(ids, 'המכתב הוחזר לדואר הנכנס', (n) => `${n} מכתבים הוחזרו לדואר הנכנס`))
 }

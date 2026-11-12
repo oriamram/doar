@@ -14,6 +14,32 @@ const base: SVGProps<SVGSVGElement> = {
 
 const Icon = ({ children }: { children: ReactNode }) => <svg {...base}>{children}</svg>
 
+export const ClockIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Icon>
+)
+
+export const HelpIcon = () => (
+  <Icon>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1 1-1.1 1.8M12 17h.01" />
+  </Icon>
+)
+
+export const BellIcon = () => (
+  <Icon>
+    <path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15zM10 21h4" />
+  </Icon>
+)
+
+export const InstallIcon = () => (
+  <Icon>
+    <path d="M12 4v10M8 10l4 4 4-4M5 19h14" />
+  </Icon>
+)
+
 export const ArchiveIcon = () => (
   <Icon>
     <rect x="3" y="4" width="18" height="5" rx="1" />

@@ -2,7 +2,7 @@ import type { Category, Thread } from '../types'
 import type { ListQuery } from './gmail'
 
 /** What the list can show: a folder, one of your labels, a bundle, or search results. */
-export type FolderId = 'inbox' | 'unread' | 'starred' | 'sent' | 'drafts' | 'all' | 'spam' | 'trash'
+export type FolderId = 'inbox' | 'unread' | 'starred' | 'sent' | 'drafts' | 'archive' | 'all' | 'spam' | 'trash'
 export type BundleCategory = Exclude<Category, 'primary'>
 
 export type View =
@@ -22,6 +22,7 @@ export const FOLDER_TITLES: Record<FolderId, string> = {
   starred: 'מסומנים בכוכב',
   sent: 'נשלחו',
   drafts: 'טיוטות',
+  archive: 'מתויקים',
   all: 'כל הדואר',
   spam: 'ספאם',
   trash: 'אשפה',
@@ -86,6 +87,9 @@ export function viewQuery(view: View, bundles: boolean): ListQuery {
           return { labelIds: ['SENT'] }
         case 'drafts':
           return { labelIds: ['DRAFT'] }
+        case 'archive':
+          // Mail you received and filed: out of the inbox, not deleted.
+          return { q: '-in:inbox -in:sent -in:drafts -in:chats' }
         case 'all':
           return {}
         case 'spam':
@@ -103,6 +107,8 @@ export function viewQuery(view: View, bundles: boolean): ListQuery {
 export function belongsInView(view: View, thread: Thread, bundles: boolean): boolean {
   if (view.kind === 'bundle') return thread.category === view.category
   if (view.kind === 'folder' && view.id === 'inbox' && bundles) return thread.category === 'primary'
+  // A conversation with an old filed letter and a new one in the inbox still belongs to the inbox.
+  if (isFolder(view, 'archive')) return !thread.labelIds.includes('INBOX')
   return true
 }
 

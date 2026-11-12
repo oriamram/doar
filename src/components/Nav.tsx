@@ -4,7 +4,10 @@ import { mailbox, useMailbox } from '../lib/mailbox'
 import { FOLDER_TITLES, labelLeaf, viewKey, type FolderId, type View } from '../lib/views'
 import {
   AllMailIcon,
+  ArchiveIcon,
+  ChevronIcon,
   DraftIcon,
+  HelpIcon,
   InboxIcon,
   KeyboardIcon,
   LogoutIcon,
@@ -24,24 +27,56 @@ type Props = {
   onClose: () => void
   onSettings: () => void
   onShortcuts: () => void
+  onGuide: () => void
 }
 
-const FOLDERS: { id: FolderId; icon: ReactNode }[] = [
+type Folder = { id: FolderId; icon: ReactNode }
+
+/** The folders of every day. */
+const FOLDERS: Folder[] = [
   { id: 'inbox', icon: <InboxIcon /> },
   { id: 'starred', icon: <StarIcon /> },
-  { id: 'sent', icon: <SendIcon /> },
   { id: 'drafts', icon: <DraftIcon /> },
+  { id: 'sent', icon: <SendIcon /> },
+  { id: 'archive', icon: <ArchiveIcon /> },
+]
+
+/** Rarely needed, so they wait folded under "more". */
+const MORE_FOLDERS: Folder[] = [
   { id: 'all', icon: <AllMailIcon /> },
   { id: 'spam', icon: <SpamIcon /> },
   { id: 'trash', icon: <TrashIcon /> },
 ]
 
+const MORE_KEY = 'doar:nav-more'
+
+function savedMore(): boolean {
+  try {
+    return localStorage.getItem(MORE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 /** Folders and labels: a sidebar on wide screens, a drawer on phones. */
-export function Nav({ open, onClose, onSettings, onShortcuts }: Props) {
+export function Nav({ open, onClose, onSettings, onShortcuts, onGuide }: Props) {
   const { view, unread, draftCount, labels, me } = useMailbox()
   const [adding, setAdding] = useState(false)
   const [labelName, setLabelName] = useState('')
+  const [more, setMore] = useState(savedMore)
   const current = viewKey(view)
+  // Standing in one of the folded folders keeps them in view.
+  const showMore = more || MORE_FOLDERS.some((folder) => folder.id === current)
+
+  const toggleMore = () => {
+    const next = !showMore
+    setMore(next)
+    try {
+      localStorage.setItem(MORE_KEY, next ? '1' : '0')
+    } catch {
+      // Not remembered; it still works until the app closes.
+    }
+  }
 
   const go = (next: View) => {
     mailbox.show(next)
@@ -57,6 +92,18 @@ export function Nav({ open, onClose, onSettings, onShortcuts }: Props) {
       setLabelName('')
       setAdding(false)
     }
+  }
+
+  const folderButton = (folder: Folder) => {
+    const active = current === folder.id || (folder.id === 'inbox' && current === 'unread')
+    const count = folder.id === 'inbox' ? unread : folder.id === 'drafts' ? draftCount : 0
+    return (
+      <button key={folder.id} className="nav-item" aria-current={active ? 'page' : undefined} onClick={() => go({ kind: 'folder', id: folder.id })}>
+        {folder.icon}
+        <span className="nav-name">{FOLDER_TITLES[folder.id]}</span>
+        {count > 0 && <span className="count">{count}</span>}
+      </button>
+    )
   }
 
   return (
@@ -80,17 +127,12 @@ export function Nav({ open, onClose, onSettings, onShortcuts }: Props) {
         </button>
 
         <nav aria-label="תיקיות">
-          {FOLDERS.map((folder) => {
-            const active = current === folder.id || (folder.id === 'inbox' && current === 'unread')
-            const count = folder.id === 'inbox' ? unread : folder.id === 'drafts' ? draftCount : 0
-            return (
-              <button key={folder.id} className="nav-item" aria-current={active ? 'page' : undefined} onClick={() => go({ kind: 'folder', id: folder.id })}>
-                {folder.icon}
-                <span className="nav-name">{FOLDER_TITLES[folder.id]}</span>
-                {count > 0 && <span className="count">{count}</span>}
-              </button>
-            )
-          })}
+          {FOLDERS.map(folderButton)}
+          <button className="nav-item nav-more" aria-expanded={showMore} onClick={toggleMore}>
+            <ChevronIcon />
+            <span className="nav-name">עוד</span>
+          </button>
+          {showMore && MORE_FOLDERS.map(folderButton)}
 
           <div className="nav-heading">
             <span>תוויות</span>
@@ -129,6 +171,16 @@ export function Nav({ open, onClose, onSettings, onShortcuts }: Props) {
           >
             <SettingsIcon />
             <span className="nav-name">הגדרות</span>
+          </button>
+          <button
+            className="nav-item"
+            onClick={() => {
+              onGuide()
+              onClose()
+            }}
+          >
+            <HelpIcon />
+            <span className="nav-name">מדריך קצר</span>
           </button>
           <button
             className="nav-item nav-keys"
