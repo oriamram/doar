@@ -14,11 +14,11 @@ your account without your OK.
 2. Put your own address in **אל**, write a word, tap the **שליחה** stamp.
 3. Check that it arrives in your inbox.
 
-### 2. Stop Google signing you out every 7 days (2 minutes)
+### 2. Publish the Google app: done (12 November 2026)
 
-1. Open https://console.cloud.google.com/auth/audience and pick the Doar project.
-2. Click **Publish app**, then **Confirm**.
-3. Next time you sign in, Google shows "unverified app". Click **Advanced**, then continue.
+The app is "In production", so anyone can sign in (up to 100 people) and Google no longer
+signs you out every 7 days. Google shows "unverified app" at sign-in: click **Advanced**,
+then continue. A sign-in made before publishing can still expire once; sign in again and it stays.
 
 ### 3. Make the site update by itself on every change (3 minutes)
 
