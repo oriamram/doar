@@ -1,0 +1,196 @@
+/* Whole screens: signing in, and waiting for the mail. */
+
+/* ---------- Sign-in ---------- */
+
+.login {
+  position: relative;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+}
+
+.login > .airmail-band {
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 6px;
+}
+
+.login-stamp {
+  --tile: 8px;
+  --hole: 2.5px;
+  --margin: 8px;
+  width: 104px;
+  height: 120px;
+  margin-bottom: 14px;
+  rotate: -4deg;
+}
+
+.login-stamp .stamp-face {
+  background: var(--sheet-letter);
+  box-shadow: none;
+}
+
+.login h1 {
+  font-weight: 900;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.login .tagline {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.google-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+  padding: 14px 24px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--desk);
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+  transition: scale 0.12s;
+}
+
+.google-btn:active {
+  scale: 0.97;
+}
+
+.google-btn svg {
+  width: 22px;
+  height: 22px;
+  padding: 2px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.fineprint {
+  margin-top: 18px;
+  font-size: 0.8rem;
+}
+
+/* ---------- Waiting for the mail ---------- */
+
+.loader {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  height: 100%;
+}
+
+.loader[data-compact] {
+  height: auto;
+  gap: 8px;
+  padding: 40px 0;
+}
+
+.loader[data-compact] .loader-envelope {
+  width: 88px;
+  height: 75px;
+}
+
+.loader-envelope {
+  overflow: visible;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
+}
+
+.env-flap,
+.env-back {
+  fill: var(--sheet-lining);
+}
+
+.env-front {
+  fill: var(--sheet);
+  stroke: rgba(80, 60, 30, 0.22);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.letter-sheet {
+  fill: var(--sheet-letter);
+  stroke: rgba(80, 60, 30, 0.2);
+  stroke-width: 1;
+}
+
+.letter-stamp {
+  fill: var(--ink-red);
+}
+
+.letter-lines {
+  stroke: rgba(31, 42, 58, 0.2);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+/* The letter rises out of the envelope, pauses, and slips back in. */
+.loader-letter {
+  animation: letter-rise 1.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes letter-rise {
+  0%,
+  12% {
+    transform: translateY(14px);
+  }
+  45%,
+  62% {
+    transform: translateY(-20px);
+  }
+  95%,
+  100% {
+    transform: translateY(14px);
+  }
+}
+
+.loader-label {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.loader[data-compact] .loader-label {
+  font-size: 0.95rem;
+}
+
+.loader-track {
+  width: 148px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--desk-raised);
+}
+
+.loader-track .airmail-band {
+  display: block;
+  height: 100%;
+  background-size: 45px 100%;
+  animation: airmail-run 0.9s linear infinite;
+}
+
+/* ---------- Less motion, when the device asks for it ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

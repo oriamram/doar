@@ -1,0 +1,596 @@
+/* Reading: an opened envelope with its letter slid out. */
+
+.reader {
+  position: relative;
+}
+
+.thread {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+  padding-bottom: max(48px, env(safe-area-inset-bottom));
+}
+
+.reader-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 -8px;
+  padding: 10px 0;
+  padding-top: max(10px, env(safe-area-inset-top));
+  background: var(--desk);
+}
+
+.reader-bar .pill-btn {
+  margin-inline: 6px 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* Starred: the star turns gold. */
+.icon-btn[aria-pressed='true'] {
+  color: #d9a92a;
+}
+
+/* Arrows point the way you read: "back" points right in Hebrew. */
+[dir='rtl'] .back svg {
+  transform: scaleX(-1);
+}
+
+@media (min-width: 768px) {
+  .back {
+    visibility: hidden;
+  }
+}
+
+.thread-subject {
+  margin: 8px 4px 22px;
+  font-weight: 900;
+  font-size: 1.9rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.thread-tapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -12px 4px 20px;
+}
+
+.thread-tapes .tape {
+  max-width: 180px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.thread-wait {
+  margin: 0 4px;
+}
+
+.message {
+  position: relative;
+}
+
+.message + .message {
+  margin-top: 18px;
+}
+
+/* ---------- The envelope ---------- */
+
+/* Who it's from and when, with the stamp and postmark. */
+.envelope {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  min-height: 158px;
+  padding-block: 14px 16px;
+  padding-inline: 16px 146px;
+  text-align: start;
+  border: 10px solid transparent;
+  border-image: repeating-linear-gradient(
+      -45deg,
+      var(--ink-red) 0 11px,
+      var(--sheet) 11px 16px,
+      var(--ink-blue) 16px 27px,
+      var(--sheet) 27px 32px
+    )
+    10;
+  box-shadow: var(--edge-fresh), var(--shadow-lift);
+}
+
+.envelope-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faded);
+}
+
+.envelope-name {
+  display: block;
+  font-weight: 800;
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+.envelope-addr {
+  display: block;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.envelope-to {
+  margin-top: 6px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+}
+
+/* Written along the bottom of the envelope, below the stamp, so it gets the full width. */
+.envelope-date {
+  display: block;
+  margin-top: 14px;
+  /* Runs under the stamp, but stops short of the corner where a star sticker goes. */
+  margin-inline-end: -80px;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+
+/* Stamp in the corner; the postmark's bars run over it and its dated ring
+   sits beside it, on the paper, where the date stays readable. */
+.envelope-stamp {
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 12px;
+  width: 120px;
+  height: 100px;
+  pointer-events: none;
+}
+
+.envelope-stamp .stamp {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  rotate: 2deg;
+}
+
+.envelope-stamp .duplex {
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 2px;
+}
+
+/* Starred: a gold star sticker pressed onto the envelope. */
+.envelope-star {
+  position: absolute;
+  bottom: 10px;
+  inset-inline-end: 16px;
+  width: 30px;
+  height: 30px;
+  rotate: -12deg;
+  animation: sticker-on 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+
+@keyframes sticker-on {
+  from {
+    scale: 1.8;
+    opacity: 0;
+    rotate: -40deg;
+  }
+}
+
+/* The flap, folded open to show the envelope's security-tinted lining.
+   It opens when the letter does: first the paper back, then the lining. */
+.flap {
+  position: relative;
+  z-index: 2;
+  display: block;
+  height: 58px;
+  margin: 0 0 -1px;
+  background-color: var(--sheet-lining);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(36, 64, 122, 0.18) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgba(36, 64, 122, 0.18) 0 1px, transparent 1px 5px);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+  transform-origin: 50% 100%;
+  animation: flap-open 0.38s var(--ease-out) both;
+}
+
+@keyframes flap-open {
+  0% {
+    transform: perspective(900px) rotateX(180deg);
+    background-color: var(--sheet);
+    background-image: none;
+  }
+  49% {
+    background-color: var(--sheet);
+    background-image: none;
+  }
+  51% {
+    background-color: var(--sheet-lining);
+    background-image:
+      repeating-linear-gradient(45deg, rgba(36, 64, 122, 0.18) 0 1px, transparent 1px 5px),
+      repeating-linear-gradient(-45deg, rgba(36, 64, 122, 0.18) 0 1px, transparent 1px 5px);
+  }
+  100% {
+    transform: perspective(900px) rotateX(0deg);
+  }
+}
+
+/* ---------- The letter ---------- */
+
+/* Slid out of the envelope; its top stays tucked in the pocket. The whole
+   opening takes under half a second, so reading is never kept waiting. */
+.letter {
+  position: relative;
+  z-index: 0;
+  margin: -18px 12px 0;
+  padding: 24px 8px 12px;
+  background-color: var(--sheet-letter);
+  box-shadow:
+    inset 0 0 0 1px rgba(90, 65, 30, 0.06),
+    inset 0 0 42px rgba(140, 100, 40, 0.13),
+    var(--shadow-rest);
+  animation: letter-out 0.36s var(--ease-out) 0.1s both;
+}
+
+@media (min-resolution: 2dppx) {
+  .letter {
+    rotate: -0.4deg;
+  }
+}
+
+@keyframes letter-out {
+  from {
+    translate: 0 -56px;
+  }
+}
+
+/* The email is printed onto the letter: multiplying makes its white the
+   letter's own paper, texture and all. */
+.email-body {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  border: 0;
+  background: transparent;
+  color-scheme: light;
+  mix-blend-mode: multiply;
+}
+
+.images-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 8px 6px;
+  padding: 8px 10px;
+  border: 1px dashed var(--ink-rule);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.images-note button {
+  font-weight: 800;
+  color: var(--ink-red);
+  white-space: nowrap;
+}
+
+/* An older message in the conversation: a letter folded shut, crease and all. */
+.folded {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: 2px;
+  text-align: start;
+  color: var(--ink-muted);
+  background-color: var(--sheet-aged);
+  background-image:
+    linear-gradient(to bottom, transparent 46%, rgba(90, 65, 30, 0.12) 50%, rgba(255, 255, 255, 0.4) 52%, transparent 57%),
+    url('/paper.svg');
+  background-size:
+    100% 100%,
+    360px;
+  background-blend-mode: normal, multiply;
+  box-shadow: var(--edge-aged), var(--shadow-rest);
+}
+
+.folded:active {
+  scale: 0.99;
+}
+
+.folded-who {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+.folded-snippet {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+/* A reply you started and haven't sent. */
+.draft-slip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border-inline-start: 3px solid var(--ink-red);
+  border-radius: 2px;
+  background-color: var(--sheet-aged);
+  box-shadow: var(--edge-aged), var(--shadow-rest);
+}
+
+.draft-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.draft-slip button {
+  flex: none;
+  min-height: 34px;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink-red);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Attached files ---------- */
+
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 14px;
+  margin-top: 8px;
+  padding: 16px 10px 8px;
+  border-top: 1px dashed var(--ink-rule);
+}
+
+/* Pictures: small photo prints. */
+.photo {
+  display: flex;
+  flex-direction: column;
+  width: 122px;
+  padding: 5px 5px 0;
+  background: #fffdf7;
+  box-shadow: var(--shadow-rest);
+  rotate: -1.6deg;
+  transition:
+    rotate 0.2s,
+    scale 0.2s;
+}
+
+.photo:nth-child(even) {
+  rotate: 1.3deg;
+}
+
+.photo:hover {
+  rotate: 0deg;
+  scale: 1.03;
+}
+
+.photo img {
+  display: block;
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+  background: #e9e2d2;
+}
+
+.photo-name {
+  padding: 4px 2px 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* Everything else: a paper slip with the file's kind on a folded corner. */
+.file-slip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(280px, 100%);
+  min-height: 56px;
+  padding: 6px 12px 6px 10px;
+  padding-inline-start: 6px;
+  border-radius: 2px;
+  text-align: start;
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+  transition: scale 0.12s;
+}
+
+.file-slip:active {
+  scale: 0.98;
+}
+
+.file-slip:disabled {
+  cursor: progress;
+}
+
+.file-slip > svg {
+  flex: none;
+  color: var(--ink-muted);
+}
+
+.file-kind {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 44px;
+  background: var(--ink-red);
+  color: var(--cream);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 11px;
+  clip-path: polygon(0 0, 70% 0, 100% 24%, 100% 100%, 0 100%);
+}
+
+.file-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.file-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.file-size {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  display: grid;
+  place-items: center;
+  animation: fade-in 0.18s;
+}
+
+.lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 10, 14, 0.88);
+  cursor: zoom-out;
+}
+
+.lightbox img {
+  position: relative;
+  max-width: 94vw;
+  max-height: 84vh;
+  border: 8px solid #fffdf7;
+  border-bottom-width: 26px;
+  box-shadow: var(--shadow-float);
+}
+
+.lightbox-bar {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: 10px;
+  display: flex;
+  gap: 4px;
+}
+
+.lightbox-bar .icon-btn {
+  color: #f2ece0;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- Answering ---------- */
+
+.unsubscribe {
+  display: block;
+  margin: 14px auto 0;
+  color: var(--text-muted);
+}
+
+/* Reply, reply all, forward: ticket stubs, within thumb's reach on a phone. */
+.reply-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+  filter: drop-shadow(0 1px 0.6px rgba(0, 0, 0, 0.25)) drop-shadow(0 4px 5px rgba(0, 0, 0, 0.14));
+}
+
+@media (max-width: 767px) {
+  .reply-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    margin: 18px -16px 0;
+    padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--desk) 64%, transparent);
+  }
+  /* The reply tickets rest on the bottom edge; other letters keep a little room below. */
+  .thread {
+    padding-bottom: 24px;
+  }
+  .reply-bar {
+    margin-bottom: -24px;
+  }
+}
+
+.ticket {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 12px;
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+  /* A notch on each side, as on a ticket stub. */
+  -webkit-mask:
+    radial-gradient(circle at 0 50%, transparent 5px, #000 5.5px) 0 0 / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent 5px, #000 5.5px) 100% 0 / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle at 0 50%, transparent 5px, #000 5.5px) 0 0 / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent 5px, #000 5.5px) 100% 0 / 51% 100% no-repeat;
+  transition: scale 0.12s;
+}
+
+.ticket:active {
+  scale: 0.96;
+}
+
+.ticket svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* The main answer is printed in full ink. */
+.ticket-main {
+  background-color: var(--ink);
+  color: var(--sheet);
+}
+
+.reader-empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  height: 100%;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.reader-empty img {
+  opacity: 0.6;
+  margin-bottom: 8px;
+  rotate: -6deg;
+}
+
+.reader-empty .big {
+  font-size: 1.3rem;
+  color: var(--text);
+}
+
+.hint {
+  margin-top: 8px;
+}

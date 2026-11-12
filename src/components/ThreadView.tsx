@@ -1,88 +1,233 @@
 import { useEffect, useState } from 'react'
-import { formatFullDate, formatLetterDate, formatListDate as formatShortDate } from '../lib/format'
-import { getThreadMessages } from '../lib/gmail'
-import type { Message, Thread } from '../types'
+import { sameEmail, shortName } from '../lib/addresses'
+import { realAttachments } from '../lib/compose'
+import { formatFullDate, formatLetterDate, formatListDate } from '../lib/format'
+import { loadMessages, peekMessages, sendRaw } from '../lib/gmail'
+import { mailbox, useMailbox } from '../lib/mailbox'
+import { buildMime } from '../lib/mime'
+import { toast } from '../lib/toast'
+import type { Contact, Message, Thread } from '../types'
+import { Attachments } from './Attachments'
 import { EmailBody } from './EmailBody'
-import { ArchiveIcon, BackIcon, StarIcon } from './icons'
-import { DuplexCancel, GoldStar, SenderStamp } from './Postal'
-
-// Opened conversations stay cached while the app is open, so going back and forth is instant.
-const messageCache = new Map<string, Message[]>()
+import {
+  ArchiveIcon,
+  BackIcon,
+  ForwardIcon,
+  InboxIcon,
+  MailIcon,
+  MoreIcon,
+  ReplyAllIcon,
+  ReplyIcon,
+  RestoreIcon,
+  SpamIcon,
+  StarIcon,
+  TagIcon,
+  TrashIcon,
+} from './icons'
+import { DuplexCancel, GoldStar, LabelTape, SenderStamp } from './Postal'
 
 type Props = {
   thread: Thread
   onBack: () => void
-  onArchive: () => void
-  onToggleStar: () => void
+  onLabels: () => void
 }
 
-export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
-  const [messages, setMessages] = useState<Message[] | null>(() => messageCache.get(thread.id) ?? null)
+/** Ask a mailing list to stop writing: by email when it accepts that, otherwise on its web page. */
+async function unsubscribe(message: Message, me: Contact) {
+  const { mailto, url } = message.unsubscribe ?? {}
+  if (mailto) {
+    const [address = '', query = ''] = mailto.split('?')
+    const params = new URLSearchParams(query)
+    try {
+      await sendRaw(
+        buildMime({
+          from: me,
+          to: [{ name: '', email: decodeURIComponent(address) }],
+          cc: [],
+          bcc: [],
+          subject: params.get('subject') ?? 'unsubscribe',
+          html: '<div>unsubscribe</div>',
+          text: params.get('body') ?? 'unsubscribe',
+          attachments: [],
+        }),
+      )
+      toast('נשלחה בקשה להסרה מרשימת התפוצה')
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), { tone: 'error' })
+    }
+  } else if (url) {
+    window.open(url, '_blank', 'noopener')
+  }
+}
+
+export function ThreadView({ thread, onBack, onLabels }: Props) {
+  const { labels, openRevision, me } = useMailbox()
+  const { id, historyId } = thread
+  const [messages, setMessages] = useState<Message[] | null>(() => peekMessages(thread))
   const [error, setError] = useState<string | null>(null)
-  // Older messages start collapsed to one line, like Gmail; the latest is open.
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // Messages whose open/folded state the reader changed by hand.
+  const [flipped, setFlipped] = useState<ReadonlySet<string>>(new Set())
+  const [menu, setMenu] = useState(false)
 
   // This component is keyed by thread id, so state starts fresh for every conversation.
   useEffect(() => {
     let cancelled = false
-    getThreadMessages(thread.id)
-      .then((loaded) => {
+    loadMessages({ id, historyId }).then(
+      (loaded) => {
         if (cancelled) return
-        messageCache.set(thread.id, loaded)
         setMessages(loaded)
-        setExpanded(new Set([loaded.at(-1)!.id]))
-      })
-      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : String(e)))
+        setError(null)
+      },
+      (e: unknown) => !cancelled && setError(e instanceof Error ? e.message : String(e)),
+    )
     return () => {
       cancelled = true
     }
-  }, [thread.id])
+  }, [id, historyId, openRevision])
 
-  const toggle = (id: string) =>
-    setExpanded((current) => {
+  const letters = messages?.filter((message) => !message.isDraft) ?? []
+  const last = letters.at(-1)
+  const ids = [id]
+  const inTrash = thread.labelIds.includes('TRASH')
+  const inSpam = thread.labelIds.includes('SPAM')
+  const inInbox = thread.labelIds.includes('INBOX')
+  const tapes = labels.filter((label) => thread.labelIds.includes(label.id))
+
+  // Like Gmail: the latest message and anything unread start open, older ones folded.
+  const startsOpen = (message: Message) => message.id === last?.id || message.labelIds.includes('UNREAD')
+  const isOpen = (message: Message) => letters.length === 1 || startsOpen(message) !== flipped.has(message.id)
+
+  const flip = (messageId: string) =>
+    setFlipped((current) => {
       const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(messageId)) next.delete(messageId)
+      else next.add(messageId)
       return next
     })
+
+  const recipients = (message: Message) => {
+    const names = [...message.to, ...message.cc].map((contact) => (sameEmail(contact.email, me.email) ? 'אני' : shortName(contact)))
+    return names.length > 3 ? `${names.slice(0, 3).join(', ')} ועוד ${names.length - 3}` : names.join(', ')
+  }
+
+  const pick = (action: () => void) => () => {
+    setMenu(false)
+    action()
+  }
 
   return (
     <article className="thread">
       <header className="reader-bar">
-        <button className="icon-btn back" onClick={onBack} aria-label="חזרה לדואר">
+        <button className="icon-btn back" onClick={onBack} aria-label="חזרה לרשימה">
           <BackIcon />
         </button>
         <span className="spacer" />
-        <button
-          className="icon-btn"
-          aria-label={thread.starred ? 'הסרת כוכב' : 'סימון בכוכב'}
-          aria-pressed={thread.starred}
-          onClick={onToggleStar}
-        >
-          <StarIcon filled={thread.starred} />
-        </button>
-        <button className="pill-btn" onClick={onArchive}>
-          <ArchiveIcon />
-          לתיוק
-        </button>
+        {!inTrash && !inSpam && (
+          <button
+            className="icon-btn"
+            aria-label={thread.starred ? 'הסרת כוכב' : 'סימון בכוכב'}
+            title={thread.starred ? 'הסרת כוכב' : 'סימון בכוכב'}
+            aria-pressed={thread.starred}
+            onClick={() => mailbox.toggleStar(id)}
+          >
+            <StarIcon filled={thread.starred} />
+          </button>
+        )}
+        {!inTrash && (
+          <button className="icon-btn" aria-label="מחיקה" title="מחיקה" onClick={() => mailbox.trash(ids)}>
+            <TrashIcon />
+          </button>
+        )}
+        <div className="menu-anchor">
+          <button className="icon-btn" aria-label="עוד פעולות" title="עוד פעולות" aria-expanded={menu} onClick={() => setMenu((value) => !value)}>
+            <MoreIcon />
+          </button>
+          {menu && (
+            <>
+              <button className="menu-backdrop" aria-label="סגירה" onClick={() => setMenu(false)} />
+              <div className="menu" role="menu">
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={pick(() => {
+                    mailbox.setRead(ids, false, { announce: true })
+                    onBack()
+                  })}
+                >
+                  <MailIcon />
+                  סימון כלא נקרא
+                </button>
+                <button role="menuitem" className="menu-item" onClick={pick(onLabels)}>
+                  <TagIcon />
+                  תוויות
+                </button>
+                {!inSpam && !inTrash && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => mailbox.spam(ids))}>
+                    <SpamIcon />
+                    דיווח כספאם
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {inTrash ? (
+          <button className="pill-btn" onClick={() => mailbox.untrash(ids)}>
+            <RestoreIcon />
+            שחזור
+          </button>
+        ) : inSpam ? (
+          <button className="pill-btn" onClick={() => mailbox.notSpam(ids)}>
+            <InboxIcon />
+            לא ספאם
+          </button>
+        ) : inInbox ? (
+          <button className="pill-btn" onClick={() => mailbox.archive(ids)}>
+            <ArchiveIcon />
+            לתיוק
+          </button>
+        ) : (
+          <button className="pill-btn" onClick={() => mailbox.moveToInbox(ids)}>
+            <InboxIcon />
+            לדואר הנכנס
+          </button>
+        )}
       </header>
 
       <h2 className="thread-subject" dir="auto">
         {thread.subject}
       </h2>
+      {tapes.length > 0 && (
+        <div className="thread-tapes">
+          {tapes.map((label) => (
+            <LabelTape key={label.id} label={label} />
+          ))}
+        </div>
+      )}
 
       {error && <p className="error">לא הצלחנו לפתוח את המכתב. {error}</p>}
-      {!messages && !error && <p className="muted">פותחים את המעטפה…</p>}
+      {!messages && !error && <p className="muted thread-wait">פותחים את המעטפה…</p>}
 
-      {messages?.map((message, index) => {
-        const open = expanded.has(message.id) || messages.length === 1
-        const latest = index === messages.length - 1
-        if (!open) {
+      {messages?.map((message) => {
+        if (message.isDraft) {
           return (
             <section key={message.id} className="message">
-              <button className="folded" onClick={() => toggle(message.id)} aria-expanded={false}>
+              <div className="draft-slip">
+                <span className="draft-mark">טיוטה</span>
+                <span className="draft-text ellipsis" dir="auto">
+                  {message.snippet || 'מכתב שעוד לא נשלח'}
+                </span>
+                <button onClick={() => void mailbox.editDraft(message)}>להמשיך לכתוב</button>
+              </div>
+            </section>
+          )
+        }
+        if (!isOpen(message)) {
+          return (
+            <section key={message.id} className="message">
+              <button className="folded" onClick={() => flip(message.id)} aria-expanded={false}>
                 <span className="folded-who">
-                  {message.from.name} · {formatShortDate(message.date)}
+                  {shortName(message.from)} · {formatListDate(message.date)}
                 </span>
                 <span className="folded-snippet ellipsis" dir="auto">
                   {message.snippet}
@@ -96,7 +241,7 @@ export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
             <span className="flap" aria-hidden="true" />
             <button
               className="envelope"
-              onClick={() => messages.length > 1 && toggle(message.id)}
+              onClick={() => letters.length > 1 && flip(message.id)}
               aria-expanded={true}
               aria-label={`מאת ${message.from.name}, ${formatFullDate(message.date)}`}
             >
@@ -104,21 +249,53 @@ export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
               <span className="envelope-name ellipsis" dir="auto">
                 {message.from.name}
               </span>
-              <span className="envelope-addr ellipsis">{message.from.email}</span>
-              {message.to && <span className="envelope-addr envelope-to ellipsis">אל: {message.to}</span>}
+              <span className="envelope-addr ellipsis" dir="ltr">
+                {message.from.email}
+              </span>
+              {message.to.length + message.cc.length > 0 && (
+                <span className="envelope-addr envelope-to ellipsis" dir="auto">
+                  אל: {recipients(message)}
+                </span>
+              )}
               <span className="envelope-date">{formatLetterDate(message.date)}</span>
               <span className="envelope-stamp">
                 <SenderStamp contact={message.from} size="lg" />
                 <DuplexCancel iso={message.date} />
               </span>
-              {latest && thread.starred && <GoldStar className="envelope-star" />}
+              {message.id === last?.id && thread.starred && <GoldStar className="envelope-star" />}
             </button>
             <div className="letter">
-              <EmailBody html={message.bodyHtml} />
+              <EmailBody message={message} />
+              <Attachments files={realAttachments(message)} />
             </div>
           </section>
         )
       })}
+
+      {last?.unsubscribe && !inTrash && (
+        <button className="link-btn unsubscribe" onClick={() => void unsubscribe(last, me)}>
+          הסרה מרשימת התפוצה
+        </button>
+      )}
+
+      {last && !inTrash && (
+        <div className="reply-bar">
+          <button className="ticket ticket-main" onClick={() => mailbox.reply(last, 'reply')}>
+            <ReplyIcon />
+            השב
+          </button>
+          {last.to.length + last.cc.length > 1 && (
+            <button className="ticket" onClick={() => mailbox.reply(last, 'replyAll')}>
+              <ReplyAllIcon />
+              השב לכולם
+            </button>
+          )}
+          <button className="ticket" onClick={() => mailbox.reply(last, 'forward')}>
+            <ForwardIcon />
+            העבר
+          </button>
+        </div>
+      )}
     </article>
   )
 }

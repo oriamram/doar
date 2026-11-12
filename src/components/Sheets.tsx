@@ -1,0 +1,280 @@
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useBackLayer } from '../lib/layers'
+import { mailbox, useMailbox } from '../lib/mailbox'
+import { updateSettings, useSettings, type Settings } from '../lib/settings'
+import { playSound } from '../lib/sound'
+import { toast } from '../lib/toast'
+import { labelLeaf } from '../lib/views'
+import type { Thread } from '../types'
+import { CloseIcon, LogoutIcon } from './icons'
+import { LabelTape } from './Postal'
+
+type SheetProps = {
+  title: string
+  /** The form number printed above the title ("טופס 7"). */
+  form: string
+  onClose: () => void
+  children: ReactNode
+}
+
+/** A paper form laid over the desk: slides up on phones, sits in the middle on wide screens. */
+function Sheet({ title, form, onClose, children }: SheetProps) {
+  useBackLayer(true, onClose)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div className="sheet-layer" role="dialog" aria-modal="true" aria-label={title}>
+      <button className="sheet-backdrop" aria-label="סגירה" onClick={onClose} />
+      <div className="sheet">
+        <header className="sheet-head">
+          <div>
+            <span className="form-no">{form}</span>
+            <h2>{title}</h2>
+          </div>
+          <button className="icon-btn" onClick={onClose} aria-label="סגירה">
+            <CloseIcon />
+          </button>
+        </header>
+        <div className="sheet-body">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+type CheckProps = { checked: boolean; onChange: (checked: boolean) => void; title: string; note?: string }
+
+/** A form checkbox, ticked in red ink. */
+function Check({ checked, onChange, title, note }: CheckProps) {
+  return (
+    <label className="check setting">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span>
+        <span className="setting-title">{title}</span>
+        {note && <span className="setting-note">{note}</span>}
+      </span>
+    </label>
+  )
+}
+
+const THEMES: { id: Settings['theme']; label: string }[] = [
+  { id: 'auto', label: 'לפי המכשיר' },
+  { id: 'light', label: 'יום' },
+  { id: 'dark', label: 'לילה' },
+]
+
+const UNDO_TIMES = [
+  { seconds: 0, label: 'בלי' },
+  { seconds: 5, label: '5 שניות' },
+  { seconds: 10, label: '10 שניות' },
+  { seconds: 20, label: '20 שניות' },
+]
+
+export function SettingsSheet({ onClose }: { onClose: () => void }) {
+  const settings = useSettings()
+  const { me } = useMailbox()
+
+  const setNotifications = async (on: boolean) => {
+    if (!on) {
+      updateSettings({ notifications: false })
+      return
+    }
+    if (!('Notification' in window)) {
+      toast('הדפדפן הזה לא תומך בהתראות.', { tone: 'error' })
+      return
+    }
+    const permission = await Notification.requestPermission()
+    if (permission === 'granted') updateSettings({ notifications: true })
+    else toast('ההתראות חסומות בדפדפן. אפשר לאשר אותן בהגדרות האתר.', { tone: 'error' })
+  }
+
+  return (
+    <Sheet title="הגדרות" form="טופס 7 · העדפות הלקוח" onClose={onClose}>
+      <fieldset className="setting-group">
+        <legend>מראה</legend>
+        <div className="segments" role="radiogroup" aria-label="מראה">
+          {THEMES.map((theme) => (
+            <button key={theme.id} role="radio" aria-checked={settings.theme === theme.id} onClick={() => updateSettings({ theme: theme.id })}>
+              {theme.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="setting-group">
+        <legend>דואר נכנס</legend>
+        <Check
+          checked={settings.bundles}
+          onChange={(bundles) => {
+            updateSettings({ bundles })
+            mailbox.settingsChanged()
+          }}
+          title="צרורות"
+          note="עדכונים, פרסומות ורשתות חברתיות נקשרים לצרור אחד, והמכתבים האישיים נשארים בחוץ."
+        />
+        <Check
+          checked={settings.remoteImages}
+          onChange={(remoteImages) => updateSettings({ remoteImages })}
+          title="להציג תמונות במכתבים"
+          note="כשזה כבוי, תמונות מהאינטרנט מוסתרות עד שמבקשים, והשולח לא יודע שפתחתם."
+        />
+      </fieldset>
+
+      <fieldset className="setting-group">
+        <legend>כתיבה</legend>
+        <div className="setting">
+          <span className="setting-title" id="undo-label">
+            אפשרות לבטל שליחה
+          </span>
+          <div className="segments" role="radiogroup" aria-labelledby="undo-label">
+            {UNDO_TIMES.map((time) => (
+              <button
+                key={time.seconds}
+                role="radio"
+                aria-checked={settings.undoSendSeconds === time.seconds}
+                onClick={() => updateSettings({ undoSendSeconds: time.seconds })}
+              >
+                {time.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="setting">
+          <span className="setting-title">חתימה</span>
+          <textarea
+            className="signature"
+            rows={3}
+            dir="auto"
+            placeholder="מתווספת בסוף כל מכתב חדש"
+            value={settings.signature}
+            onChange={(e) => updateSettings({ signature: e.target.value })}
+          />
+        </label>
+      </fieldset>
+
+      <fieldset className="setting-group">
+        <legend>צלילים והתראות</legend>
+        <Check
+          checked={settings.sounds}
+          onChange={(sounds) => {
+            updateSettings({ sounds })
+            if (sounds) playSound('thump')
+          }}
+          title="צלילי שולחן"
+          note="חותמת, נייר ומכתב שעף."
+        />
+        <Check
+          checked={settings.notifications}
+          onChange={(on) => void setNotifications(on)}
+          title="התראה על דואר חדש"
+          note="פועלת כל עוד דואר פתוח, גם ברקע."
+        />
+      </fieldset>
+
+      <fieldset className="setting-group">
+        <legend>חשבון</legend>
+        <div className="setting account-setting">
+          <span className="account-email" dir="ltr">
+            {me.email}
+          </span>
+          <button className="pill-btn" onClick={mailbox.signOut}>
+            <LogoutIcon />
+            התנתקות
+          </button>
+        </div>
+      </fieldset>
+    </Sheet>
+  )
+}
+
+/** Put your labels on letters, or take them off. */
+export function LabelSheet({ ids, onClose }: { ids: string[]; onClose: () => void }) {
+  const { labels, threads, open, bundles } = useMailbox()
+  const [name, setName] = useState('')
+  const everything: Thread[] = [...(threads ?? []), ...bundles.flatMap((bundle) => bundle.threads), ...(open ? [open] : [])]
+  const chosen = ids.map((id) => everything.find((thread) => thread.id === id)).filter((thread) => thread !== undefined)
+
+  const create = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+    const label = await mailbox.addLabel(name)
+    if (!label) return
+    mailbox.setLabel(ids, label.id, true)
+    setName('')
+  }
+
+  return (
+    <Sheet title="תוויות" form="טופס 4 · סימון דברי דואר" onClose={onClose}>
+      {labels.length === 0 && <p className="muted">עוד אין תוויות. אפשר ליצור אחת כאן למטה.</p>}
+      <div className="label-list">
+        {labels.map((label) => {
+          const count = chosen.filter((thread) => thread.labelIds.includes(label.id)).length
+          const all = count === chosen.length && count > 0
+          return (
+            <label key={label.id} className="check label-row" data-depth={Math.min(label.name.split('/').length - 1, 2) || undefined}>
+              <input
+                type="checkbox"
+                checked={all}
+                ref={(input) => {
+                  if (input) input.indeterminate = count > 0 && !all
+                }}
+                onChange={() => mailbox.setLabel(ids, label.id, !all)}
+              />
+              <LabelTape label={label} />
+              {label.name.includes('/') && <span className="label-path">{label.name.split('/').slice(0, -1).map(labelLeaf).join(' / ')}</span>}
+            </label>
+          )
+        })}
+      </div>
+      <form className="label-new" onSubmit={create}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="תווית חדשה" aria-label="שם התווית החדשה" dir="auto" />
+        <button type="submit" className="pill-btn" disabled={!name.trim()}>
+          יצירה וסימון
+        </button>
+      </form>
+    </Sheet>
+  )
+}
+
+const SHORTCUTS: { keys: string[]; action: string }[] = [
+  { keys: ['c'], action: 'מכתב חדש' },
+  { keys: ['/'], action: 'חיפוש' },
+  { keys: ['j', 'k'], action: 'המכתב הבא / הקודם' },
+  { keys: ['u', 'Esc'], action: 'חזרה לרשימה' },
+  { keys: ['r'], action: 'השב' },
+  { keys: ['a'], action: 'השב לכולם' },
+  { keys: ['f'], action: 'העבר' },
+  { keys: ['e'], action: 'תיוק' },
+  { keys: ['#'], action: 'מחיקה' },
+  { keys: ['s'], action: 'כוכב' },
+  { keys: ['x'], action: 'בחירת המכתב' },
+  { keys: ['Shift', 'u'], action: 'סימון כלא נקרא' },
+  { keys: ['g', 'i'], action: 'מעבר לדואר נכנס' },
+  { keys: ['g', 's'], action: 'מעבר למסומנים' },
+  { keys: ['g', 't'], action: 'מעבר לנשלחו' },
+  { keys: ['g', 'd'], action: 'מעבר לטיוטות' },
+  { keys: ['Ctrl', 'Enter'], action: 'שליחת המכתב' },
+  { keys: ['?'], action: 'הדף הזה' },
+]
+
+export function ShortcutsSheet({ onClose }: { onClose: () => void }) {
+  return (
+    <Sheet title="קיצורי מקלדת" form="נספח א׳ · למקלדת" onClose={onClose}>
+      <dl className="shortcuts">
+        {SHORTCUTS.map((shortcut) => (
+          <div key={shortcut.action}>
+            <dt dir="ltr">
+              {shortcut.keys.map((key) => (
+                <kbd key={key}>{key}</kbd>
+              ))}
+            </dt>
+            <dd>{shortcut.action}</dd>
+          </div>
+        ))}
+      </dl>
+    </Sheet>
+  )
+}

@@ -1,0 +1,593 @@
+/* Writing: a telegram form, filled in and stamped. */
+
+.compose {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--desk);
+  animation: compose-in 0.28s var(--ease-out);
+}
+
+@keyframes compose-in {
+  from {
+    translate: 0 36px;
+    opacity: 0;
+  }
+}
+
+/* On wide screens it's a form on the corner of the desk; the mail stays in view. */
+@media (min-width: 768px) {
+  .compose {
+    inset: auto auto 0 24px;
+    width: min(620px, calc(100vw - 48px));
+    height: min(740px, calc(100dvh - 32px));
+    border-radius: 6px 6px 0 0;
+    background: var(--desk-deep);
+    box-shadow: var(--shadow-float);
+  }
+}
+
+.compose-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+  padding-top: max(8px, env(safe-area-inset-top));
+}
+
+.compose-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.compose-status {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.compose-status[data-state='error'] {
+  color: var(--accent);
+}
+
+/* The form itself. */
+.telegram {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 10px;
+  padding: 16px 16px 0;
+  border-radius: 3px 3px 0 0;
+  overflow-y: auto;
+  box-shadow: var(--edge-fresh), var(--shadow-lift);
+}
+
+.telegram-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 3px double var(--ink);
+}
+
+.telegram-title strong {
+  display: block;
+  font-weight: 900;
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.telegram-serial {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-red);
+}
+
+/* Each box of the form: a small numbered caption over the place to write. */
+.field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  display: flex;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.field-no {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--ink-red);
+}
+
+.field-input,
+.recipients {
+  min-height: 44px;
+  border: 1.5px solid var(--ink);
+  border-radius: 1px;
+  background: transparent;
+}
+
+.field-input {
+  padding: 0 10px;
+  font-weight: 600;
+  font-size: 16px;
+  outline: none;
+}
+
+.field-input:focus,
+.recipients:focus-within,
+.editor:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink-red) 55%, transparent);
+}
+
+.field[data-invalid] .recipients {
+  border-color: var(--ink-red);
+}
+
+.field-note {
+  font-size: 13px;
+  color: var(--ink-red);
+}
+
+/* Addresses become chips: a tiny stamp and a name. */
+.recipients {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  cursor: text;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 30px;
+  padding-inline: 3px 2px;
+  border-radius: 2px;
+  background: rgba(80, 60, 30, 0.11);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.chip-stamp {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 24px;
+  background: var(--stamp);
+  color: #fffaf0;
+  font-weight: 900;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.chip-name {
+  min-width: 0;
+}
+
+.chip button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-muted);
+}
+
+.chip button:hover {
+  background: rgba(80, 60, 30, 0.14);
+  color: var(--ink);
+}
+
+/* "Copies" stays at the far end of the box, next to what you type. */
+.recipients .link-btn {
+  margin-inline-start: auto;
+}
+
+.recipient-input {
+  flex: 1;
+  min-width: 70px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  font-size: 16px;
+}
+
+.suggestions {
+  position: absolute;
+  top: 100%;
+  inset-inline: 0;
+  z-index: 3;
+  margin: 2px 0 0;
+  padding: 4px;
+  list-style: none;
+  border-radius: 2px;
+  box-shadow: var(--edge-fresh), var(--shadow-float);
+}
+
+.suggestions li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.suggestions li[aria-selected='true'],
+.suggestions li:hover {
+  background: rgba(80, 60, 30, 0.1);
+}
+
+.suggest-name {
+  flex: none;
+  max-width: 50%;
+  font-weight: 600;
+}
+
+.suggest-email {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink-faded);
+}
+
+/* The letter: ruled writing paper that grows as you write. */
+.field-body {
+  flex: 1 0 auto;
+}
+
+.editor {
+  flex: 1;
+  min-height: 190px;
+  padding: 0 10px 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 1px;
+  outline: none;
+  font-size: 17px;
+  line-height: 32px;
+  overflow-wrap: anywhere;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgba(80, 60, 30, 0.17) 31px 32px);
+  background-attachment: local;
+}
+
+.editor a {
+  color: var(--ink-blue);
+}
+
+.editor ul,
+.editor ol {
+  margin: 0;
+  padding-inline-start: 26px;
+}
+
+.editor blockquote {
+  margin: 0;
+  padding-inline-start: 10px;
+  border-inline-start: 2px solid var(--ink-rule);
+  color: var(--ink-muted);
+}
+
+.quote-toggle {
+  align-items: center;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+/* Files held to the form. */
+.compose-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 34px;
+  padding-inline: 8px 2px;
+  border: 1px dashed var(--ink-rule);
+  border-radius: 2px;
+  background: rgba(80, 60, 30, 0.06);
+  font-size: 14px;
+}
+
+.file-chip svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--ink-muted);
+}
+
+.file-chip button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-muted);
+}
+
+.file-chip button:hover {
+  background: rgba(80, 60, 30, 0.14);
+  color: var(--ink);
+}
+
+.compose-problem {
+  padding: 8px 10px;
+  border-inline-start: 3px solid var(--ink-red);
+  background: rgba(166, 58, 38, 0.08);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink-red);
+}
+
+/* The bottom of the form stays in reach: formatting, files, and the stamp that sends. */
+.telegram-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 -16px;
+  padding: 8px 14px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px dashed var(--ink-rule);
+  background-color: var(--sheet);
+}
+
+.format-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.format-bar button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 3px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  color: var(--ink-muted);
+}
+
+.format-bar button:hover {
+  background: rgba(80, 60, 30, 0.1);
+  color: var(--ink);
+}
+
+.format-bar svg {
+  width: 19px;
+  height: 19px;
+}
+
+.attach-btn {
+  margin-inline-start: 6px;
+  border: 1.5px solid var(--ink) !important;
+  color: var(--ink) !important;
+}
+
+.word-count {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  color: var(--ink-faded);
+  white-space: nowrap;
+}
+
+/* Send: stick the stamp on. The one loud thing on the form. */
+.send-stamp {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding-inline: 4px 0;
+  transition: scale 0.12s;
+}
+
+.send-stamp .stamp {
+  --stamp: var(--ink-red);
+  width: 54px;
+  height: 62px;
+  rotate: -5deg;
+  transition: rotate 0.2s var(--ease-out);
+}
+
+.send-stamp .stamp-face svg {
+  width: 24px;
+  height: 24px;
+}
+
+.send-word {
+  font-weight: 900;
+  font-size: 19px;
+  color: var(--ink-red);
+}
+
+.send-stamp:hover .stamp {
+  rotate: 0deg;
+}
+
+.send-stamp:active {
+  scale: 0.93;
+}
+
+.send-stamp:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.send-stamp:focus-visible {
+  outline: 2px solid var(--ink-red);
+  outline-offset: 4px;
+}
+
+@media (max-width: 420px) {
+  .word-count {
+    display: none;
+  }
+  .format-bar {
+    flex: 1;
+  }
+}
+
+/* Dropping files onto the form. */
+.compose[data-dragging] .telegram {
+  outline: 3px dashed var(--accent);
+  outline-offset: -8px;
+}
+
+.drop-note {
+  position: absolute;
+  inset: auto 0 96px;
+  z-index: 3;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 8px 16px;
+  border-radius: 3px;
+  background: var(--ink);
+  color: var(--sheet);
+  font-weight: 800;
+  pointer-events: none;
+}
+
+/* ---------- Sent: sealed in an airmail envelope, stamped, and off ---------- */
+
+.flight {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.flight-envelope {
+  position: relative;
+  width: min(310px, 80vw);
+  aspect-ratio: 1.62;
+  border: 10px solid transparent;
+  border-image: repeating-linear-gradient(
+      -45deg,
+      var(--ink-red) 0 11px,
+      var(--sheet) 11px 16px,
+      var(--ink-blue) 16px 27px,
+      var(--sheet) 27px 32px
+    )
+    10;
+  box-shadow: var(--shadow-float);
+  animation: flight-go 1.3s both;
+}
+
+@keyframes flight-go {
+  0% {
+    opacity: 0;
+    scale: 0.7;
+    translate: 0 60px;
+    animation-timing-function: var(--ease-out);
+  }
+  20% {
+    opacity: 1;
+    scale: 1;
+    translate: 0 0;
+  }
+  56% {
+    scale: 1;
+    translate: 0 0;
+    rotate: 0deg;
+    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5);
+  }
+  100% {
+    translate: -34vw -112vh;
+    rotate: -22deg;
+    scale: 0.72;
+  }
+}
+
+.flight-label {
+  position: absolute;
+  top: 10px;
+  inset-inline-start: 12px;
+  padding: 3px 8px;
+  background: var(--label-blue);
+  color: var(--cream);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.flight-to {
+  position: absolute;
+  inset-inline: 16px 84px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+.flight-to strong {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.flight-stamp {
+  --stamp: var(--ink-red);
+  position: absolute;
+  top: 10px;
+  inset-inline-end: 10px;
+  animation: stamp-down 0.26s cubic-bezier(0.3, 1.4, 0.5, 1) 0.32s both;
+}
+
+@keyframes stamp-down {
+  from {
+    scale: 2.4;
+    opacity: 0;
+    rotate: -18deg;
+  }
+}

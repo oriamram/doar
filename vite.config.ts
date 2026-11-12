@@ -11,6 +11,12 @@ export default defineConfig({
       // Registered by hand in main.tsx, and only in the browser (not inside the Android app).
       injectRegister: false,
       includeAssets: ['favicon.ico', 'logo.svg', 'apple-touch-icon-180x180.png'],
+      workbox: {
+        // Keep the textures and the font on the device too, so the app opens whole when offline.
+        globPatterns: ['**/*.{js,css,html,svg,ttf}'],
+        // Opens the app when a "new mail" notification is tapped.
+        importScripts: ['sw-extra.js'],
+      },
       manifest: {
         name: 'דואר',
         short_name: 'דואר',

@@ -1,37 +1,21 @@
 import type { CSSProperties } from 'react'
 import { formatFullDate, postmark } from '../lib/format'
-import type { Contact } from '../types'
-
-/** Stamp colors, after the old practice of printing each stamp value in its own color. */
-const STAMP_COLORS = ['#1f5f5b', '#24407a', '#6e4a2e', '#5e3f7a', '#5b6b2e', '#a86a12', '#8a2f3c']
-
-function hash(text: string): number {
-  let h = 0
-  for (const char of text) h = (h * 31 + char.charCodeAt(0)) | 0
-  return Math.abs(h)
-}
-
-/** Each sender always gets the same stamp color. */
-function stampColor(contact: Contact): string {
-  return STAMP_COLORS[hash((contact.email || contact.name).toLowerCase()) % STAMP_COLORS.length]!
-}
-
-/** First letter or digit of a name ("“Maya” Levi" → "M", "מאיה" → "מ"). */
-function stampLetter(name: string): string {
-  return (name.match(/[\p{L}\p{N}]/u)?.[0] ?? '·').toUpperCase()
-}
+import { hash, stampColor, stampLetter } from '../lib/stamps'
+import { labelLeaf } from '../lib/views'
+import type { Contact, Label } from '../types'
 
 type StampProps = {
   contact: Contact
-  /** sm: in the inbox list. lg: on an opened envelope. */
+  /** sm: in lists. lg: on an opened envelope. */
   size?: 'sm' | 'lg'
   /** Read mail: the stamp has done its job and fades a little. */
   used?: boolean
 }
 
 /**
- * The sender's postage stamp: their color and initial, printed on stamp paper
- * with real perforations (the holes are cut out, so whatever it's stuck on shows through).
+ * The sender's postage stamp: their initial struck on a coin, in their color,
+ * on stamp paper with real perforations (the holes are cut out, so whatever
+ * it's stuck on shows through).
  */
 export function SenderStamp({ contact, size = 'sm', used }: StampProps) {
   return (
@@ -44,7 +28,7 @@ export function SenderStamp({ contact, size = 'sm', used }: StampProps) {
     >
       <span className="stamp-paper">
         <span className="stamp-face">
-          <span className="stamp-letter">{stampLetter(contact.name)}</span>
+          <span className="stamp-coin">{stampLetter(contact.name || contact.email)}</span>
         </span>
       </span>
     </span>
@@ -54,6 +38,59 @@ export function SenderStamp({ contact, size = 'sm', used }: StampProps) {
 /** A gold foil star sticker, for starred mail. */
 export function GoldStar({ className = '' }: { className?: string }) {
   return <span className={`gold-star ${className}`} aria-hidden="true" />
+}
+
+/** A steel paperclip on the edge of an envelope that carries files. */
+export function Paperclip() {
+  return (
+    <svg className="paperclip" width="11" height="26" viewBox="0 0 11 26" aria-hidden="true">
+      <path d="M8.6 6.5v12a3.05 3.05 0 0 1-6.1 0V5.4a2 2 0 0 1 4 0V17a.95.95 0 0 1-1.9 0V7.2" />
+    </svg>
+  )
+}
+
+/** The bow where a bundle's twine is tied. */
+export function TwineBow() {
+  return (
+    <svg className="twine-bow" width="36" height="28" viewBox="0 0 36 28" aria-hidden="true">
+      <path d="M18 13C12 2 2 3 3 9.5S12 16 18 13" />
+      <path d="M18 13c6-11 16-10 15-3.5S24 16 18 13" />
+      <path d="M18 13l-7 12M18 13l8 12" />
+      <circle cx="18" cy="13" r="2.7" />
+    </svg>
+  )
+}
+
+const TAPES = ['#26262b', '#9b231c', '#1f4f9a', '#1f6b4a', '#6e4a2e']
+
+/** How bright a "#rrggbb" color is, from 0 (black) to 1 (white). */
+function brightness(hex: string): number {
+  const value = parseInt(hex.slice(1), 16)
+  const channel = (shift: number) => {
+    const c = ((value >> shift) & 255) / 255
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0)
+}
+
+/** A label's tape: its Gmail color, or a classic tape color when it has none; with ink that reads on it. */
+function tapeStyle(label: Label): CSSProperties {
+  const tape = label.color && /^#[0-9a-f]{6}$/i.test(label.color) ? label.color : TAPES[hash(label.id) % TAPES.length]!
+  return { '--tape': tape, '--tape-ink': brightness(tape) > 0.4 ? '#1f2a3a' : '#fffdf6' } as CSSProperties
+}
+
+/** One of your labels, as a strip of embossing-machine tape. */
+export function LabelTape({ label }: { label: Label }) {
+  return (
+    <span className="tape" style={tapeStyle(label)} title={label.name}>
+      {labelLeaf(label.name)}
+    </span>
+  )
+}
+
+/** A short blank piece of a label's tape, to mark it in the folder list. */
+export function TapeSwatch({ label }: { label: Label }) {
+  return <span className="tape tape-swatch" style={tapeStyle(label)} aria-hidden="true" />
 }
 
 /**

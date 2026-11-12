@@ -4,6 +4,8 @@ import { registerSW } from 'virtual:pwa-register'
 import App from './App.tsx'
 import { initAuth } from './lib/auth'
 import { isNative } from './lib/platform'
+// Applies the saved day/night theme as soon as the app's code runs.
+import './lib/settings'
 import './index.css'
 
 initAuth()

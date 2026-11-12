@@ -30,6 +30,14 @@ export function formatLetterDate(iso: string): string {
   return `${day} · ${time}`
 }
 
+/** The date quoted above an email you're answering: "10 בנובמבר 2026 בשעה 14:32". */
+export function formatQuoteDate(iso: string): string {
+  const date = new Date(iso)
+  const day = date.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })
+  const time = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+  return `${day} בשעה ${time}`
+}
+
 /**
  * Text for a round postmark: "11.11" over the time (today), the weekday (this
  * week) or the year (older).
@@ -49,18 +57,28 @@ export function postmark(iso: string): { top: string; bottom: string } {
   return { top, bottom }
 }
 
-/** A stable small rotation per id, so each postmark sits a little crooked, like a real one. */
-export function tilt(seed: string, max = 9): number {
-  let hash = 0
-  for (const char of seed) hash = (hash * 31 + char.charCodeAt(0)) | 0
-  return (Math.abs(hash) % (max * 2 + 1)) - max
+const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+
+/** The heading a date falls under in a list: today, yesterday, this week, this month, or a month's name. */
+export function dayGroup(iso: string, now = new Date()): string {
+  const date = new Date(iso)
+  const days = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000)
+  if (days <= 0) return 'היום'
+  if (days === 1) return 'אתמול'
+  if (days < 7) return 'השבוע'
+  const sameYear = date.getFullYear() === now.getFullYear()
+  if (sameYear && date.getMonth() === now.getMonth()) return 'החודש'
+  return date.toLocaleDateString('he-IL', { month: 'long', year: sameYear ? undefined : 'numeric' })
 }
 
-export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join('')
+/** "340 KB", "2.4 MB". */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** "מכתב אחד" / "3 מכתבים". */
+export function countLetters(count: number): string {
+  return count === 1 ? 'מכתב אחד' : `${count} מכתבים`
 }

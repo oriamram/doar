@@ -51,6 +51,11 @@ export function clearGoogleAccessToken() {
   cached = null
 }
 
+/** The token we already hold, if it's still good; for requests that can't wait (page closing). */
+export function peekGoogleAccessToken(): string | null {
+  return cached && cached.expiresAt > Date.now() + 10_000 ? cached.token : null
+}
+
 /** Forget the stored refresh token (used on sign-out). */
 export async function forgetGoogleTokens() {
   cached = null

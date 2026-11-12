@@ -1,7 +1,13 @@
-/** Full-screen loader for the first open: a letter slipping in and out of its envelope. */
-export function Loader({ label = 'ממיינים את הדואר…' }: { label?: string }) {
+type Props = {
+  label?: string
+  /** A smaller version, for inside a list instead of the whole screen. */
+  compact?: boolean
+}
+
+/** A letter slipping in and out of its envelope while mail is being fetched. */
+export function Loader({ label = 'ממיינים את הדואר…', compact }: Props) {
   return (
-    <div className="loader" role="status" aria-live="polite">
+    <div className="loader" data-compact={compact || undefined} role="status" aria-live="polite">
       <svg className="loader-envelope" width="132" height="112" viewBox="0 0 132 112" aria-hidden="true">
         {/* Back of the envelope and its open flap */}
         <path className="env-flap" d="M10 46 L66 8 L122 46 Z" />
@@ -16,9 +22,11 @@ export function Loader({ label = 'ממיינים את הדואר…' }: { label?
         <path className="env-front" d="M10 50 L66 82 L122 50 V102 a4 4 0 0 1 -4 4 H14 a4 4 0 0 1 -4 -4 Z" />
       </svg>
       <span className="loader-label">{label}</span>
-      <span className="loader-track" aria-hidden="true">
-        <span className="airmail-band" />
-      </span>
+      {!compact && (
+        <span className="loader-track" aria-hidden="true">
+          <span className="airmail-band" />
+        </span>
+      )}
     </div>
   )
 }

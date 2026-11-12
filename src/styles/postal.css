@@ -1,0 +1,293 @@
+/* Postal pieces: the small real objects the app is built from. */
+
+/* Airmail stripes (written on the desk: header edge, loader). */
+.airmail-band {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--accent) 0 10px,
+    transparent 10px 16px,
+    var(--airmail) 16px 26px,
+    transparent 26px 32px
+  );
+}
+
+/* ---------- Postage stamp ----------
+   After "Doar Ivri" (1948): a coin on a field of one color. The perforation
+   holes are cut out with a mask (a grid of holes, plus a solid middle), so the
+   envelope shows through them, and the drop shadow follows the perforated edge. */
+
+.stamp {
+  --tile: 6px;
+  --hole: 1.8px;
+  --margin: 4px;
+  --coin: 26px;
+  flex: none;
+  display: inline-block;
+  width: 42px;
+  height: 48px;
+  filter: drop-shadow(0 1px 0.5px rgba(50, 35, 15, 0.38)) drop-shadow(0 2px 2px rgba(50, 35, 15, 0.12));
+}
+
+.stamp[data-size='lg'] {
+  --tile: 10px;
+  --hole: 2.8px;
+  --margin: 7px;
+  --coin: 38px;
+  width: 60px;
+  height: 70px;
+}
+
+/* Read mail: the stamp has done its job; its colors have faded. */
+.stamp[data-used] {
+  filter: saturate(0.4) drop-shadow(0 1px 0.5px rgba(50, 35, 15, 0.3));
+}
+
+.stamp-paper {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: var(--margin);
+  background: var(--stamp-paper);
+  -webkit-mask:
+    radial-gradient(circle, transparent var(--hole), #000 calc(var(--hole) + 0.5px)) calc(var(--tile) / -2)
+      calc(var(--tile) / -2) / var(--tile) var(--tile),
+    linear-gradient(#000 0 0) 50% 50% / calc(100% - var(--tile)) calc(100% - var(--tile)) no-repeat;
+  -webkit-mask-composite: source-over;
+  mask:
+    radial-gradient(circle, transparent var(--hole), #000 calc(var(--hole) + 0.5px)) calc(var(--tile) / -2)
+      calc(var(--tile) / -2) / var(--tile) var(--tile),
+    linear-gradient(#000 0 0) 50% 50% / calc(100% - var(--tile)) calc(100% - var(--tile)) no-repeat;
+  mask-composite: add;
+}
+
+/* The printed design: one color, fine engraving lines, a thin frame. */
+.stamp-face {
+  --field: var(--stamp, var(--ink-red));
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 3px), var(--field);
+  box-shadow:
+    inset 0 0 0 1.5px var(--field),
+    inset 0 0 0 2.5px rgba(255, 250, 238, 0.45);
+  color: #fffaf0;
+}
+
+/* The coin: the sender's initial, ringed with beads like an ancient coin. */
+.stamp-coin {
+  display: grid;
+  place-items: center;
+  width: var(--coin);
+  height: var(--coin);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--field) 76%, #000);
+  outline: 1.5px dotted rgba(255, 250, 238, 0.62);
+  outline-offset: -3px;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.stamp[data-size='lg'] .stamp-coin {
+  outline-width: 2px;
+  outline-offset: -4.5px;
+  font-size: 22px;
+}
+
+/* ---------- Stickers and clips ---------- */
+
+/* Gold foil star sticker. */
+.gold-star {
+  display: inline-block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  filter: drop-shadow(0 1px 0.6px rgba(90, 60, 0, 0.5));
+}
+
+.gold-star::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(50% 2%, 61.5% 36%, 97.5% 36.5%, 68.5% 58%, 79.5% 93%, 50% 72%, 20.5% 93%, 31.5% 58%, 2.5% 36.5%, 38.5% 36%);
+  background: linear-gradient(135deg, #fff4c2 0%, #f3d26a 28%, #cf9f33 52%, #f6dc84 70%, #b38419 100%);
+}
+
+/* A steel paperclip over the top edge of an envelope that carries files.
+   It stays inside the envelope's top margin, so it never covers text. */
+.paperclip {
+  position: absolute;
+  top: -9px;
+  inset-inline-end: 22px;
+  z-index: 2;
+  fill: none;
+  stroke: #8f96a0;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 0.5px rgba(0, 0, 0, 0.4));
+}
+
+/* One of your labels: a strip of embossing-machine tape. */
+.tape {
+  flex: none;
+  max-width: 110px;
+  padding: 0 6px;
+  border-radius: 1.5px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 45%, rgba(0, 0, 0, 0.14)),
+    var(--tape, #26262b);
+  color: var(--tape-ink, #fffdf6);
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 17px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
+}
+
+.tape-swatch {
+  width: 18px;
+  height: 11px;
+  margin-inline: 1px;
+  padding: 0;
+}
+
+.tape-more {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faded);
+}
+
+/* ---------- Ink: postmarks and rubber stamps ---------- */
+
+/* Duplex cancel: bars over the stamp and a dated ring beside it, in real
+   rubber-stamp ink (uneven, soaked into the paper). */
+.duplex {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #22242c;
+  opacity: 0.8;
+  rotate: -7deg;
+  mix-blend-mode: multiply;
+  filter: url(#ink);
+}
+
+.duplex-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.duplex-bars span {
+  display: block;
+  width: 40px;
+  height: 3.5px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.duplex-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border: 2.5px solid currentColor;
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.pm-top {
+  font-size: 13px;
+}
+
+.pm-small {
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* A word stamped in ink: swipe results, empty folders. */
+.rubber,
+.empty-stamp {
+  display: inline-block;
+  padding: 3px 12px;
+  border: 3px solid currentColor;
+  border-radius: 4px;
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  filter: url(#ink);
+}
+
+/* The date a group of letters arrived, stamped on the desk between them. */
+.day-stamp {
+  display: inline-block;
+  padding: 0 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 19px;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+  rotate: -1.2deg;
+  filter: url(#ink-soft);
+}
+
+/* "Draft": a small red stamp on a letter you haven't sent. */
+.draft-mark {
+  flex: none;
+  padding: 0 5px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font-weight: 800;
+  font-size: 11.5px;
+  line-height: 17px;
+  color: var(--ink-red);
+  rotate: -2deg;
+}
+
+/* The small print at the top of a form: its number and office. */
+.form-no {
+  display: block;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+/* ---------- Twine ---------- */
+
+.twine {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(118deg, var(--twine-light) 0 2px, var(--twine) 2px 4.5px);
+  box-shadow: 0 1px 1px rgba(40, 25, 5, 0.38);
+}
+
+.twine-bow {
+  position: absolute;
+  z-index: 3;
+  fill: none;
+  stroke: var(--twine);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 0.8px rgba(40, 25, 5, 0.45));
+}
+
+.twine-bow circle {
+  fill: var(--twine);
+  stroke: var(--twine-light);
+  stroke-width: 1;
+}

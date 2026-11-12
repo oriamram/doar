@@ -1,0 +1,867 @@
+/* Around the mail: folders, the list's header, the compose label, notes and forms. */
+
+/* ---------- Folders: a sidebar on wide screens, a drawer on phones ---------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 22px 10px 12px;
+  padding-top: max(22px, env(safe-area-inset-top));
+  background: var(--desk-deep);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 18px;
+  font-weight: 900;
+  font-size: 1.5rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 2px;
+  color: var(--text-muted);
+  font-weight: 500;
+  transition: translate 0.2s var(--ease-out);
+}
+
+.nav-item svg {
+  flex: none;
+}
+
+.nav-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-item:hover {
+  background-color: var(--desk-raised);
+  color: var(--text);
+}
+
+/* The open folder: a manila folder's tab, pulled out toward the mail. */
+.nav-item[aria-current='page'] {
+  background-color: var(--manila);
+  background-image: url('/paper.svg');
+  background-size: 360px;
+  background-blend-mode: multiply;
+  color: var(--ink);
+  font-weight: 800;
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+  translate: -5px 0;
+}
+
+.count {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.nav-item[aria-current='page'] .count {
+  color: var(--ink-red);
+}
+
+.nav-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 4px 4px 12px;
+  font-weight: 800;
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+
+.nav-add {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.nav-add:hover {
+  background: var(--desk-raised);
+  color: var(--text);
+}
+
+.nav-add svg {
+  width: 16px;
+  height: 16px;
+}
+
+.nav-label svg {
+  width: 16px;
+  height: 16px;
+  margin-inline: 2px;
+}
+
+.nav-label[data-depth='1'] {
+  padding-inline-start: 30px;
+}
+
+.nav-label[data-depth='2'] {
+  padding-inline-start: 46px;
+}
+
+.nav-new {
+  display: flex;
+  gap: 6px;
+  margin: 2px 8px 8px;
+}
+
+.nav-new input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid var(--rule);
+  border-radius: 3px;
+  background: var(--desk-raised);
+  font-size: 16px;
+  outline: none;
+}
+
+.nav-new input:focus {
+  border-color: var(--accent);
+}
+
+.nav-new button {
+  padding: 0 10px;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.nav-empty {
+  margin: 4px 12px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.account {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule);
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-inline-start: 12px;
+}
+
+.account-email {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The keyboard-shortcut list is for keyboards. */
+@media (hover: none) {
+  .nav-keys {
+    display: none;
+  }
+}
+
+.drawer-backdrop {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    right: 0;
+    z-index: 40;
+    width: min(84vw, 320px);
+    box-shadow: var(--shadow-float);
+    transform: translateX(105%);
+    visibility: hidden;
+    transition:
+      transform 0.26s var(--ease-out),
+      visibility 0s 0.26s;
+  }
+
+  .sidebar[data-open] {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.26s var(--ease-out);
+  }
+
+  .drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: var(--dim);
+    cursor: default;
+    animation: fade-in 0.2s;
+  }
+
+  .sidebar .compose-label {
+    display: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- "New letter": an airmail label ---------- */
+
+.compose-fab,
+.compose-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 50px;
+  padding: 0 20px;
+  border-radius: 3px;
+  background: var(--label-blue);
+  color: var(--cream);
+  font-weight: 900;
+  font-size: 16px;
+  /* The label's printed double border. */
+  box-shadow:
+    inset 0 0 0 2px var(--label-blue),
+    inset 0 0 0 3.5px rgba(251, 246, 234, 0.8),
+    var(--shadow-lift);
+  rotate: -2deg;
+  transition:
+    scale 0.12s,
+    rotate 0.2s;
+}
+
+.compose-fab:hover,
+.compose-label:hover {
+  rotate: 0deg;
+}
+
+.compose-fab:active,
+.compose-label:active {
+  scale: 0.95;
+}
+
+.compose-fab:focus-visible,
+.compose-label:focus-visible {
+  outline-color: var(--text);
+}
+
+.compose-label {
+  margin: 0 8px 18px;
+}
+
+/* On phones and tablets it floats at the bottom of the list, in thumb's reach. */
+.compose-fab {
+  position: sticky;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 2;
+  align-self: flex-end;
+  margin: 0 16px calc(18px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+  .compose-fab {
+    display: none;
+  }
+}
+
+/* ---------- The list's header ---------- */
+
+.list-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 10px 10px 0;
+  padding-top: max(10px, calc(env(safe-area-inset-top) + 6px));
+  background: var(--desk);
+  box-shadow:
+    0 1px 0 var(--rule),
+    0 10px 14px -12px rgba(0, 0, 0, 0.5);
+}
+
+.list-header > .airmail-band {
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 4px;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 48px;
+}
+
+.view-title {
+  flex: 1;
+  min-width: 0;
+  padding-inline-start: 4px;
+  font-weight: 900;
+  font-size: 1.6rem;
+  line-height: 1.25;
+}
+
+.header-row .icon-btn {
+  color: var(--text-muted);
+}
+
+.header-row .icon-btn:hover {
+  color: var(--text);
+}
+
+@media (min-width: 1024px) {
+  .menu-btn,
+  .header-row .me {
+    display: none;
+  }
+  .view-title {
+    padding-inline-start: 8px;
+  }
+}
+
+/* Phones check for mail by pulling the list down. */
+@media (hover: none) {
+  .refresh-btn {
+    display: none;
+  }
+}
+
+/* Selecting letters: the header becomes the tools for them. */
+.select-count {
+  flex: 1;
+  padding-inline-start: 4px;
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+/* Search: a paper slip laid over the title. */
+.search-row {
+  gap: 8px;
+  margin: 3px 2px;
+  padding-inline-start: 12px;
+  border-radius: 2px;
+  color: var(--ink-muted);
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.search-row .icon-btn {
+  color: var(--ink-muted);
+}
+
+.search-row .icon-btn:hover {
+  background: rgba(80, 60, 30, 0.08);
+  color: var(--ink);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  background: none;
+  outline: none;
+  font-size: 16px; /* 16px stops phones from zooming in on focus */
+  color: var(--ink);
+}
+
+.search-input::placeholder {
+  color: var(--ink-faded);
+}
+
+.search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+/* Your account and settings: a red wax seal with your initial pressed into it. */
+.me {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 4px;
+  border-radius: 52% 48% 50% 50% / 48% 52% 50% 50%;
+  background: radial-gradient(circle at 34% 30%, #d9725a 0 10%, #a63a26 46%, #74230f 100%);
+  color: rgba(255, 228, 214, 0.92);
+  font-weight: 900;
+  font-size: 16px;
+  text-shadow:
+    0 -1px 0 rgba(60, 10, 0, 0.45),
+    0 1px 0 rgba(255, 190, 170, 0.35);
+  box-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 200, 180, 0.35),
+    inset 0 -2px 3px rgba(60, 10, 0, 0.4);
+  transition: scale 0.12s;
+}
+
+.me:active {
+  scale: 0.92;
+}
+
+/* Filters: paper luggage tags, punched at the end. The row's drop shadow
+   follows each tag's cut shape. */
+.filters {
+  display: flex;
+  gap: 10px;
+  padding: 6px 10px 13px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  filter: drop-shadow(0 1px 0.6px rgba(0, 0, 0, 0.25)) drop-shadow(0 3px 3px rgba(0, 0, 0, 0.12));
+}
+
+.filter {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding-inline: 24px 12px;
+  font-weight: 600;
+  font-size: 14px;
+  /* Corners cut at the punched end (the right, where Hebrew starts). */
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  rotate: var(--tag-tilt, 0deg);
+  transition:
+    rotate 0.2s,
+    translate 0.2s,
+    background-color 0.2s;
+}
+
+.filter svg {
+  width: 16px;
+  height: 16px;
+}
+
+.filter:nth-child(1) {
+  --tag-tilt: -1.4deg;
+}
+
+.filter:nth-child(2) {
+  --tag-tilt: 1deg;
+}
+
+.filter:nth-child(3) {
+  --tag-tilt: -0.6deg;
+}
+
+/* The punched hole, showing the desk through it. */
+.filter::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 9px;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--desk);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.45);
+}
+
+.filter:active {
+  translate: 0 1px;
+}
+
+.filter[aria-selected='true'] {
+  background-color: var(--ink-red);
+  color: var(--cream);
+  rotate: 0deg;
+  translate: 0 -1px;
+}
+
+.filter-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--sheet);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+.filter[aria-selected='true'] .filter-count {
+  background: var(--cream);
+  color: var(--ink-red);
+}
+
+/* Thin airmail stripe running along the header's bottom edge while loading. */
+.progress {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--accent) 0 8px,
+    transparent 8px 12px,
+    var(--airmail) 12px 20px,
+    transparent 20px 24px
+  );
+  background-size: 34px 100%;
+  animation: airmail-run 0.8s linear infinite;
+}
+
+.progress[data-active] {
+  opacity: 1;
+}
+
+@keyframes airmail-run {
+  to {
+    background-position: 34px 0;
+  }
+}
+
+/* ---------- Notes ---------- */
+
+.notice {
+  margin: 12px 14px 0;
+  font-size: 13px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* A problem: a paper note with a red margin. */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 12px 0;
+  padding: 10px 14px;
+  border-inline-start: 3px solid var(--ink-red);
+  border-radius: 2px;
+  font-size: 0.87rem;
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.banner span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.banner button {
+  font-weight: 700;
+  color: var(--ink-red);
+  white-space: nowrap;
+}
+
+/* What just happened, with a way to take it back: a receipt torn off at the top. */
+.toasts {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25)) drop-shadow(0 12px 22px rgba(0, 0, 0, 0.28));
+}
+
+@media (min-width: 1024px) {
+  .toasts {
+    bottom: 26px;
+  }
+}
+
+.toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(460px, 100%);
+  min-height: 50px;
+  padding: 12px 16px 10px;
+  font-weight: 600;
+  pointer-events: auto;
+  /* The torn edge: half-circles bitten out along the top. */
+  -webkit-mask: radial-gradient(circle at 6px 0, transparent 3.2px, #000 3.7px) 0 0 / 12px 100%;
+  mask: radial-gradient(circle at 6px 0, transparent 3.2px, #000 3.7px) 0 0 / 12px 100%;
+  animation: toast-in 0.26s var(--ease-out);
+}
+
+.toast[data-tone='error'] {
+  border-bottom: 3px solid var(--ink-red);
+}
+
+.toast-text {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.toast-action {
+  flex: none;
+  min-height: 34px;
+  padding: 0 4px;
+  font-weight: 900;
+  color: var(--ink-red);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Time left to undo, running out along the bottom. */
+.toast-timer {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--ink-red);
+  transform-origin: right;
+  animation: timer-run linear both;
+}
+
+@keyframes timer-run {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    translate: 0 28px;
+    opacity: 0;
+  }
+}
+
+/* ---------- Forms laid over the desk: settings, labels, shortcuts ---------- */
+
+.sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: end center;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--dim);
+  cursor: default;
+  animation: fade-in 0.2s;
+}
+
+.sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(540px, 100%);
+  max-height: min(88dvh, 760px);
+  border-radius: 3px 3px 0 0;
+  box-shadow: var(--shadow-float);
+  animation: sheet-up 0.3s var(--ease-out);
+}
+
+@media (min-width: 768px) {
+  .sheet-layer {
+    place-items: center;
+  }
+  .sheet {
+    border-radius: 3px;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    translate: 0 40px;
+    opacity: 0;
+  }
+}
+
+.sheet-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 18px;
+  padding: 18px 0 10px;
+  border-bottom: 3px double var(--ink);
+}
+
+.sheet-head h2 {
+  font-weight: 900;
+  font-size: 1.9rem;
+  line-height: 1.15;
+}
+
+.sheet .icon-btn {
+  color: var(--ink);
+}
+
+.sheet .icon-btn:hover {
+  background: rgba(80, 60, 30, 0.08);
+}
+
+.sheet-body {
+  overflow-y: auto;
+  padding: 14px 18px calc(22px + env(safe-area-inset-bottom));
+}
+
+.sheet .muted {
+  color: var(--ink-muted);
+}
+
+.sheet kbd {
+  border-color: var(--ink-rule);
+  background: rgba(80, 60, 30, 0.07);
+}
+
+.setting-group {
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+.setting-group legend {
+  margin-bottom: 4px;
+  padding: 0;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--ink-red);
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px 0;
+}
+
+.setting.check {
+  flex-direction: row;
+}
+
+.setting-title {
+  display: block;
+  font-weight: 600;
+}
+
+.setting-note {
+  display: block;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+.signature {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  background: transparent;
+  font-size: 16px;
+  resize: vertical;
+  outline: none;
+}
+
+.signature:focus {
+  border-color: var(--ink-red);
+}
+
+.account-setting {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.label-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.label-row {
+  align-items: center;
+  min-height: 44px;
+  border-bottom: 1px dashed var(--ink-rule);
+}
+
+.label-row[data-depth='1'] {
+  padding-inline-start: 22px;
+}
+
+.label-row[data-depth='2'] {
+  padding-inline-start: 44px;
+}
+
+.label-row .tape {
+  max-width: 200px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.label-path {
+  font-size: 12px;
+  color: var(--ink-faded);
+}
+
+.label-new {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.label-new input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  background: transparent;
+  font-size: 16px;
+  outline: none;
+}
+
+.label-new input:focus {
+  border-color: var(--ink-red);
+}
+
+.shortcuts {
+  margin: 0;
+}
+
+.shortcuts div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--ink-rule);
+}
+
+.shortcuts dt {
+  display: flex;
+  gap: 4px;
+}
+
+.shortcuts dd {
+  margin: 0;
+}

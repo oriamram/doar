@@ -1,6 +1,6 @@
-import { Inbox } from './components/Inbox'
 import { Loader } from './components/Loader'
 import { LoginScreen } from './components/LoginScreen'
+import { Mailbox } from './components/Mailbox'
 import { useSession } from './lib/auth'
 
 export default function App() {
@@ -8,5 +8,7 @@ export default function App() {
 
   if (session === undefined) return <Loader />
   if (!session) return <LoginScreen />
-  return <Inbox email={session.user.email ?? ''} />
+  const { user } = session
+  const name = (user.user_metadata as { full_name?: string }).full_name ?? ''
+  return <Mailbox key={user.id} email={user.email ?? ''} name={name} />
 }

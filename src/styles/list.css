@@ -1,0 +1,680 @@
+/* The list: letters lying on the desk. */
+
+.list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-inline: 1px solid var(--rule);
+}
+
+/* ---------- Pull to check the mail: a brass slot behind the list ---------- */
+
+.pull-zone {
+  position: relative;
+  z-index: 0;
+  flex: none;
+  height: 0;
+}
+
+.mail-slot {
+  position: absolute;
+  top: 12px;
+  inset-inline: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.slot-plate {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  width: 118px;
+  height: 26px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #f3dc9e 0%, #d2ad5a 38%, #a98331 62%, #dcbd6c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(90, 60, 10, 0.45),
+    0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+/* Two screws. */
+.slot-plate::before,
+.slot-plate::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff3c9, #a07a2b 70%);
+  box-shadow: inset 0 0 0 0.5px rgba(80, 55, 10, 0.6);
+}
+
+.slot-plate::before {
+  left: 7px;
+}
+
+.slot-plate::after {
+  right: 7px;
+}
+
+.slot-gap {
+  width: 78px;
+  height: 7px;
+  border-radius: 4px;
+  background: #160f06;
+  box-shadow:
+    inset 0 2px 2px rgba(0, 0, 0, 0.9),
+    0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* The letter comes out of the slot: this window starts at the slit. */
+.slot-window {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 64px;
+  height: 34px;
+  margin-top: -10px;
+  overflow: hidden;
+}
+
+.slot-letter {
+  display: block;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.slot-letter rect:first-child {
+  fill: var(--sheet);
+  stroke: rgba(80, 60, 30, 0.45);
+}
+
+.slot-letter path {
+  fill: none;
+  stroke: rgba(80, 60, 30, 0.45);
+}
+
+.slot-letter-stamp {
+  fill: var(--ink-red);
+}
+
+.slot-letter[data-dropping] {
+  animation: letter-drop 0.85s cubic-bezier(0.5, 0, 0.7, 0.4) infinite;
+}
+
+@keyframes letter-drop {
+  0% {
+    translate: 0 -30px;
+    opacity: 1;
+  }
+  45% {
+    translate: 0 0;
+    opacity: 1;
+  }
+  100% {
+    translate: 0 36px;
+    opacity: 0;
+  }
+}
+
+.pull-label {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ---------- The pile ---------- */
+
+.threads {
+  position: relative;
+  z-index: 1;
+  flex: 1 0 auto;
+  list-style: none;
+  margin: 0;
+  padding: 12px 12px 22px;
+  transition: opacity 0.2s;
+}
+
+/* Switching folders: the old pile fades until the new one arrives. */
+.threads[data-stale] {
+  opacity: 0.5;
+}
+
+.threads > li + li {
+  margin-top: 10px;
+}
+
+.threads > .day {
+  padding-inline-start: 2px;
+}
+
+.threads > .day + li {
+  margin-top: 8px;
+}
+
+.threads > li + .day {
+  margin-top: 20px;
+}
+
+.list-wait {
+  padding-top: 8px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 64px 20px;
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.empty-stamp {
+  font-size: 26px;
+  color: var(--text-soft);
+  rotate: -6deg;
+}
+
+.more {
+  min-height: 22px;
+  padding: 10px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+/* ---------- One letter ---------- */
+
+/* Each email is an envelope lying on the desk. */
+.thread-row {
+  --paper: var(--sheet);
+  --edge: var(--edge-fresh);
+  --lift: var(--shadow-lift);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  width: 100%;
+  padding: 13px 14px;
+  padding-inline-start: 18px;
+  border-radius: 2px;
+  background-color: var(--paper);
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: var(--edge), var(--lift);
+  transition:
+    box-shadow 0.2s,
+    translate 0.25s var(--ease-out),
+    rotate 0.2s,
+    scale 0.12s;
+}
+
+/* New mail: crisp paper, lifted off the pile, with an airmail edge. */
+.thread-row[data-unread]::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 6px;
+  border-start-start-radius: 2px;
+  border-end-start-radius: 2px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ink-red) 0 6px,
+    transparent 6px 9px,
+    var(--ink-blue) 9px 15px,
+    transparent 15px 18px
+  );
+  opacity: 0.85;
+}
+
+/* Read mail: older, yellowed paper lying flat. */
+.thread-row:not([data-unread]) {
+  --paper: var(--sheet-aged);
+  --edge: var(--edge-aged);
+  --lift: var(--shadow-rest);
+}
+
+@media (hover: hover) {
+  .thread-row:hover {
+    --lift: var(--shadow-lift);
+  }
+}
+
+/* Pressing a letter presses it into the desk. */
+.thread-row:has(.row-open:active) {
+  --lift: var(--shadow-press);
+  scale: 0.985;
+}
+
+/* The open letter (PC) is pulled out of the pile toward the reader. */
+.thread-row[aria-current='true'] {
+  --lift: var(--shadow-lift);
+  translate: -8px 0;
+}
+
+/* A selected letter is picked up: it tilts, and a seal marks it. */
+.thread-row[data-selected] {
+  --lift: var(--shadow-lift);
+  rotate: -0.7deg;
+  translate: 0 -2px;
+  outline: 2px solid var(--airmail);
+  outline-offset: 1px;
+}
+
+/* New mail drops onto the pile. */
+.thread-row[data-arrived] {
+  animation: arrive 0.42s var(--ease-out);
+}
+
+@keyframes arrive {
+  from {
+    translate: 0 -22px;
+    opacity: 0;
+    scale: 0.98;
+  }
+}
+
+/* Hand-placed, not machine-stacked: each letter sits a hair crooked.
+   Only on sharp screens, where turned text still renders crisply. */
+@media (min-resolution: 2dppx) {
+  .threads > li:nth-child(4n + 1) .thread-row:not([data-selected]) {
+    rotate: -0.3deg;
+  }
+  .threads > li:nth-child(4n + 2) .thread-row:not([data-selected]) {
+    rotate: 0.25deg;
+  }
+  .threads > li:nth-child(4n + 3) .thread-row:not([data-selected]) {
+    rotate: -0.12deg;
+  }
+  .threads > li:nth-child(4n + 4) .thread-row:not([data-selected]) {
+    rotate: 0.35deg;
+  }
+}
+
+/* The stamp doubles as the way to select a letter. */
+.row-pick {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 48px;
+  border-radius: 2px;
+}
+
+.pick-seal {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--ink-blue);
+  color: var(--cream);
+  box-shadow:
+    inset 0 0 0 2px var(--ink-blue),
+    inset 0 0 0 3.5px rgba(251, 246, 234, 0.6),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+  animation: seal-on 0.22s var(--ease-out);
+}
+
+@keyframes seal-on {
+  from {
+    scale: 1.5;
+    opacity: 0;
+  }
+}
+
+/* The rest of the envelope opens the letter; it covers the whole row. */
+.row-open {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.row-open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.row-open:focus-visible {
+  outline: none;
+}
+
+.thread-row:has(.row-open:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.thread-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.sender {
+  min-width: 0;
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.subject {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.row-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.snippet {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--ink-faded);
+}
+
+.row-date {
+  flex: none;
+  margin-inline-start: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--ink-red);
+}
+
+/* New mail is marked with a small red seal by the date. */
+.thread-row[data-unread] .row-date::before {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #f0a08a 0 12%, #c0462f 42%, #8a2a19 100%);
+  box-shadow: 0 1px 1px rgba(60, 20, 10, 0.35);
+}
+
+.thread-row:not([data-unread]) .sender {
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.thread-row:not([data-unread]) .subject {
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.thread-row:not([data-unread]) .row-date {
+  font-weight: 400;
+  color: var(--ink-faded);
+}
+
+/* How many letters are in this conversation. */
+.msg-count {
+  flex: none;
+  min-width: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--ink-rule);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  color: var(--ink-muted);
+}
+
+/* Quick actions for a mouse: they appear over the end of the letter. */
+.row-actions {
+  position: absolute;
+  inset-block: 1px;
+  inset-inline-end: 1px;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding-inline: 34px 8px;
+  background: linear-gradient(to right, var(--paper) 72%, transparent);
+}
+
+.row-actions button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--ink-muted);
+}
+
+.row-actions button:hover {
+  background: rgba(80, 60, 30, 0.1);
+  color: var(--ink);
+}
+
+.row-actions svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .thread-row:hover .row-actions,
+  .thread-row:focus-within .row-actions {
+    display: flex;
+  }
+}
+
+/* ---------- A bundle: letters of one kind, tied with twine ---------- */
+
+.bundle {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding-bottom: 7px;
+  text-align: start;
+  transition: scale 0.12s;
+}
+
+.bundle:active {
+  scale: 0.985;
+}
+
+/* Two more envelopes peek out from under the top one. */
+.bundle::before,
+.bundle::after {
+  content: '';
+  position: absolute;
+  border-radius: 2px;
+  background-color: var(--sheet-aged);
+  box-shadow: var(--edge-aged), var(--shadow-rest);
+}
+
+.bundle::before {
+  inset: 9px 3px 0 6px;
+  rotate: 0.9deg;
+}
+
+.bundle::after {
+  inset: 5px 6px 3px 2px;
+  rotate: -0.7deg;
+}
+
+.bundle-sheet {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px 26px;
+  /* Room at the end for the twine and its bow, clear of the text. */
+  padding-inline: 16px 62px;
+  border-radius: 2px;
+  background-color: var(--sheet-aged);
+  box-shadow: var(--edge-aged), var(--shadow-lift);
+}
+
+.bundle[data-unread] .bundle-sheet {
+  background-color: var(--sheet);
+  box-shadow: var(--edge-fresh), var(--shadow-lift);
+}
+
+/* The stamps of the top letters, fanned. */
+.bundle-stamps {
+  position: relative;
+  flex: none;
+  width: 62px;
+  height: 52px;
+}
+
+.bundle-stamps .stamp {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  rotate: 4deg;
+  z-index: 3;
+}
+
+.bundle-stamps .stamp:nth-child(2) {
+  right: 11px;
+  rotate: -5deg;
+  z-index: 2;
+}
+
+.bundle-stamps .stamp:nth-child(3) {
+  right: 20px;
+  rotate: -13deg;
+  z-index: 1;
+}
+
+.bundle-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.bundle-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The bundle's name, on a kraft tag. */
+.bundle-tag {
+  flex: none;
+  padding: 0 9px;
+  background: var(--kraft);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 13.5px;
+  line-height: 22px;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+}
+
+.bundle-count {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink-faded);
+  white-space: nowrap;
+}
+
+.bundle-new {
+  flex: none;
+  margin-inline-start: auto;
+  padding: 0 7px;
+  border-radius: 10px;
+  background: var(--ink-red);
+  color: var(--cream);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 11.5px;
+  line-height: 19px;
+  white-space: nowrap;
+}
+
+.bundle-senders {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.bundle-latest {
+  font-size: 14px;
+  color: var(--ink-faded);
+}
+
+.bundle:not([data-unread]) .bundle-senders {
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+/* Tied crosswise, with the bow where the strands meet; both strands run
+   through the margins, never across the text. */
+.twine-across {
+  inset-inline: -2px;
+  bottom: 19px;
+  height: 3px;
+}
+
+.twine-down {
+  top: -2px;
+  bottom: 3px;
+  left: 30px;
+  width: 3px;
+}
+
+.bundle .twine-bow {
+  left: 13.5px;
+  bottom: 7px;
+}
+
+/* ---------- Swipe actions ---------- */
+
+.swipe {
+  position: relative;
+}
+
+/* Swipes are physical (left = file it), so lay their stamps out left-to-right.
+   The letter slides off and the rubber stamp lands on the desk underneath. */
+.swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  direction: ltr;
+  pointer-events: none;
+}
+
+.swipe-bg--right {
+  justify-content: flex-start;
+  color: var(--text);
+}
+
+.swipe-bg--left {
+  justify-content: flex-end;
+  color: var(--airmail);
+}
+
+.swipe-fg {
+  position: relative;
+}

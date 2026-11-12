@@ -5,9 +5,22 @@
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#d7cdbc" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#131922" media="(prefers-color-scheme: dark)" />
+    <!-- interactive-widget: when the phone's keyboard opens, the page shrinks to fit above it,
+         so the bottom of the compose form (and its Send stamp) stays in view. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#d7cdbc" />
+    <script>
+      // Pick day or night before the first paint, so the screen never flashes the wrong one.
+      // (src/lib/settings.ts keeps it up to date afterwards.)
+      try {
+        var saved = JSON.parse(localStorage.getItem('doar:settings') || '{}').theme
+        var dark = saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        if (dark) document.querySelector('meta[name="theme-color"]').content = '#131922'
+      } catch (e) {
+        // No saved settings yet: the day theme is the default.
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -26,6 +39,11 @@
         <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="12" result="patches" />
         <feColorMatrix in="patches" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -3 0 0 0 2.55" result="coverage" />
         <feComposite in="wobble" in2="coverage" operator="in" />
+      </filter>
+      <!-- The same ink for small words: only a slight wobble, so every letter stays whole and readable. -->
+      <filter id="ink-soft" x="-5%" y="-10%" width="110%" height="120%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="3" result="grain" />
+        <feDisplacementMap in="SourceGraphic" in2="grain" scale="1" xChannelSelector="R" yChannelSelector="G" />
       </filter>
     </svg>
     <div id="root"></div>
