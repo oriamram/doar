@@ -29,9 +29,13 @@ export function LoginScreen() {
   return (
     <div className="login">
       <div className="airmail-band" aria-hidden="true" />
-      <div className="stamp login-stamp" aria-hidden="true">
-        <DoarMark size={70} />
-      </div>
+      <span className="stamp login-stamp" aria-hidden="true">
+        <span className="stamp-paper">
+          <span className="stamp-face">
+            <DoarMark size={70} />
+          </span>
+        </span>
+      </span>
       <h1>דואר</h1>
       <p className="tagline">הג׳ימייל שלך, עד הבית</p>
       <button className="google-btn" onClick={signIn} disabled={busy}>

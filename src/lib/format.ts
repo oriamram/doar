@@ -22,6 +22,14 @@ export function formatFullDate(iso: string): string {
   })
 }
 
+/** The full date written on an opened envelope: "יום שלישי, 10 בנובמבר 2026 · 14:32". */
+export function formatLetterDate(iso: string): string {
+  const date = new Date(iso)
+  const day = date.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const time = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+  return `${day} · ${time}`
+}
+
 /**
  * Text for a round postmark: "11.11" over the time (today), the weekday (this
  * week) or the year (older).

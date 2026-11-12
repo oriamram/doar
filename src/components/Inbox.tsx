@@ -1,9 +1,11 @@
+import { motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { signOut } from '../lib/auth'
 import { archiveThread, inboxUnreadCount, listThreads, setThreadStarred, setThreadUnread } from '../lib/gmail'
 import { ReauthRequiredError } from '../lib/googleToken'
 import { formatListDate } from '../lib/format'
 import { onAndroidBack } from '../lib/platform'
+import { usePullToRefresh } from '../lib/usePullToRefresh'
 import type { Thread } from '../types'
 import {
   ArchiveIcon,
@@ -17,7 +19,8 @@ import {
   StarIcon,
 } from './icons'
 import { Loader } from './Loader'
-import { DoarMark, SenderAvatar } from './Postal'
+import { MailSlot } from './MailSlot'
+import { DoarMark, GoldStar, SenderStamp } from './Postal'
 import { SwipeRow } from './SwipeRow'
 import { ThreadView } from './ThreadView'
 
@@ -82,6 +85,7 @@ export function Inbox({ email }: { email: string }) {
   const [searching, setSearching] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [listElement, setListElement] = useState<HTMLElement | null>(null)
   // Answers to an older request (say, the user switched filters quickly) are dropped.
   const latestRequest = useRef(0)
 
@@ -140,8 +144,11 @@ export function Inbox({ email }: { email: string }) {
 
   const reload = () => {
     setLoading(true)
-    void fetchView(view)
+    return fetchView(view)
   }
+
+  // Pull the list down from the top to check for new mail (touch screens).
+  const { pull, phase: pullPhase } = usePullToRefresh(listElement, reload)
 
   const update = (id: string, patch: Partial<Thread>) =>
     setThreads((all) => all?.map((t) => (t.id === id ? { ...t, ...patch } : t)) ?? null)
@@ -150,7 +157,7 @@ export function Inbox({ email }: { email: string }) {
   const sync = (request: Promise<unknown>) =>
     request.catch((e) => {
       handleError(e)
-      reload()
+      void reload()
     })
 
   const markUnread = (thread: Thread, unread: boolean) => {
@@ -271,7 +278,7 @@ export function Inbox({ email }: { email: string }) {
         </div>
       </aside>
 
-      <section className="list" aria-label={TITLES[view.id]}>
+      <section className="list" aria-label={TITLES[view.id]} ref={setListElement}>
         <header className="list-header">
           <div className="airmail-band" aria-hidden="true" />
 
@@ -300,7 +307,7 @@ export function Inbox({ email }: { email: string }) {
               </button>
               <button
                 className="icon-btn"
-                onClick={reload}
+                onClick={() => void reload()}
                 disabled={loading}
                 data-spinning={loading || undefined}
                 aria-label="בדיקת דואר חדש"
@@ -355,14 +362,20 @@ export function Inbox({ email }: { email: string }) {
           <span className="progress" data-active={loading || undefined} aria-hidden="true" />
         </header>
 
+        <MailSlot pull={pull} phase={pullPhase} />
+
         {error && (
           <div className="banner">
             <span>{error}</span>
-            <button onClick={reload}>נסה שוב</button>
+            <button onClick={() => void reload()}>נסה שוב</button>
           </div>
         )}
 
-        <ul className="threads" data-stale={loading || undefined}>
+        <motion.ul
+          className="threads"
+          data-stale={(loading && pullPhase !== 'refreshing') || undefined}
+          style={{ y: pull }}
+        >
           {threads?.map((t) => (
             <li key={t.id}>
               <SwipeRow unread={t.unread} onArchive={() => archive(t.id)} onToggleRead={() => markUnread(t, !t.unread)}>
@@ -372,17 +385,22 @@ export function Inbox({ email }: { email: string }) {
                   aria-current={t.id === selectedId || undefined}
                   onClick={() => open(t.id)}
                 >
-                  <SenderAvatar contact={t.from} read={!t.unread} />
+                  <SenderStamp contact={t.from} used={!t.unread} />
                   <span className="thread-main">
                     <span className="thread-top">
                       <span className="sender ellipsis" dir="auto">
                         {t.from.name}
                       </span>
-                      {t.messageCount > 1 && <span className="msg-count">{t.messageCount}</span>}
-                      {t.starred && (
-                        <span className="star-mark" aria-label="מסומן בכוכב">
-                          <StarIcon filled />
+                      {t.messageCount > 1 && (
+                        <span className="msg-count" title={`${t.messageCount} הודעות בשיחה`}>
+                          {t.messageCount}
                         </span>
+                      )}
+                      {t.starred && (
+                        <>
+                          <GoldStar className="star-mark" />
+                          <span className="visually-hidden">מסומן בכוכב, </span>
+                        </>
                       )}
                       <span className="row-date">
                         <span className="visually-hidden">{t.unread ? 'לא נקרא, ' : 'נקרא, '}</span>
@@ -401,7 +419,7 @@ export function Inbox({ email }: { email: string }) {
             </li>
           ))}
           {threads?.length === 0 && !loading && <li className="empty">{emptyText(view)}</li>}
-        </ul>
+        </motion.ul>
       </section>
 
       <main className="reader">

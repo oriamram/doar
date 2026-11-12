@@ -1,5 +1,10 @@
-/* Doar — "Post Office" design.
-   Paper, ink and postal red; Discovery type, postmarks for dates. */
+/* Doar — the writing desk.
+
+   Everything sits on a desk lit by a lamp. Mail is real paper on it: each email
+   is an envelope, an opened email is a letter slid out of its envelope, filters
+   are paper tags. Paper stays cream in both themes (dimmer at night), so it is
+   always inked with the same dark ink; text written straight on the desk uses
+   the --text colors instead. */
 
 /* Discovery FS ships in three weights. Each face covers a range, so any
    font-weight in the CSS lands on the nearest one: 100–449 Light,
@@ -25,60 +30,102 @@
   font-display: swap;
 }
 
+/* ---------- Tokens ---------- */
+
 :root {
-  --paper: #f1ebdd;
-  --paper-card: #faf6ec;
-  --paper-deep: #e9e1cf;
-  --line: #d8cdb6;
-  --perf: #cfc4ad;
-  --ink: #1f2a3a;
-  --ink-soft: #8a8273;
-  --muted: #5e5749;
+  /* The desk, and text written straight on it. */
+  --desk: #d7cdbc;
+  --desk-deep: #cbc0ad;
+  --desk-raised: #e3dbcc;
+  --text: #1f2a3a;
+  --text-muted: #554c3f;
+  --text-soft: #7a705f;
+  --rule: rgba(31, 42, 58, 0.14);
   --accent: #a63a26;
-  --on-accent: #faf6ec;
-  --on-ink: #faf6ec;
-  --letter: #fffdf8;
+  --on-accent: #fbf6ea;
   --airmail: #24407a;
-  --on-airmail: #faf6ec;
-  /* Stamp paper and the holes punched through it (the page shows through). */
-  --stamp-paper: #fffdf6;
+
+  /* Paper: envelopes, letters, tags. */
+  --sheet: #fdf9f0;
+  --sheet-aged: #f0e7d3;
+  --sheet-letter: #fffcf3;
+  --sheet-lining: #e2d8c3;
+  --stamp-paper: #fffdf7;
+
+  /* Ink on paper. */
+  --ink: #1f2a3a;
+  --ink-muted: #574f42;
+  --ink-faded: #6e6556;
+  --ink-rule: rgba(80, 60, 30, 0.18);
+  --ink-red: #a63a26;
+  --ink-blue: #24407a;
+
+  /* Light on the desk: warm from the lamp above, falling off at the edges. */
+  --lamp: rgba(255, 247, 228, 0.2);
+  --vignette: rgba(70, 48, 18, 0.15);
+  --grain: 0.05;
+
+  /* Paper edges: a hairline, and the slight darkening paper gets at its border. */
+  --edge-fresh: inset 0 0 0 1px rgba(90, 65, 30, 0.07), inset 0 0 14px rgba(140, 100, 40, 0.06);
+  --edge-aged: inset 0 0 0 1px rgba(90, 65, 30, 0.1), inset 0 0 24px rgba(140, 100, 40, 0.17);
+
+  /* Paper on the desk: lying flat, lifted (new mail, hover), and pressed. */
+  --shadow-rest: 0 1px 1px rgba(70, 50, 25, 0.1), 0 2px 5px rgba(70, 50, 25, 0.08),
+    0 10px 16px -12px rgba(70, 50, 25, 0.4);
+  --shadow-lift: 0 1px 1px rgba(70, 50, 25, 0.12), 0 4px 10px rgba(70, 50, 25, 0.12),
+    0 18px 26px -16px rgba(70, 50, 25, 0.5);
+  --shadow-press: 0 1px 1px rgba(70, 50, 25, 0.14), 0 1px 3px rgba(70, 50, 25, 0.12);
 
   /* Headings and text both use Discovery; headings get its Black weight. */
-  --serif: 'Discovery', system-ui, sans-serif;
   --sans: 'Discovery', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  /* Postmark digits stay typewriter; Hebrew in them falls back to Discovery. */
+  /* Typewriter, for addresses and postmarks; Hebrew in it falls back to Discovery. */
   --mono: 'Courier Prime', 'Discovery', ui-monospace, monospace;
 
   color-scheme: light;
   font-family: var(--sans);
   font-size: 15px;
   line-height: 1.45;
-  color: var(--ink);
-  background: var(--paper);
+  color: var(--text);
+  background: var(--desk);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Night post office */
+/* Night: a dark desk under a warm lamp. The paper is the same paper, a little dimmer. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #151b25;
-    --paper-card: #1c2430;
-    --paper-deep: #232c3a;
-    --line: #2f3a4a;
-    --perf: #3a4556;
-    --ink: #ede6d6;
-    --ink-soft: #7d8696;
-    --muted: #a9a190;
+    --desk: #131922;
+    --desk-deep: #0e131a;
+    --desk-raised: #1d2531;
+    --text: #ece4d3;
+    --text-muted: #aca392;
+    --text-soft: #7f8797;
+    --rule: rgba(236, 228, 211, 0.12);
     --accent: #e07a5f;
-    --on-accent: #151b25;
-    --on-ink: #151b25;
-    --airmail: #3b5fa8;
-    --on-airmail: #f3eee3;
-    --stamp-paper: #ede6d6;
+    --on-accent: #131922;
+    --airmail: #6d8fd6;
+
+    --sheet: #e8dfcb;
+    --sheet-aged: #d8cdb4;
+    --sheet-letter: #ede5d3;
+    --sheet-lining: #c9bea6;
+    --stamp-paper: #f2ebdb;
+
+    --lamp: rgba(255, 205, 140, 0.08);
+    --vignette: rgba(0, 0, 0, 0.36);
+    --grain: 0.04;
+
+    --shadow-rest: 0 1px 1px rgba(0, 0, 0, 0.4), 0 3px 6px rgba(0, 0, 0, 0.25),
+      0 12px 18px -12px rgba(0, 0, 0, 0.7);
+    --shadow-lift: 0 1px 1px rgba(0, 0, 0, 0.45), 0 6px 12px rgba(0, 0, 0, 0.3),
+      0 20px 28px -16px rgba(0, 0, 0, 0.8);
+    --shadow-press: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
+
     color-scheme: dark;
   }
 }
+
+/* ---------- Base ---------- */
 
 *,
 *::before,
@@ -93,8 +140,9 @@ body,
   margin: 0;
 }
 
+html,
 body {
-  background: var(--paper);
+  background: var(--desk);
   overscroll-behavior: none;
 }
 
@@ -118,7 +166,7 @@ h2 {
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.87rem;
 }
 
@@ -132,13 +180,73 @@ h2 {
   text-overflow: ellipsis;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 kbd {
   font: 0.8rem var(--mono);
   padding: 1px 6px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--rule);
   border-bottom-width: 2px;
   border-radius: 4px;
-  background: var(--paper-card);
+  background: var(--desk-raised);
+}
+
+/* Keep lines lined up on the right, even when a subject is in English. */
+[dir='rtl'] .subject,
+[dir='rtl'] .snippet,
+[dir='rtl'] .envelope-name,
+[dir='rtl'] .thread-subject {
+  text-align: right;
+}
+
+/* ---------- The scene: lamp light and grain over the whole desk ---------- */
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+  background:
+    radial-gradient(130% 60% at 50% -6%, var(--lamp), transparent 65%),
+    radial-gradient(150% 115% at 50% 30%, transparent 55%, var(--vignette));
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  background: url('/grain.svg');
+  opacity: var(--grain);
+}
+
+/* ---------- Paper ----------
+   One material for every paper object: a paper color with the paper's tooth
+   multiplied in (public/paper.svg), inked in --ink. */
+
+.thread-row,
+.envelope,
+.letter,
+.folded,
+.filter,
+.menu,
+.search-row,
+.banner,
+.nav-item[aria-current='page'] {
+  background-color: var(--sheet);
+  background-image: url('/paper.svg');
+  background-size: 360px;
+  background-blend-mode: multiply;
+  color: var(--ink);
 }
 
 /* ---------- Layout ---------- */
@@ -154,6 +262,12 @@ kbd {
 .reader {
   min-height: 0;
   overflow-y: auto;
+}
+
+/* Swiped or tilted letters must never push the page sideways. */
+.list,
+.reader {
+  overflow-x: hidden;
 }
 
 @media (max-width: 1023px) {
@@ -177,163 +291,115 @@ kbd {
 
 /* ---------- Postal pieces ---------- */
 
-/* Paper grain over everything: felt more than seen. */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  pointer-events: none;
-  background: url('/grain.svg');
-  opacity: 0.07;
-}
-
-@media (prefers-color-scheme: dark) {
-  body::after {
-    opacity: 0.05;
-  }
-}
-
-/* Airmail stripes: red and blue diagonals. */
+/* Airmail stripes (written on the desk: header edge, loader). */
 .airmail-band {
   background: repeating-linear-gradient(
     -45deg,
     var(--accent) 0 10px,
-    var(--paper) 10px 16px,
+    transparent 10px 16px,
     var(--airmail) 16px 26px,
-    var(--paper) 26px 32px
+    transparent 26px 32px
   );
 }
 
-/* Perforated stamp paper: holes are dots of the page color, centered on the edges. */
-.sender-stamp,
-.login-stamp {
-  width: 104px;
-  height: 120px;
-  margin-bottom: 14px;
-  padding: 7px;
-  background-size: 14px 14px;
-  background-position: -7px -7px;
-  background-image: radial-gradient(circle, var(--paper) 4px, var(--stamp-paper) 4.6px);
-  transform: rotate(-4deg);
+/* A postage stamp. The perforation holes are cut out with a mask (a grid of
+   holes, plus a solid middle), so the envelope shows through them, and the
+   drop shadow follows the perforated edge. */
+.stamp {
+  --tile: 6px;
+  --hole: 1.8px;
+  --margin: 4px;
+  flex: none;
+  display: inline-block;
+  width: 42px;
+  height: 48px;
+  filter: drop-shadow(0 1px 0.5px rgba(50, 35, 15, 0.38)) drop-shadow(0 2px 2px rgba(50, 35, 15, 0.12));
+}
+
+.stamp[data-size='lg'] {
+  --tile: 10px;
+  --hole: 2.8px;
+  --margin: 7px;
+  width: 60px;
+  height: 70px;
+}
+
+/* Read mail: the stamp has done its job; its colors have faded. */
+.stamp[data-used] {
+  filter: saturate(0.4) drop-shadow(0 1px 0.5px rgba(50, 35, 15, 0.3));
+}
+
+.stamp-paper {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: var(--margin);
+  background: var(--stamp-paper);
+  -webkit-mask:
+    radial-gradient(circle, transparent var(--hole), #000 calc(var(--hole) + 0.5px)) calc(var(--tile) / -2)
+      calc(var(--tile) / -2) / var(--tile) var(--tile),
+    linear-gradient(#000 0 0) 50% 50% / calc(100% - var(--tile)) calc(100% - var(--tile)) no-repeat;
+  -webkit-mask-composite: source-over;
+  mask:
+    radial-gradient(circle, transparent var(--hole), #000 calc(var(--hole) + 0.5px)) calc(var(--tile) / -2)
+      calc(var(--tile) / -2) / var(--tile) var(--tile),
+    linear-gradient(#000 0 0) 50% 50% / calc(100% - var(--tile)) calc(100% - var(--tile)) no-repeat;
+  mask-composite: add;
+}
+
+/* The printed design: the sender's color, fine engraving lines, a thin frame. */
+.stamp-face {
   display: grid;
   place-items: center;
-}
-
-.stamp-face {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
   height: 100%;
-  color: #fffdf6;
-}
-
-/* The sender's stamp on an opened envelope: their color and initial. */
-.sender-stamp {
-  width: 58px;
-  height: 68px;
-  margin: 0;
-  padding: 5px;
-  background-size: 10px 10px;
-  background-position: -5px -5px;
-  background-image: radial-gradient(circle, var(--paper-card) 3px, var(--stamp-paper) 3.5px);
-}
-
-.sender-stamp .stamp-face {
-  background: var(--stamp);
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 3px), var(--stamp);
+  box-shadow:
+    inset 0 0 0 2px var(--stamp),
+    inset 0 0 0 3px rgba(255, 250, 238, 0.5);
+  color: #fffaf0;
 }
 
 .stamp-letter {
-  font-weight: 800;
-  font-size: 28px;
+  font-weight: 900;
+  font-size: 20px;
   line-height: 1;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
 }
 
-.stamp-word {
-  font-size: 9px;
-  font-weight: 600;
+.stamp[data-size='lg'] .stamp-letter {
+  font-size: 30px;
 }
 
-/* The sender in the inbox list: a small upright stamp. The perforation holes are
-   dots of the row's own background (--hole), so they read as punched through. */
-.mini-stamp {
-  --hole: var(--paper);
-  position: relative;
+/* Gold foil star sticker. */
+.gold-star {
+  display: inline-block;
   flex: none;
-  width: 40px;
-  height: 46px;
-  padding: 3px;
-  background: radial-gradient(circle, var(--hole) 1.9px, var(--stamp-paper) 2.3px) -3px -3px / 6px 6px;
+  width: 16px;
+  height: 16px;
+  filter: drop-shadow(0 1px 0.6px rgba(90, 60, 0, 0.5));
 }
 
-.mini-face {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  background: var(--stamp);
-  color: #fffdf6;
-  font-weight: 800;
-  font-size: 19px;
-  line-height: 1;
-}
-
-/* Read: a used stamp, faded and cancelled with an ink X. */
-.mini-stamp[data-read] .mini-face {
-  filter: saturate(0.3) brightness(0.85);
-}
-
-.mini-cancel {
-  position: absolute;
-  inset: 0;
+.gold-star::before {
+  content: '';
+  display: block;
   width: 100%;
   height: 100%;
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  opacity: 0.8;
+  clip-path: polygon(50% 2%, 61.5% 36%, 97.5% 36.5%, 68.5% 58%, 79.5% 93%, 50% 72%, 20.5% 93%, 31.5% 58%, 2.5% 36.5%, 38.5% 36%);
+  background: linear-gradient(135deg, #fff4c2 0%, #f3d26a 28%, #cf9f33 52%, #f6dc84 70%, #b38419 100%);
 }
 
-.thread-row[data-unread] .mini-stamp {
-  --hole: var(--paper-card);
-}
-
-.thread-row[aria-current='true'] .mini-stamp {
-  --hole: var(--paper-deep);
-}
-
-/* Duplex cancel: dated ring + heavy bars. */
+/* Duplex cancel: bars over the stamp and a dated ring beside it, in real
+   rubber-stamp ink (uneven, soaked into the paper). */
 .duplex {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: var(--ink);
-  opacity: 0.85;
-  transform: rotate(-8deg);
-}
-
-.duplex-ring {
-  width: 56px;
-  height: 56px;
-  box-sizing: border-box;
-  border-radius: 50%;
-  border: 2.5px solid currentColor;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--mono);
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.pm-top {
-  font-size: 12px;
-}
-
-.pm-small {
-  font-size: 8px;
+  gap: 3px;
+  color: #22242c;
+  opacity: 0.8;
+  rotate: -7deg;
+  mix-blend-mode: multiply;
+  filter: url(#ink);
 }
 
 .duplex-bars {
@@ -344,38 +410,55 @@ body::after {
 
 .duplex-bars span {
   display: block;
-  width: 44px;
-  height: 4px;
+  width: 40px;
+  height: 3.5px;
+  border-radius: 1px;
   background: currentColor;
 }
 
-/* Rubber stamp shown behind swiped rows. */
-.rubber {
-  display: inline-block;
-  padding: 5px 12px;
+.duplex-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
   border: 2.5px solid currentColor;
-  border-radius: 3px;
-  font-weight: 800;
-  font-size: 18px;
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-weight: 700;
+  line-height: 1.1;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+.pm-top {
+  font-size: 13px;
+}
+
+.pm-small {
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* Rubber stamp that thumps onto the desk behind a swiped letter. */
+.rubber {
+  display: inline-block;
+  padding: 3px 12px;
+  border: 3px solid currentColor;
+  border-radius: 4px;
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  filter: url(#ink);
 }
 
 /* ---------- Sidebar (PC) ---------- */
 
 .sidebar {
-  padding: 22px 12px;
-  padding-top: max(22px, env(safe-area-inset-top));
-  background: var(--paper-deep);
   display: flex;
   flex-direction: column;
+  padding: 22px 12px;
+  padding-top: max(22px, env(safe-area-inset-top));
+  background: var(--desk-deep);
 }
 
 .brand {
@@ -383,7 +466,6 @@ body::after {
   align-items: center;
   gap: 10px;
   padding: 0 10px 22px;
-  font-family: var(--serif);
   font-weight: 900;
   font-size: 1.5rem;
 }
@@ -394,19 +476,22 @@ body::after {
   gap: 12px;
   width: 100%;
   padding: 9px 12px;
-  border-radius: 6px;
-  color: var(--muted);
+  border-radius: 2px;
+  color: var(--text-muted);
 }
 
 .nav-item:hover {
-  background: var(--paper);
+  background-color: var(--desk-raised);
 }
 
+/* The open folder: a paper tab. */
 .nav-item[aria-current='page'] {
-  background: var(--paper-card);
-  color: var(--ink);
   font-weight: 600;
-  box-shadow: inset -3px 0 0 var(--accent);
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.nav-item[aria-current='page']:hover {
+  background-color: var(--sheet);
 }
 
 .count {
@@ -417,6 +502,10 @@ body::after {
   color: var(--accent);
 }
 
+.nav-item[aria-current='page'] .count {
+  color: var(--ink-red);
+}
+
 .account {
   display: flex;
   align-items: center;
@@ -424,7 +513,7 @@ body::after {
   margin-top: auto;
   padding-block-start: 12px;
   padding-inline-start: 12px;
-  border-top: 1px dashed var(--perf);
+  border-top: 1px dashed var(--rule);
 }
 
 .account-email {
@@ -436,21 +525,30 @@ body::after {
   white-space: nowrap;
 }
 
-/* ---------- Inbox list ---------- */
+/* ---------- Inbox: header ---------- */
 
 .list {
-  background: var(--paper);
-  border-inline: 1px solid var(--line);
+  position: relative;
+  border-inline: 1px solid var(--rule);
 }
 
 .list-header {
   position: sticky;
   top: 0;
   z-index: 3;
-  padding: 10px 12px 0 8px;
+  padding: 10px 10px 0;
   padding-top: max(10px, calc(env(safe-area-inset-top) + 6px));
-  background: var(--paper);
-  border-bottom: 1px solid var(--line);
+  background: var(--desk);
+  box-shadow:
+    0 1px 0 var(--rule),
+    0 10px 14px -12px rgba(0, 0, 0, 0.5);
+}
+
+.list-header > .airmail-band {
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 4px;
 }
 
 .header-row {
@@ -463,33 +561,53 @@ body::after {
 .view-title {
   flex: 1;
   min-width: 0;
-  padding-inline-start: 8px;
-  font-family: var(--serif);
+  padding-inline-start: 6px;
   font-weight: 900;
   font-size: 1.6rem;
   line-height: 1.1;
 }
 
-.header-row .icon-btn {
-  color: var(--muted);
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--text);
 }
 
-.header-row .icon-btn:hover {
-  color: var(--ink);
+.icon-btn:hover {
+  background: var(--desk-raised);
 }
 
 .icon-btn:disabled {
   cursor: default;
 }
 
-/* Search replaces the title row. */
+.header-row .icon-btn {
+  color: var(--text-muted);
+}
+
+.header-row .icon-btn:hover {
+  color: var(--text);
+}
+
+/* Search: a paper slip laid over the title. */
 .search-row {
   gap: 8px;
-  margin-block: 2px;
-  padding-inline-start: 14px;
-  border-radius: 999px;
-  background: var(--paper-deep);
-  color: var(--muted);
+  margin: 3px 2px;
+  padding-inline-start: 12px;
+  border-radius: 2px;
+  color: var(--ink-muted);
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.search-row .icon-btn {
+  color: var(--ink-muted);
+}
+
+.search-row .icon-btn:hover {
+  background: rgba(80, 60, 30, 0.08);
 }
 
 .search-input {
@@ -504,11 +622,15 @@ body::after {
   color: var(--ink);
 }
 
+.search-input::placeholder {
+  color: var(--ink-faded);
+}
+
 .search-input::-webkit-search-cancel-button {
   display: none;
 }
 
-/* Your own initial: opens the account menu (the sidebar has it on PC). */
+/* Your account: a red wax seal with your initial pressed into it. */
 .account-menu {
   position: relative;
 }
@@ -516,14 +638,26 @@ body::after {
 .me {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  margin: 5px;
-  border-radius: 50%;
-  background: var(--ink);
-  color: var(--on-ink);
-  font-weight: 800;
-  font-size: 15px;
+  width: 36px;
+  height: 36px;
+  margin: 4px;
+  border-radius: 52% 48% 50% 50% / 48% 52% 50% 50%;
+  background: radial-gradient(circle at 34% 30%, #d9725a 0 10%, #a63a26 46%, #74230f 100%);
+  color: rgba(255, 228, 214, 0.9);
+  font-weight: 900;
+  font-size: 16px;
+  text-shadow:
+    0 -1px 0 rgba(60, 10, 0, 0.45),
+    0 1px 0 rgba(255, 190, 170, 0.35);
+  box-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 200, 180, 0.35),
+    inset 0 -2px 3px rgba(60, 10, 0, 0.4);
+  transition: scale 0.12s;
+}
+
+.me:active {
+  scale: 0.92;
 }
 
 @media (min-width: 1024px) {
@@ -541,24 +675,22 @@ body::after {
 
 .menu {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   inset-inline-end: 0;
   z-index: 5;
-  min-width: 220px;
+  min-width: 230px;
   padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper-card);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+  border-radius: 2px;
+  box-shadow: var(--edge-fresh), var(--shadow-lift);
 }
 
 .menu-email {
   display: block;
   padding: 8px 10px 10px;
-  border-bottom: 1px dashed var(--perf);
+  border-bottom: 1px dashed var(--ink-rule);
   font-family: var(--mono);
   font-size: 13px;
-  color: var(--muted);
+  color: var(--ink-muted);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -570,52 +702,97 @@ body::after {
   width: 100%;
   margin-top: 4px;
   padding: 10px;
-  border-radius: 6px;
+  border-radius: 2px;
 }
 
 .menu-item:hover {
-  background: var(--paper-deep);
+  background: rgba(80, 60, 30, 0.07);
 }
 
-/* Inbox filters: all / unread / starred. */
+/* Filters: paper luggage tags, punched at the end. The row's drop shadow
+   follows each tag's cut shape. */
 .filters {
   display: flex;
-  gap: 6px;
-  padding: 4px 8px 10px;
+  gap: 10px;
+  padding: 6px 10px 13px;
   overflow-x: auto;
   scrollbar-width: none;
+  filter: drop-shadow(0 1px 0.6px rgba(0, 0, 0, 0.25)) drop-shadow(0 3px 3px rgba(0, 0, 0, 0.12));
 }
 
 .filter {
+  position: relative;
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   height: 34px;
-  padding: 0 14px;
-  border: 1.5px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  font-weight: 500;
+  padding-inline: 24px 12px;
+  font-weight: 600;
   font-size: 14px;
+  /* Corners cut at the punched end (the right, where Hebrew starts). */
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  rotate: var(--tag-tilt, 0deg);
+  transition:
+    rotate 0.2s,
+    translate 0.2s,
+    background-color 0.2s;
+}
+
+.filter:nth-child(1) {
+  --tag-tilt: -1.4deg;
+}
+
+.filter:nth-child(2) {
+  --tag-tilt: 1deg;
+}
+
+.filter:nth-child(3) {
+  --tag-tilt: -0.6deg;
+}
+
+/* The punched hole, showing the desk through it. */
+.filter::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 9px;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: var(--desk);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.45);
+}
+
+.filter:active {
+  translate: 0 1px;
 }
 
 .filter[aria-selected='true'] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--on-ink);
+  background-color: var(--ink-red);
+  color: #fbf6ea;
+  rotate: 0deg;
+  translate: 0 -1px;
 }
 
 .filter-count {
-  min-width: 22px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--on-accent);
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--sheet);
   font-family: var(--mono);
   font-weight: 700;
-  font-size: 12px;
-  text-align: center;
+  font-size: 11.5px;
+}
+
+.filter[aria-selected='true'] .filter-count {
+  background: #fbf6ea;
+  color: var(--ink-red);
 }
 
 /* Thin airmail stripe running along the header's bottom edge while loading. */
@@ -647,58 +824,246 @@ body::after {
   }
 }
 
+/* ---------- Pull to check the mail: a brass slot behind the list ---------- */
+
+.pull-zone {
+  position: relative;
+  z-index: 0;
+  height: 0;
+}
+
+.mail-slot {
+  position: absolute;
+  top: 12px;
+  inset-inline: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.slot-plate {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  width: 118px;
+  height: 26px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #f3dc9e 0%, #d2ad5a 38%, #a98331 62%, #dcbd6c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(90, 60, 10, 0.45),
+    0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+/* Two screws. */
+.slot-plate::before,
+.slot-plate::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff3c9, #a07a2b 70%);
+  box-shadow: inset 0 0 0 0.5px rgba(80, 55, 10, 0.6);
+}
+
+.slot-plate::before {
+  left: 7px;
+}
+
+.slot-plate::after {
+  right: 7px;
+}
+
+.slot-gap {
+  width: 78px;
+  height: 7px;
+  border-radius: 4px;
+  background: #160f06;
+  box-shadow:
+    inset 0 2px 2px rgba(0, 0, 0, 0.9),
+    0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* The letter comes out of the slot: this window starts at the slit. */
+.slot-window {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 64px;
+  height: 34px;
+  margin-top: -10px;
+  overflow: hidden;
+}
+
+.slot-letter {
+  display: block;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.slot-letter rect:first-child {
+  fill: var(--sheet);
+  stroke: rgba(80, 60, 30, 0.45);
+}
+
+.slot-letter path {
+  fill: none;
+  stroke: rgba(80, 60, 30, 0.45);
+}
+
+.slot-letter-stamp {
+  fill: var(--ink-red);
+}
+
+.slot-letter[data-dropping] {
+  animation: letter-drop 0.85s cubic-bezier(0.5, 0, 0.7, 0.4) infinite;
+}
+
+@keyframes letter-drop {
+  0% {
+    translate: 0 -30px;
+    opacity: 1;
+  }
+  45% {
+    translate: 0 0;
+    opacity: 1;
+  }
+  100% {
+    translate: 0 36px;
+    opacity: 0;
+  }
+}
+
+.pull-label {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ---------- Inbox: the letters ---------- */
+
 .threads {
+  position: relative;
+  z-index: 1;
   list-style: none;
   margin: 0;
-  padding: 0 0 env(safe-area-inset-bottom);
+  padding: 12px 12px calc(28px + env(safe-area-inset-bottom));
   transition: opacity 0.2s;
 }
 
-/* Switching filters: the old list fades until the new one arrives. */
+/* Switching filters: the old pile fades until the new one arrives. */
 .threads[data-stale] {
   opacity: 0.45;
 }
 
-.threads > li {
-  border-bottom: 1px dashed var(--perf);
+.threads > li + li {
+  margin-top: 10px;
 }
 
 .empty {
   padding: 56px 20px;
   text-align: center;
-  font-family: var(--serif);
   font-size: 1.15rem;
-  color: var(--muted);
-  border: 0 !important;
+  color: var(--text-muted);
 }
 
+/* Each email is an envelope lying on the desk. */
 .thread-row {
+  --edge: var(--edge-fresh);
+  --lift: var(--shadow-lift);
+  position: relative;
   display: flex;
-  gap: 14px;
   align-items: flex-start;
+  gap: 13px;
   width: 100%;
-  padding: 14px 20px;
-  background: var(--paper);
+  padding: 13px 14px;
+  padding-inline-start: 18px;
+  border-radius: 2px;
   user-select: none;
+  -webkit-user-select: none;
+  box-shadow: var(--edge), var(--lift);
+  transition:
+    box-shadow 0.2s,
+    translate 0.25s,
+    scale 0.12s;
 }
 
-.thread-row:hover {
-  background: var(--paper-card);
+/* New mail: crisp paper, lifted off the pile, with an airmail edge. */
+.thread-row[data-unread]::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 6px;
+  border-start-start-radius: 2px;
+  border-end-start-radius: 2px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ink-red) 0 6px,
+    transparent 6px 9px,
+    var(--ink-blue) 9px 15px,
+    transparent 15px 18px
+  );
+  opacity: 0.85;
 }
 
+/* Read mail: older, yellowed paper lying flat. */
+.thread-row:not([data-unread]) {
+  --edge: var(--edge-aged);
+  --lift: var(--shadow-rest);
+  background-color: var(--sheet-aged);
+}
+
+@media (hover: hover) {
+  .thread-row:hover {
+    --lift: var(--shadow-lift);
+  }
+}
+
+/* Pressing a letter presses it into the desk. */
+.thread-row:active {
+  --lift: var(--shadow-press);
+  scale: 0.985;
+}
+
+/* The open letter (PC) is pulled out of the pile toward the reader. */
 .thread-row[aria-current='true'] {
-  background: var(--paper-deep);
+  --lift: var(--shadow-lift);
+  translate: -8px 0;
 }
 
 .thread-row:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: 3px;
+}
+
+/* Hand-placed, not machine-stacked: each letter sits a hair crooked.
+   Only on sharp screens, where turned text still renders crisply. */
+@media (min-resolution: 2dppx) {
+  .threads > li:nth-child(4n + 1) .thread-row {
+    rotate: -0.3deg;
+  }
+  .threads > li:nth-child(4n + 2) .thread-row {
+    rotate: 0.25deg;
+  }
+  .threads > li:nth-child(4n + 3) .thread-row {
+    rotate: -0.12deg;
+  }
+  .threads > li:nth-child(4n + 4) .thread-row {
+    rotate: 0.35deg;
+  }
 }
 
 .thread-main {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
   flex: 1;
 }
@@ -706,79 +1071,104 @@ body::after {
 .thread-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
 }
 
 .sender {
   min-width: 0;
-  font-family: var(--serif);
-  font-weight: 500;
-  font-size: 18px;
+  font-weight: 800;
+  font-size: 17px;
   line-height: 1.25;
 }
 
-/* How many messages in the conversation, as a small tag. */
-.msg-count {
-  flex: none;
-  padding: 0 6px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-family: var(--mono);
-  font-size: 11px;
-  line-height: 16px;
-  color: var(--muted);
-}
-
-.star-mark {
-  flex: none;
-  color: var(--accent);
-}
-
 .subject {
+  font-weight: 600;
   font-size: 15px;
 }
 
 .snippet {
-  font-size: 14px;
-  color: var(--muted);
+  font-size: 13.5px;
+  color: var(--ink-faded);
 }
 
-.thread-row[data-unread] .sender {
+.row-date {
+  flex: none;
+  margin-inline-start: auto;
+  font-family: var(--mono);
+  font-size: 12.5px;
   font-weight: 700;
+  white-space: nowrap;
+  color: var(--ink-red);
 }
 
-.thread-row[data-unread] .subject {
+/* New mail is marked with a small red seal by the date. */
+.thread-row[data-unread] .row-date::before {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-inline-end: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #f0a08a 0 12%, #c0462f 42%, #8a2a19 100%);
+  box-shadow: 0 1px 1px rgba(60, 20, 10, 0.35);
+}
+
+.thread-row:not([data-unread]) .sender {
   font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.thread-row:not([data-unread]) .subject {
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.thread-row:not([data-unread]) .row-date {
+  font-weight: 400;
+  color: var(--ink-faded);
+}
+
+/* How many letters are in this conversation. */
+.msg-count {
+  flex: none;
+  min-width: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--ink-rule);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  color: var(--ink-muted);
 }
 
 /* ---------- Swipe actions ---------- */
 
 .swipe {
   position: relative;
-  overflow: hidden;
 }
 
-/* Swipes are physical (left = file it), so lay their stamps out left-to-right. */
+/* Swipes are physical (left = file it), so lay their stamps out left-to-right.
+   The letter slides off and the rubber stamp lands on the desk underneath. */
 .swipe-bg {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  padding: 0 20px;
   direction: ltr;
+  pointer-events: none;
 }
 
 .swipe-bg--read {
-  background: var(--ink);
-  color: var(--on-ink);
   justify-content: flex-start;
+  color: var(--text);
 }
 
 .swipe-bg--archive {
-  background: var(--airmail);
-  color: var(--on-airmail);
   justify-content: flex-end;
+  color: var(--airmail);
 }
 
 .swipe-fg {
@@ -788,67 +1178,59 @@ body::after {
 /* ---------- Reader ---------- */
 
 .reader {
-  background: var(--paper);
-  /* Nothing in a letter may push the page sideways; that made the sides uneven. */
-  overflow-x: hidden;
+  position: relative;
 }
 
 .thread {
   max-width: 760px;
   margin: 0 auto;
-  padding: 0 18px 40px;
-  padding-bottom: max(40px, env(safe-area-inset-bottom));
+  padding: 0 16px 48px;
+  padding-bottom: max(48px, env(safe-area-inset-bottom));
 }
 
 .reader-bar {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 5;
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin: 0 -10px;
+  gap: 6px;
+  margin: 0 -8px;
   padding: 10px 0;
   padding-top: max(10px, env(safe-area-inset-top));
-  background: var(--paper);
+  background: var(--desk);
 }
 
 .spacer {
   flex: 1;
 }
 
-.icon-btn {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  color: var(--ink);
-}
-
-.icon-btn:hover {
-  background: var(--paper-deep);
-}
-
+/* Starred: the star turns gold. */
 .icon-btn[aria-pressed='true'] {
-  color: var(--accent);
+  color: #d9a92a;
 }
 
+/* "File it": an inked rubber-stamp button. */
 .pill-btn {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 40px;
   padding: 0 14px;
-  border: 1.5px solid var(--ink);
-  border-radius: 999px;
-  font-weight: 500;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  font-weight: 800;
   font-size: 14px;
+  rotate: -1.5deg;
+  transition: scale 0.1s;
 }
 
 .pill-btn:hover {
-  background: var(--ink);
-  color: var(--on-ink);
+  background: var(--desk-raised);
+}
+
+.pill-btn:active {
+  scale: 0.94;
 }
 
 /* Arrows point the way you read: "back" points right in Hebrew. */
@@ -863,52 +1245,53 @@ body::after {
 }
 
 .thread-subject {
-  margin: 6px 4px 18px;
-  font-family: var(--serif);
+  margin: 8px 4px 22px;
   font-weight: 900;
-  font-size: 1.95rem;
+  font-size: 1.9rem;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
-.message + .message {
-  margin-top: 14px;
+.message {
+  position: relative;
 }
 
-/* Envelope: who it's from, with a stamp and postmark. */
+.message + .message {
+  margin-top: 18px;
+}
+
+/* The opened envelope: who it's from and when, with the stamp and postmark. */
 .envelope {
   position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
-  min-height: 150px;
-  padding-block: 14px;
-  padding-inline: 16px 150px;
+  min-height: 158px;
+  padding-block: 14px 16px;
+  padding-inline: 16px 146px;
   text-align: start;
-  background: url('/paper.svg') 0 0 / 420px, var(--paper-card);
-  border: 9px solid transparent;
+  border: 10px solid transparent;
   border-image: repeating-linear-gradient(
       -45deg,
-      var(--accent) 0 10px,
-      var(--paper-card) 10px 15px,
-      var(--airmail) 15px 25px,
-      var(--paper-card) 25px 30px
+      var(--ink-red) 0 11px,
+      var(--sheet) 11px 16px,
+      var(--ink-blue) 16px 27px,
+      var(--sheet) 27px 32px
     )
-    9;
-  box-shadow: 0 10px 22px rgba(31, 42, 58, 0.12);
+    10;
+  box-shadow: var(--edge-fresh), var(--shadow-lift);
 }
 
 .envelope-label {
   font-family: var(--mono);
   font-size: 11px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--muted);
+  letter-spacing: 0.04em;
+  color: var(--ink-faded);
 }
 
 .envelope-name {
   display: block;
-  font-family: var(--serif);
-  font-weight: 700;
+  font-weight: 800;
   font-size: 21px;
   line-height: 1.25;
 }
@@ -917,57 +1300,166 @@ body::after {
   display: block;
   font-family: var(--mono);
   font-size: 13px;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
-/* Opened flap above the envelope, showing its security-tinted lining. */
-.flap {
+.envelope-to {
+  margin-top: 6px;
+}
+
+/* Written along the bottom of the envelope, below the stamp, so it gets the full width. */
+.envelope-date {
   display: block;
-  height: 56px;
-  margin: 0 0 -1px;
-  background-color: var(--paper-deep);
-  background-image: repeating-linear-gradient(45deg, rgba(36, 64, 122, 0.16) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(-45deg, rgba(36, 64, 122, 0.16) 0 1px, transparent 1px 5px);
-  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+  margin-top: 14px;
+  /* Runs under the stamp, but stops short of the corner where a star sticker goes. */
+  margin-inline-end: -80px;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink-muted);
 }
 
-/* Stamp in the corner, cancelled by the post office. */
+/* Stamp in the corner; the postmark's bars run over it and its dated ring
+   sits beside it, on the paper, where the date stays readable. */
 .envelope-stamp {
   position: absolute;
-  top: 10px;
+  top: 12px;
   inset-inline-end: 12px;
-  width: 130px;
-  height: 110px;
+  width: 120px;
+  height: 100px;
   pointer-events: none;
 }
 
-.envelope-stamp .sender-stamp {
+.envelope-stamp .stamp {
   position: absolute;
   top: 0;
   inset-inline-end: 0;
+  rotate: 2deg;
 }
 
 .envelope-stamp .duplex {
   position: absolute;
-  top: 36px;
-  inset-inline-end: 26px;
+  top: 12px;
+  inset-inline-end: 2px;
 }
 
-/* Folded older message. */
+/* Starred: a gold star sticker pressed onto the envelope. */
+.envelope-star {
+  position: absolute;
+  bottom: 10px;
+  inset-inline-end: 16px;
+  width: 30px;
+  height: 30px;
+  rotate: -12deg;
+  animation: sticker-on 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+
+@keyframes sticker-on {
+  from {
+    scale: 1.8;
+    opacity: 0;
+    rotate: -40deg;
+  }
+}
+
+/* The flap, folded open to show the envelope's security-tinted lining.
+   It opens when the letter does: first the paper back, then the lining. */
+.flap {
+  position: relative;
+  z-index: 2;
+  display: block;
+  height: 58px;
+  margin: 0 0 -1px;
+  background-color: var(--sheet-lining);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(36, 64, 122, 0.18) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgba(36, 64, 122, 0.18) 0 1px, transparent 1px 5px);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+  transform-origin: 50% 100%;
+  animation: flap-open 0.6s cubic-bezier(0.45, 0.05, 0.25, 1) 0.1s both;
+}
+
+@keyframes flap-open {
+  0% {
+    transform: perspective(900px) rotateX(180deg);
+    background-color: var(--sheet);
+    background-image: none;
+  }
+  49% {
+    background-color: var(--sheet);
+    background-image: none;
+  }
+  51% {
+    background-color: var(--sheet-lining);
+    background-image:
+      repeating-linear-gradient(45deg, rgba(36, 64, 122, 0.18) 0 1px, transparent 1px 5px),
+      repeating-linear-gradient(-45deg, rgba(36, 64, 122, 0.18) 0 1px, transparent 1px 5px);
+  }
+  100% {
+    transform: perspective(900px) rotateX(0deg);
+  }
+}
+
+/* The letter, slid out of the envelope; its top stays tucked in the pocket. */
+.letter {
+  position: relative;
+  z-index: 0;
+  margin: -18px 12px 0;
+  padding: 24px 8px 12px;
+  background-color: var(--sheet-letter);
+  box-shadow:
+    inset 0 0 0 1px rgba(90, 65, 30, 0.06),
+    inset 0 0 42px rgba(140, 100, 40, 0.13),
+    var(--shadow-rest);
+  animation: letter-out 0.55s cubic-bezier(0.2, 0.8, 0.25, 1) 0.35s both;
+}
+
+@media (min-resolution: 2dppx) {
+  .letter {
+    rotate: -0.4deg;
+  }
+}
+
+@keyframes letter-out {
+  from {
+    translate: 0 -64px;
+  }
+}
+
+/* The email is printed onto the letter: multiplying makes its white the
+   letter's own paper, texture and all. */
+.email-body {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  border: 0;
+  background: transparent;
+  color-scheme: light;
+  mix-blend-mode: multiply;
+}
+
+/* An older message in the conversation: a letter folded shut, crease and all. */
 .folded {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 14px;
-  border: 1px dashed var(--perf);
-  border-radius: 6px;
-  color: var(--muted);
+  padding: 12px 14px;
+  border-radius: 2px;
   text-align: start;
+  color: var(--ink-muted);
+  background-color: var(--sheet-aged);
+  background-image:
+    linear-gradient(to bottom, transparent 46%, rgba(90, 65, 30, 0.12) 50%, rgba(255, 255, 255, 0.4) 52%, transparent 57%),
+    url('/paper.svg');
+  background-size:
+    100% 100%,
+    360px;
+  background-blend-mode: normal, multiply;
+  box-shadow: var(--edge-aged), var(--shadow-rest);
 }
 
-.folded:hover {
-  background: var(--paper-card);
+.folded:active {
+  scale: 0.99;
 }
 
 .folded-who {
@@ -982,43 +1474,20 @@ body::after {
   font-size: 14px;
 }
 
-/* The letter itself. */
-.letter {
-  position: relative;
-  margin: -14px 10px 0;
-  padding: 6px;
-  background: url('/paper.svg') 0 0 / 420px, var(--letter);
-  /* Edges darkened with age, plus the shadow it casts on the envelope. */
-  box-shadow:
-    inset 0 0 36px rgba(122, 88, 38, 0.16),
-    0 -6px 18px rgba(31, 42, 58, 0.12);
-  transform: rotate(-0.6deg);
-}
-
-/* Transparent, so the letter's paper shows through emails without their own background. */
-.email-body {
-  display: block;
-  width: 100%;
-  min-height: 80px;
-  border: 0;
-  background: transparent;
-  color-scheme: light;
-}
-
 .reader-empty {
   display: grid;
   place-content: center;
   justify-items: center;
   gap: 6px;
   height: 100%;
-  color: var(--muted);
+  color: var(--text-muted);
   text-align: center;
 }
 
 .reader-empty img {
-  opacity: 0.55;
+  opacity: 0.6;
   margin-bottom: 8px;
-  transform: rotate(-6deg);
+  rotate: -6deg;
 }
 
 .reader-empty p {
@@ -1026,18 +1495,18 @@ body::after {
 }
 
 .reader-empty .big {
-  font-family: var(--serif);
   font-size: 1.3rem;
-  color: var(--ink);
+  color: var(--text);
 }
 
 .hint {
   margin-top: 8px !important;
 }
 
-/* ---------- Sign-in & states ---------- */
+/* ---------- Sign-in ---------- */
 
 .login {
+  position: relative;
   display: grid;
   place-content: center;
   justify-items: center;
@@ -1047,15 +1516,29 @@ body::after {
   text-align: center;
 }
 
+.login > .airmail-band {
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 6px;
+}
+
 .login-stamp {
+  --tile: 8px;
+  --hole: 2.5px;
+  --margin: 8px;
   width: 104px;
   height: 120px;
   margin-bottom: 14px;
-  transform: rotate(-4deg);
+  rotate: -4deg;
+}
+
+.login-stamp .stamp-face {
+  background: var(--sheet-letter);
+  box-shadow: none;
 }
 
 .login h1 {
-  font-family: var(--serif);
   font-weight: 900;
   font-size: 3rem;
   line-height: 1;
@@ -1069,8 +1552,7 @@ body::after {
   font-family: var(--mono);
   font-size: 13px;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .google-btn {
@@ -1080,17 +1562,23 @@ body::after {
   margin-top: 28px;
   padding: 14px 24px;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--on-ink);
-  font-weight: 500;
+  background: var(--text);
+  color: var(--desk);
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+  transition: scale 0.12s;
+}
+
+.google-btn:active {
+  scale: 0.97;
 }
 
 .google-btn svg {
-  background: #ffffff;
-  border-radius: 50%;
-  padding: 2px;
   width: 22px;
   height: 22px;
+  padding: 2px;
+  border-radius: 50%;
+  background: #ffffff;
 }
 
 .google-btn:disabled {
@@ -1101,151 +1589,6 @@ body::after {
 .fineprint {
   margin-top: 18px !important;
   font-size: 0.8rem;
-}
-
-.error {
-  color: var(--accent);
-  max-width: 360px;
-}
-
-.banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 12px 16px 0;
-  padding: 10px 14px;
-  border: 1px dashed var(--accent);
-  border-radius: 6px;
-  background: var(--paper-card);
-  font-size: 0.87rem;
-}
-
-.banner span {
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-.banner button {
-  font-weight: 600;
-  color: var(--accent);
-}
-
-[data-spinning] svg {
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-.star-mark svg {
-  width: 14px;
-  height: 14px;
-}
-
-/* Keep each row's lines lined up on the right, even when a subject is in English. */
-[dir='rtl'] .subject,
-[dir='rtl'] .snippet,
-[dir='rtl'] .envelope-name,
-[dir='rtl'] .thread-subject {
-  text-align: right;
-}
-
-/* Airmail stripe along the top edge of the inbox and sign-in screens. */
-.list-header > .airmail-band,
-.login > .airmail-band {
-  position: absolute;
-  top: 0;
-  inset-inline: 0;
-  height: 8px;
-}
-
-.login {
-  position: relative;
-}
-
-/* On the night envelope the stains read as dirt, so it stays plain there. */
-@media (prefers-color-scheme: dark) {
-  .envelope {
-    background: var(--paper-card);
-  }
-}
-
-/* The sign-in screen and the loader sit on a sheet of old paper. */
-.login,
-.loader {
-  background: url('/paper.svg') 0 0 / 420px, var(--paper);
-}
-
-.list-header > .airmail-band {
-  height: 4px;
-}
-
-.row-date {
-  flex: none;
-  margin-inline-start: auto;
-  font-family: var(--mono);
-  font-size: 13px;
-}
-
-/* ---------- Read vs unread ----------
-   Unread: lit up, with a red bar on the reading edge, bold text and a dot.
-   Read: everything steps back, so the eye skips it. */
-
-.thread-row {
-  position: relative;
-  align-items: center;
-}
-
-.thread-row[data-unread] {
-  background: var(--paper-card);
-  box-shadow: inset -4px 0 0 var(--accent);
-}
-
-.thread-row[data-unread] .sender {
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.thread-row[data-unread] .subject {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.thread-row[data-unread] .row-date {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.thread-row[data-unread] .row-date::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-inline-end: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  vertical-align: 1px;
-}
-
-.thread-row:not([data-unread]) .sender {
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.thread-row:not([data-unread]) .subject {
-  color: var(--muted);
-}
-
-.thread-row:not([data-unread]) .snippet,
-.thread-row:not([data-unread]) .row-date {
-  color: var(--ink-soft);
-}
-
-/* Hovered rows change color, so their stamp holes follow. */
-.thread-row:not([data-unread]):hover .mini-stamp {
-  --hole: var(--paper-card);
 }
 
 /* ---------- First-open loader ---------- */
@@ -1260,51 +1603,35 @@ body::after {
 
 .loader-envelope {
   overflow: visible;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
 }
 
-.env-flap {
-  fill: var(--paper-deep);
-  stroke: var(--ink);
-  stroke-width: 2.5;
-  stroke-linejoin: round;
-}
-
+.env-flap,
 .env-back {
-  fill: var(--paper-deep);
-  stroke: var(--ink);
-  stroke-width: 2.5;
+  fill: var(--sheet-lining);
 }
 
 .env-front {
-  fill: var(--paper-card);
-  stroke: var(--ink);
-  stroke-width: 2.5;
+  fill: var(--sheet);
+  stroke: rgba(80, 60, 30, 0.22);
+  stroke-width: 1.2;
   stroke-linejoin: round;
 }
 
 .letter-sheet {
-  fill: var(--letter);
-  stroke: var(--ink);
-  stroke-width: 2;
+  fill: var(--sheet-letter);
+  stroke: rgba(80, 60, 30, 0.2);
+  stroke-width: 1;
 }
 
 .letter-stamp {
-  fill: var(--accent);
+  fill: var(--ink-red);
 }
 
 .letter-lines {
-  stroke: var(--line);
-  stroke-width: 3;
+  stroke: rgba(31, 42, 58, 0.2);
+  stroke-width: 2.6;
   stroke-linecap: round;
-}
-
-@media (prefers-color-scheme: dark) {
-  .letter-sheet {
-    fill: #ede6d6;
-  }
-  .letter-lines {
-    stroke: #c9bfa9;
-  }
 }
 
 /* The letter rises out of the envelope, pauses, and slips back in. */
@@ -1328,10 +1655,9 @@ body::after {
 }
 
 .loader-label {
-  font-family: var(--serif);
   font-weight: 600;
   font-size: 1.1rem;
-  color: var(--muted);
+  color: var(--text-muted);
 }
 
 .loader-track {
@@ -1339,7 +1665,7 @@ body::after {
   height: 6px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--paper-deep);
+  background: var(--desk-raised);
 }
 
 .loader-track .airmail-band {
@@ -1349,10 +1675,54 @@ body::after {
   animation: airmail-run 0.9s linear infinite;
 }
 
+/* ---------- Messages and states ---------- */
+
+.error {
+  max-width: 360px;
+  color: var(--accent);
+}
+
+/* A problem: a paper note with a red margin. */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 12px 0;
+  padding: 10px 14px;
+  border-inline-start: 3px solid var(--ink-red);
+  border-radius: 2px;
+  font-size: 0.87rem;
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.banner span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.banner button {
+  font-weight: 700;
+  color: var(--ink-red);
+}
+
+[data-spinning] svg {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .loader-letter,
   .loader-track .airmail-band,
-  .progress {
+  .progress,
+  .flap,
+  .letter,
+  .envelope-star,
+  .slot-letter[data-dropping] {
     animation: none;
   }
 }

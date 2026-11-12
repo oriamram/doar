@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { formatFullDate, formatListDate as formatShortDate } from '../lib/format'
+import { formatFullDate, formatLetterDate, formatListDate as formatShortDate } from '../lib/format'
 import { getThreadMessages } from '../lib/gmail'
 import type { Message, Thread } from '../types'
 import { EmailBody } from './EmailBody'
 import { ArchiveIcon, BackIcon, StarIcon } from './icons'
-import { DuplexCancel, SenderStamp } from './Postal'
+import { DuplexCancel, GoldStar, SenderStamp } from './Postal'
 
 // Opened conversations stay cached while the app is open, so going back and forth is instant.
 const messageCache = new Map<string, Message[]>()
@@ -74,8 +74,9 @@ export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
       {error && <p className="error">לא הצלחנו לפתוח את המכתב. {error}</p>}
       {!messages && !error && <p className="muted">פותחים את המעטפה…</p>}
 
-      {messages?.map((message) => {
+      {messages?.map((message, index) => {
         const open = expanded.has(message.id) || messages.length === 1
+        const latest = index === messages.length - 1
         if (!open) {
           return (
             <section key={message.id} className="message">
@@ -104,15 +105,13 @@ export function ThreadView({ thread, onBack, onArchive, onToggleStar }: Props) {
                 {message.from.name}
               </span>
               <span className="envelope-addr ellipsis">{message.from.email}</span>
-              {message.to && (
-                <span className="envelope-addr ellipsis" style={{ marginTop: 8 }}>
-                  אל: {message.to}
-                </span>
-              )}
+              {message.to && <span className="envelope-addr envelope-to ellipsis">אל: {message.to}</span>}
+              <span className="envelope-date">{formatLetterDate(message.date)}</span>
               <span className="envelope-stamp">
-                <SenderStamp contact={message.from} seed={message.id} />
+                <SenderStamp contact={message.from} size="lg" />
                 <DuplexCancel iso={message.date} />
               </span>
+              {latest && thread.starred && <GoldStar className="envelope-star" />}
             </button>
             <div className="letter">
               <EmailBody html={message.bodyHtml} />

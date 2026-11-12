@@ -18,7 +18,7 @@ export default defineConfig({
         dir: 'rtl',
         description: 'הג׳ימייל שלך, עד הבית',
         theme_color: '#a63a26',
-        background_color: '#f1ebdd',
+        background_color: '#d7cdbc',
         display: 'standalone',
         start_url: '/',
         icons: [

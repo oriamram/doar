@@ -1,9 +1,9 @@
 import type { CSSProperties } from 'react'
-import { formatFullDate, postmark, tilt } from '../lib/format'
+import { formatFullDate, postmark } from '../lib/format'
 import type { Contact } from '../types'
 
 /** Stamp colors, after the old practice of printing each stamp value in its own color. */
-const STAMP_COLORS = ['#1f5f5b', '#24407a', '#6e4a2e', '#5e3f7a', '#5b6b2e', '#a86a12']
+const STAMP_COLORS = ['#1f5f5b', '#24407a', '#6e4a2e', '#5e3f7a', '#5b6b2e', '#a86a12', '#8a2f3c']
 
 function hash(text: string): number {
   let h = 0
@@ -21,55 +21,59 @@ function stampLetter(name: string): string {
   return (name.match(/[\p{L}\p{N}]/u)?.[0] ?? '·').toUpperCase()
 }
 
+type StampProps = {
+  contact: Contact
+  /** sm: in the inbox list. lg: on an opened envelope. */
+  size?: 'sm' | 'lg'
+  /** Read mail: the stamp has done its job and fades a little. */
+  used?: boolean
+}
+
 /**
- * The sender in the inbox list: a small upright stamp in their color with their
- * initial. Once read, it's cancelled with an X, like a used stamp.
+ * The sender's postage stamp: their color and initial, printed on stamp paper
+ * with real perforations (the holes are cut out, so whatever it's stuck on shows through).
  */
-export function SenderAvatar({ contact, read }: { contact: Contact; read?: boolean }) {
+export function SenderStamp({ contact, size = 'sm', used }: StampProps) {
   return (
     <span
-      className="mini-stamp"
-      data-read={read || undefined}
+      className="stamp"
+      data-size={size}
+      data-used={used || undefined}
       style={{ '--stamp': stampColor(contact) } as CSSProperties}
       aria-hidden="true"
     >
-      <span className="mini-face">{stampLetter(contact.name)}</span>
-      {read && (
-        <svg className="mini-cancel" viewBox="0 0 40 46" preserveAspectRatio="none">
-          <path d="M7 7L33 39M33 7L7 39" />
-        </svg>
-      )}
-    </span>
-  )
-}
-
-/** The sender's postage stamp on an opened envelope: their color and initial, perforated. */
-export function SenderStamp({ contact, seed }: { contact: Contact; seed: string }) {
-  const style = { '--stamp': stampColor(contact), transform: `rotate(${tilt(seed, 3)}deg)` } as CSSProperties
-  return (
-    <span className="sender-stamp" style={style} aria-hidden="true">
-      <span className="stamp-face">
-        <span className="stamp-letter">{stampLetter(contact.name)}</span>
-        <span className="stamp-word">דואר</span>
+      <span className="stamp-paper">
+        <span className="stamp-face">
+          <span className="stamp-letter">{stampLetter(contact.name)}</span>
+        </span>
       </span>
     </span>
   )
 }
 
-/** Duplex cancel: a dated ring beside heavy bars, as stamped on a letter at the post office. */
+/** A gold foil star sticker, for starred mail. */
+export function GoldStar({ className = '' }: { className?: string }) {
+  return <span className={`gold-star ${className}`} aria-hidden="true" />
+}
+
+/**
+ * Duplex cancel, as struck at the post office: heavy bars over the stamp and a
+ * dated ring beside it, on the envelope paper where the date stays readable.
+ */
 export function DuplexCancel({ iso }: { iso: string }) {
   const { top, bottom } = postmark(iso)
   return (
     <span className="duplex" role="img" aria-label={formatFullDate(iso)} dir="ltr">
-      <span className="duplex-ring" aria-hidden="true">
-        <span className="pm-small">DOAR</span>
-        <span className="pm-top">{top}</span>
-        <span className="pm-small">{bottom}</span>
-      </span>
       <span className="duplex-bars" aria-hidden="true">
         <span />
         <span />
         <span />
+        <span />
+      </span>
+      <span className="duplex-ring" aria-hidden="true">
+        <span className="pm-small">DOAR</span>
+        <span className="pm-top">{top}</span>
+        <span className="pm-small">{bottom}</span>
       </span>
     </span>
   )
