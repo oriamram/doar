@@ -13,14 +13,15 @@ import {
 import { isEmail, parseAddressList, shortName, uniqueContacts } from '../lib/addresses'
 import { buildRaw, filesToAttachments, isBlank, sanitizeForEditor } from '../lib/compose'
 import { rememberContacts, suggestContacts } from '../lib/contacts'
-import { formatBytes } from '../lib/format'
+import { formatBytes, formatWhen } from '../lib/format'
 import { saveDraft } from '../lib/gmail'
 import { useBackLayer } from '../lib/layers'
 import { mailbox, useMailbox } from '../lib/mailbox'
 import { stampColor, stampLetter } from '../lib/stamps'
 import { toast } from '../lib/toast'
 import type { ComposeAttachment, ComposeDraft, Contact } from '../types'
-import { ClipIcon, CloseIcon, ListIcon, SendIcon, TrashIcon } from './icons'
+import { ClipIcon, ClockIcon, CloseIcon, ListIcon, SendIcon, TrashIcon } from './icons'
+import { ScheduleSheet } from './Sheets'
 
 const TITLES: Record<ComposeDraft['mode'], string> = {
   new: 'מכתב חדש',
@@ -176,7 +177,10 @@ function Recipients({ no, label, value, onChange, autoFocus, trailing }: Recipie
 
 /** Writing an email, on a telegram form. It saves itself to Gmail's Drafts as you type. */
 export function Compose({ initial }: { initial: ComposeDraft }) {
-  const { me } = useMailbox()
+  const { me, scheduled } = useMailbox()
+  // This letter already waits for a time (it was opened from "scheduled").
+  const waiting = scheduled.find((item) => item.draftId === initial.draftId && item.status !== 'failed')
+  const [scheduling, setScheduling] = useState(false)
   const [to, setTo] = useState(initial.to)
   const [cc, setCc] = useState(initial.cc)
   const [bcc, setBcc] = useState(initial.bcc)
@@ -275,6 +279,7 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
     const { draftId } = saver.current
     mailbox.closeCompose(initial.threadId)
     if (!saved) toast('לא הצלחנו לשמור את הטיוטה. בדקו את החיבור.', { tone: 'error' })
+    else if (waiting) toast(`המכתב נשמר, ויישלח ${formatWhen(waiting.sendAt)}`)
     else if (draftId) toast('המכתב נשמר בטיוטות')
   }
   useBackLayer(true, () => void close())
@@ -289,16 +294,19 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
     void mailbox.discardDraft(state.draftId, initial.threadId)
   }
 
-  const send = async () => {
-    if (busy) return
-    // An address still being typed becomes a chip when its box loses focus.
+  /** Is there someone to send to? (An address still being typed counts once its box loses focus.) */
+  const hasRecipient = async (): Promise<boolean> => {
     ;(document.activeElement as HTMLElement | null)?.blur()
     await new Promise((resolve) => setTimeout(resolve, 0))
     const draft = latest.current()
-    if (draft.to.length + draft.cc.length + draft.bcc.length === 0) {
-      setProblem('למי לשלוח? הוסיפו לפחות נמען אחד.')
-      return
-    }
+    if (draft.to.length + draft.cc.length + draft.bcc.length > 0) return true
+    setProblem('למי לשלוח? הוסיפו לפחות נמען אחד.')
+    return false
+  }
+
+  /** Save the letter as it is now, ready to leave. Null (with the reason on screen) if it can't. */
+  const ready = async (): Promise<(ComposeDraft & { draftId: string }) | null> => {
+    if (busy || !(await hasRecipient())) return null
     setBusy(true)
     saver.current.dirty = true
     const saved = await save()
@@ -306,10 +314,25 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
     if (!saved || !draftId) {
       setBusy(false)
       setProblem('לא הצלחנו לשמור את המכתב, ולכן הוא לא נשלח. בדקו את החיבור ונסו שוב.')
-      return
+      return null
     }
+    const draft = latest.current(draftId)
     rememberContacts([...draft.to, ...draft.cc, ...draft.bcc], 3)
-    mailbox.send({ ...latest.current(draftId), draftId })
+    return { ...draft, draftId }
+  }
+
+  const send = async () => {
+    const draft = await ready()
+    if (draft) mailbox.send(draft)
+  }
+
+  const sendLater = async (when: Date) => {
+    const draft = await ready()
+    if (draft) void mailbox.schedule(draft, when)
+  }
+
+  const chooseTime = async () => {
+    if (!busy && (await hasRecipient())) setScheduling(true)
   }
 
   const addFiles = (files: Iterable<File>) => {
@@ -341,6 +364,8 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
   }
 
   const onKeyDown = (e: KeyboardEvent) => {
+    // The time sheet is open on top; its keys are its own.
+    if (scheduling) return
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
       void send()
@@ -519,6 +544,19 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
           </p>
         )}
 
+        {waiting && (
+          <p className="scheduled-note">
+            <ClockIcon />
+            <span>יישלח {formatWhen(waiting.sendAt)}</span>
+            <button type="button" onClick={() => setScheduling(true)}>
+              שינוי
+            </button>
+            <button type="button" onClick={() => void mailbox.unschedule(waiting.id)}>
+              ביטול התזמון
+            </button>
+          </p>
+        )}
+
         <footer className="telegram-foot">
           <div className="format-bar" role="toolbar" aria-label="עיצוב">
             {/* Keep the cursor in the letter while pressing these. */}
@@ -539,7 +577,17 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
             </button>
           </div>
           <span className="word-count">מילים: {words}</span>
-          <button type="submit" className="send-stamp" disabled={busy} title="שליחה (Ctrl+Enter)">
+          <button
+            type="button"
+            className="later-btn"
+            onClick={() => void chooseTime()}
+            disabled={busy}
+            aria-label="שליחה מאוחר יותר"
+            title="שליחה מאוחר יותר"
+          >
+            <ClockIcon />
+          </button>
+          <button type="submit" className="send-stamp" disabled={busy} title={waiting ? 'שליחה עכשיו (Ctrl+Enter)' : 'שליחה (Ctrl+Enter)'}>
             <span className="stamp" data-size="lg" aria-hidden="true">
               <span className="stamp-paper">
                 <span className="stamp-face">
@@ -563,6 +611,16 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
         }}
       />
       {dragging && <div className="drop-note">שחררו כאן כדי לצרף</div>}
+      {scheduling && (
+        <ScheduleSheet
+          current={waiting?.sendAt}
+          onPick={(when) => {
+            setScheduling(false)
+            void sendLater(when)
+          }}
+          onClose={() => setScheduling(false)}
+        />
+      )}
     </div>
   )
 }

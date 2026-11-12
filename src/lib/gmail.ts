@@ -1,4 +1,4 @@
-import type { Attachment, Category, Label, Message, Thread } from '../types'
+import type { Attachment, Category, Contact, Label, Message, Thread } from '../types'
 import { decodeWords, parseAddressList, parseContact } from './addresses'
 import { clearGoogleAccessToken, getGoogleAccessToken } from './googleToken'
 import { base64UrlToBytes } from './mime'
@@ -137,6 +137,14 @@ export async function listThreads(query: ListQuery, pageToken?: string, maxResul
 }
 
 /** Unread and total conversation counts for a label (say, INBOX or DRAFT). */
+/** One conversation by its id (say, from a notification), whether or not a list has loaded it. */
+export async function getThread(id: string): Promise<Thread> {
+  const raw = await gmail<GmailThread>(`/threads/${id}?format=metadata&${LIST_HEADERS}`)
+  const thread = toThread(raw, raw.messages.at(-1)?.snippet ?? '')
+  threadCache.set(thread.id, thread)
+  return thread
+}
+
 export async function labelStats(labelId: string): Promise<{ unread: number; total: number }> {
   const label = await gmail<{ threadsUnread?: number; threadsTotal?: number }>(`/labels/${labelId}`)
   return { unread: label.threadsUnread ?? 0, total: label.threadsTotal ?? 0 }
@@ -271,6 +279,13 @@ export async function saveDraft(raw: string, threadId?: string, draftId?: string
     if (draftId && error instanceof GmailError && error.status === 404) return saveDraft(raw, threadId)
     throw error
   }
+}
+
+/** Who a draft is for and what it's about, for the list of letters waiting to be sent. */
+export async function draftInfo(draftId: string): Promise<{ to: Contact[]; subject: string; snippet: string; message: Message }> {
+  const draft = await gmail<GmailDraft>(`/drafts/${draftId}?format=full`)
+  const message = toMessage(draft.message)
+  return { to: [...message.to, ...message.cc, ...message.bcc], subject: message.subject, snippet: draft.message.snippet, message }
 }
 
 export const deleteDraft = (draftId: string) => gmail(`/drafts/${draftId}`, { method: 'DELETE' })

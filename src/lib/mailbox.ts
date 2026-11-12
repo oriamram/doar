@@ -4,10 +4,13 @@ import { shortName } from './addresses'
 import { signOut } from './auth'
 import { draftFromMessage, replyDraft } from './compose'
 import { harvestRecipients, rememberContacts } from './contacts'
-import { countLetters } from './format'
+import { formatWhen } from './format'
 import * as api from './gmail'
 import { peekGoogleAccessToken, ReauthRequiredError } from './googleToken'
+import { onLaunch, takeShared, type LaunchIntent } from './launch'
 import { tapHaptic } from './platform'
+import * as postman from './postman'
+import { forgetPush, syncPush } from './push'
 import { getSettings } from './settings'
 import { playSound } from './sound'
 import { dismissToast, toast } from './toast'
@@ -32,6 +35,9 @@ import {
 
 /** Mail of one kind (updates, promotions…) tied together in the inbox. */
 export type Bundle = { category: BundleCategory; threads: Thread[]; more: boolean }
+
+/** A letter waiting for its time, with who it's for and what it's about once Gmail has told us. */
+export type Scheduled = postman.ScheduledSend & { to?: Contact[]; subject?: string }
 
 export type MailboxState = {
   me: Contact
@@ -61,6 +67,8 @@ export type MailboxState = {
   composeKey: number
   /** A letter on its way out (drives the send animation). */
   flight: { to: string } | null
+  /** Letters waiting to be sent later, the soonest first. */
+  scheduled: Scheduled[]
   online: boolean
 }
 
@@ -89,6 +97,7 @@ function blank(me: Contact): MailboxState {
     compose: null,
     composeKey: 0,
     flight: null,
+    scheduled: [],
     online: navigator.onLine,
   }
 }
@@ -205,6 +214,14 @@ async function load({ quiet = false }: { quiet?: boolean } = {}) {
   const bundlesOn = getSettings().bundles
   const inbox = isFolder(view, 'inbox')
   if (!quiet) set({ loading: true })
+  // Letters waiting to be sent are kept by Doar's server, not listed by Gmail.
+  if (isFolder(view, 'scheduled')) {
+    await refreshServer()
+    if (seq !== loadSeq) return
+    lastLoadAt = Date.now()
+    set({ threads: [], nextPageToken: undefined, pages: 1, loading: false, error: null })
+    return
+  }
   try {
     const [page, counts, bundles] = await Promise.all([
       api.listThreads(viewQuery(view, bundlesOn)),
@@ -214,7 +231,12 @@ async function load({ quiet = false }: { quiet?: boolean } = {}) {
     if (seq !== loadSeq) return
     lastLoadAt = Date.now()
 
-    const fresh = page.threads.filter((thread) => belongsInView(view, thread, bundlesOn))
+    // A letter waiting for its time is shown under "scheduled", not among the drafts.
+    const waiting = new Set(state.scheduled.map((item) => item.threadId))
+    const fresh = page.threads.filter(
+      (thread) =>
+        belongsInView(view, thread, bundlesOn) && !(isFolder(view, 'drafts') && thread.messageCount === 0 && waiting.has(thread.id)),
+    )
     const old = state.threads
     let threads = fresh
     let nextPageToken = page.nextPageToken
@@ -247,7 +269,7 @@ async function load({ quiet = false }: { quiet?: boolean } = {}) {
     })
     remember()
     showUnreadCount()
-    if (arrived.length || moreUnread) announce(arrived)
+    if (arrived.length || moreUnread) announce()
     rememberContacts(fresh.filter((thread) => !thread.outgoing).map((thread) => thread.from))
     prefetch(threads)
   } catch (error) {
@@ -349,23 +371,17 @@ function showUnreadCount() {
   done?.catch(() => {})
 }
 
-function announce(arrived: Thread[]) {
+/** Mail arrived while the app is open. (When it's closed, the server sends a notification: see push.ts.) */
+function announce() {
   playSound('paper')
-  if (!document.hidden || !getSettings().notifications) return
-  if (!('Notification' in window) || Notification.permission !== 'granted') return
-  const unread = arrived.filter((thread) => thread.unread)
-  const one = unread.length === 1 ? unread[0]! : null
-  const title = one ? shortName(one.from) : 'דואר חדש'
-  const body = one
-    ? one.subject
-    : unread.length
-      ? unread.slice(0, 3).map((thread) => shortName(thread.from)).join(', ')
-      : `${countLetters(state.unread)} שלא נקראו`
-  const options: NotificationOptions = { body, icon: '/pwa-192x192.png', badge: '/pwa-64x64.png', tag: 'doar-new-mail', dir: 'rtl', lang: 'he' }
-  // Phones only allow notifications through the service worker; PCs accept either.
-  const worker = navigator.serviceWorker?.getRegistration() ?? Promise.resolve(undefined)
-  worker
-    .then((registration) => (registration ? registration.showNotification(title, options) : void new Notification(title, options)))
+}
+
+/** You're looking at Doar now, so the notifications about this mail have done their job. */
+function clearNotifications() {
+  navigator.serviceWorker
+    ?.getRegistration()
+    .then((registration) => registration?.getNotifications())
+    .then((shown) => shown?.forEach((notification) => notification.close()))
     .catch(() => {})
 }
 
@@ -618,6 +634,20 @@ function openThread(thread: Thread) {
   if (thread.unread) setRead([thread.id], true)
 }
 
+/** Open a conversation by its id (from a notification), fetching it if no list has it. */
+async function openById(id: string) {
+  const [known] = lookup([id])
+  if (known) {
+    openThread(known)
+    return
+  }
+  try {
+    openThread(await api.getThread(id))
+  } catch (error) {
+    toast(errorText(error), { tone: 'error' })
+  }
+}
+
 function toggleSelect(id: string) {
   const selection = new Set(state.selection)
   if (selection.has(id)) selection.delete(id)
@@ -665,6 +695,7 @@ async function editDraft(message: Message) {
 async function discardDraft(draftId: string | undefined, threadId?: string) {
   set({ compose: null })
   if (!draftId) return
+  dropSchedule(draftId)
   try {
     await api.deleteDraft(draftId)
     toast('הטיוטה נמחקה')
@@ -691,6 +722,7 @@ function send(draft: ComposeDraft & { draftId: string }) {
     if (settled) return
     settled = true
     stopWatching()
+    dropSchedule(draft.draftId)
     api.sendDraft(draft.draftId).then(
       () => {
         if (seconds > 0) toast('המכתב נשלח')
@@ -714,6 +746,7 @@ function send(draft: ComposeDraft & { draftId: string }) {
     if (!token) return
     settled = true
     stopWatching()
+    dropSchedule(draft.draftId)
     api.sendDraftOnExit(draft.draftId, token)
     dismissToast(noteId)
     afterDraftChange(draft.threadId)
@@ -740,6 +773,169 @@ function send(draft: ComposeDraft & { draftId: string }) {
   })
 }
 
+// ---------- Sending later ----------
+
+/** What Gmail says each waiting draft holds, so the list can show who it's for. */
+const draftInfos = new Map<string, { to: Contact[]; subject: string; message: Message }>()
+
+const byTime = (items: Scheduled[]) => [...items].sort((a, b) => (a.sendAt < b.sendAt ? -1 : a.sendAt > b.sendAt ? 1 : 0))
+
+const describe = (item: postman.ScheduledSend): Scheduled => {
+  const info = draftInfos.get(item.draftId)
+  return info ? { ...item, to: info.to, subject: info.subject } : item
+}
+
+let sendTimer: ReturnType<typeof setTimeout> | undefined
+
+/** Look again right after the next waiting letter is due, so the lists show that it left. */
+function watchSends() {
+  clearTimeout(sendTimer)
+  const next = state.scheduled.find((item) => item.status === 'pending')
+  if (!next) return
+  const late = Date.now() - Date.parse(next.sendAt)
+  // Due soon: just after its time. Already due: every few seconds at first, then every minute.
+  const wait = late < 0 ? 6_000 - late : late < 180_000 ? 10_000 : 60_000
+  if (wait > 2_000_000_000) return
+  sendTimer = setTimeout(() => {
+    void refreshServer().then(() => {
+      if (!state.scheduled.some((item) => item.id === next.id && item.status === 'pending')) void load({ quiet: true })
+    })
+  }, wait)
+}
+
+/** Ask Doar's server what it holds for us: letters waiting to be sent, and this account's notification devices. */
+async function refreshServer() {
+  try {
+    const status = await postman.serverStatus()
+    set({ scheduled: byTime(status.scheduled.map(describe)) })
+    watchSends()
+    void syncPush(status)
+    // Fill in recipients and subjects from Gmail, for the letters we haven't seen yet.
+    for (const item of status.scheduled) {
+      if (draftInfos.has(item.draftId)) continue
+      api.draftInfo(item.draftId).then(
+        (info) => {
+          draftInfos.set(item.draftId, info)
+          set({ scheduled: state.scheduled.map((other) => (other.draftId === item.draftId ? describe(other) : other)) })
+        },
+        () => {},
+      )
+    }
+  } catch {
+    // The server can't be reached right now; mail itself still works.
+  }
+}
+
+function scheduleProblem(error: unknown): string {
+  const code = error instanceof postman.PostmanError ? error.code : ''
+  if (code === 'bad_time') return 'המועד שנבחר כבר עבר או רחוק מדי. בחרו מועד אחר.'
+  if (code === 'too_late') return 'מאוחר מדי: המכתב כבר נשלח.'
+  if (code === 'draft_missing') return 'הטיוטה הזאת כבר לא קיימת.'
+  if (code === 'reauth') return 'צריך להתחבר מחדש כדי לתזמן מכתבים.'
+  return 'אין קשר עם השרת של דואר כרגע. המכתב שמור בטיוטות.'
+}
+
+/** Forget a draft's schedule because the draft is being sent now or thrown away. */
+function dropSchedule(draftId: string) {
+  const waiting = state.scheduled.find((item) => item.draftId === draftId)
+  if (!waiting) return
+  set({ scheduled: state.scheduled.filter((item) => item !== waiting) })
+  postman.scheduleCancel(waiting.id).catch(() => {})
+}
+
+/** Leave a saved draft with the server, to be sent at `when` even if every device is off. */
+async function schedule(draft: ComposeDraft & { draftId: string }, when: Date) {
+  set({ compose: null })
+  try {
+    const row = await postman.scheduleCreate(draft.draftId, when)
+    const to = [...draft.to, ...draft.cc, ...draft.bcc]
+    set({
+      scheduled: byTime([...state.scheduled.filter((item) => item.draftId !== draft.draftId), { ...row, to, subject: draft.subject }]),
+    })
+    watchSends()
+    playSound('thump')
+    toast(`המכתב יישלח ${formatWhen(when)}`, { action: { label: 'ביטול', run: () => void unschedule(row.id) } })
+    afterDraftChange(draft.threadId)
+  } catch (error) {
+    toast(scheduleProblem(error), {
+      tone: 'error',
+      duration: 10_000,
+      action: { label: 'פתיחה', run: () => compose(draft) },
+    })
+  }
+}
+
+/** Move a waiting letter to another time (a letter that failed gets a fresh start). */
+async function reschedule(id: string, when: Date) {
+  const item = state.scheduled.find((other) => other.id === id)
+  if (!item) return
+  try {
+    const row = item.status === 'failed' ? await postman.scheduleCreate(item.draftId, when) : await postman.scheduleUpdate(id, when)
+    if (item.status === 'failed') postman.scheduleCancel(id).catch(() => {})
+    set({ scheduled: byTime(state.scheduled.map((other) => (other.id === id ? { ...other, ...row } : other))) })
+    watchSends()
+    toast(`המכתב יישלח ${formatWhen(when)}`)
+  } catch (error) {
+    toast(scheduleProblem(error), { tone: 'error' })
+    void refreshServer()
+  }
+}
+
+/** Take a letter off the schedule; it stays in Drafts. Resolves to false if it already left. */
+async function unschedule(id: string): Promise<boolean> {
+  const item = state.scheduled.find((other) => other.id === id)
+  if (!item) return true
+  try {
+    await postman.scheduleCancel(id)
+  } catch (error) {
+    toast(scheduleProblem(error), { tone: 'error' })
+    void refreshServer()
+    return false
+  }
+  set({ scheduled: state.scheduled.filter((other) => other.id !== id) })
+  toast(item.status === 'failed' ? 'המכתב הוסר מהרשימה. הוא שמור בטיוטות.' : 'התזמון בוטל. המכתב שמור בטיוטות.')
+  afterDraftChange(item.threadId ?? undefined)
+  return true
+}
+
+/** Open a waiting letter in the writing form (it stays scheduled unless you send it or cancel). */
+async function openScheduled(id: string) {
+  const item = state.scheduled.find((other) => other.id === id)
+  if (!item) return
+  try {
+    const info = draftInfos.get(item.draftId) ?? (await api.draftInfo(item.draftId))
+    draftInfos.set(item.draftId, info)
+    compose(draftFromMessage(info.message, item.draftId))
+  } catch {
+    toast('הטיוטה הזאת כבר לא קיימת.', { tone: 'error' })
+    void refreshServer()
+  }
+}
+
+// ---------- Opened from outside ----------
+
+/** A tapped notification, a mail link, the icon's shortcut, or a share from another app. */
+function handleLaunch(intent: LaunchIntent) {
+  const write = (draft: ComposeDraft) => {
+    if (state.compose) toast('יש מכתב פתוח. סגרו אותו כדי להתחיל חדש.')
+    else compose(draft)
+  }
+  switch (intent.kind) {
+    case 'thread':
+      void openById(intent.id)
+      break
+    case 'compose':
+      write(intent.draft)
+      break
+    case 'scheduled':
+      show({ kind: 'folder', id: 'scheduled' })
+      break
+    case 'share':
+      void takeShared().then((draft) => draft && write(draft))
+      break
+  }
+}
+
 // ---------- Running ----------
 
 let stopRunning: (() => void) | null = null
@@ -750,12 +946,23 @@ function start() {
   void load()
   void refreshLabels()
   void harvestRecipients()
+  void refreshServer()
+  clearNotifications()
+  const stopLaunch = onLaunch(handleLaunch, () => void load({ quiet: true }))
 
   const poll = setInterval(() => {
-    if (navigator.onLine && (!document.hidden || getSettings().notifications)) void load({ quiet: true })
+    if (!navigator.onLine || document.hidden) return
+    void load({ quiet: true })
+    // A waiting letter may have left in the meantime.
+    if (state.scheduled.length) void refreshServer()
   }, POLL_MS)
   const onVisible = () => {
-    if (!document.hidden && Date.now() - lastLoadAt > 30_000) void load({ quiet: true })
+    if (document.hidden) return
+    clearNotifications()
+    if (Date.now() - lastLoadAt > 30_000) {
+      void load({ quiet: true })
+      void refreshServer()
+    }
   }
   const onOnline = () => {
     set({ online: true })
@@ -766,6 +973,8 @@ function start() {
   window.addEventListener('online', onOnline)
   window.addEventListener('offline', onOffline)
   stopRunning = () => {
+    stopLaunch()
+    clearTimeout(sendTimer)
     clearInterval(poll)
     document.removeEventListener('visibilitychange', onVisible)
     window.removeEventListener('online', onOnline)
@@ -780,6 +989,10 @@ function stop() {
 
 /** Sign out, and forget the mail kept on this device. */
 function leave() {
+  const waiting = state.scheduled.filter((item) => item.status === 'pending').length
+  if (waiting && !window.confirm(`${waiting === 1 ? 'מכתב אחד מחכה' : `${waiting} מכתבים מחכים`} לשליחה מתוזמנת. אחרי התנתקות הם לא יישלחו (הם נשארים בטיוטות). להתנתק?`)) {
+    return
+  }
   try {
     localStorage.removeItem(savedKey(state.me.email))
   } catch {
@@ -787,9 +1000,11 @@ function leave() {
   }
   stop()
   viewCache.clear()
+  draftInfos.clear()
   state = blank({ name: '', email: '' })
   document.title = 'דואר'
-  void signOut()
+  // The server must stop notifying this device before the session that proves who we are is gone.
+  void forgetPush().finally(() => void signOut())
 }
 
 export const mailbox = {
@@ -826,6 +1041,10 @@ export const mailbox = {
   editDraft,
   discardDraft,
   send,
+  schedule,
+  reschedule,
+  unschedule,
+  openScheduled,
   endFlight: () => set({ flight: null }),
   signOut: leave,
 }

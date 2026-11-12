@@ -591,3 +591,62 @@
     rotate: -18deg;
   }
 }
+
+/* ---------- Sending later ---------- */
+
+/* The clock beside the Send stamp. */
+.later-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px dashed var(--ink-rule);
+  border-radius: 50%;
+  color: var(--ink-muted);
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+}
+
+.later-btn:hover,
+.later-btn:focus-visible {
+  border-color: var(--ink-blue);
+  color: var(--ink-blue);
+}
+
+.later-btn:disabled {
+  opacity: 0.5;
+}
+
+/* This letter already has a time. */
+.scheduled-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 8px 10px;
+  border-inline-start: 3px solid var(--ink-blue);
+  background: rgba(36, 64, 122, 0.07);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink-blue);
+}
+
+.scheduled-note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.scheduled-note span {
+  flex: 1 1 auto;
+}
+
+.scheduled-note button {
+  min-height: 30px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

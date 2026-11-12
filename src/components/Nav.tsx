@@ -1,14 +1,17 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { newDraft } from '../lib/compose'
+import { promptInstall, useInstall } from '../lib/install'
 import { mailbox, useMailbox } from '../lib/mailbox'
 import { FOLDER_TITLES, labelLeaf, viewKey, type FolderId, type View } from '../lib/views'
 import {
   AllMailIcon,
   ArchiveIcon,
   ChevronIcon,
+  ClockIcon,
   DraftIcon,
   HelpIcon,
   InboxIcon,
+  InstallIcon,
   KeyboardIcon,
   LogoutIcon,
   NibIcon,
@@ -37,6 +40,7 @@ const FOLDERS: Folder[] = [
   { id: 'inbox', icon: <InboxIcon /> },
   { id: 'starred', icon: <StarIcon /> },
   { id: 'drafts', icon: <DraftIcon /> },
+  { id: 'scheduled', icon: <ClockIcon /> },
   { id: 'sent', icon: <SendIcon /> },
   { id: 'archive', icon: <ArchiveIcon /> },
 ]
@@ -60,7 +64,8 @@ function savedMore(): boolean {
 
 /** Folders and labels: a sidebar on wide screens, a drawer on phones. */
 export function Nav({ open, onClose, onSettings, onShortcuts, onGuide }: Props) {
-  const { view, unread, draftCount, labels, me } = useMailbox()
+  const { view, unread, draftCount, labels, me, scheduled } = useMailbox()
+  const install = useInstall()
   const [adding, setAdding] = useState(false)
   const [labelName, setLabelName] = useState('')
   const [more, setMore] = useState(savedMore)
@@ -96,7 +101,15 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide }: Props) 
 
   const folderButton = (folder: Folder) => {
     const active = current === folder.id || (folder.id === 'inbox' && current === 'unread')
-    const count = folder.id === 'inbox' ? unread : folder.id === 'drafts' ? draftCount : 0
+    // Letters waiting for their time are drafts to Gmail, but here they have a folder of their own.
+    const count =
+      folder.id === 'inbox'
+        ? unread
+        : folder.id === 'drafts'
+          ? Math.max(0, draftCount - scheduled.length)
+          : folder.id === 'scheduled'
+            ? scheduled.length
+            : 0
     return (
       <button key={folder.id} className="nav-item" aria-current={active ? 'page' : undefined} onClick={() => go({ kind: 'folder', id: folder.id })}>
         {folder.icon}
@@ -127,7 +140,10 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide }: Props) 
         </button>
 
         <nav aria-label="תיקיות">
-          {FOLDERS.map(folderButton)}
+          {FOLDERS.map((folder) =>
+            // The scheduled folder appears only while something waits in it.
+            folder.id !== 'scheduled' || scheduled.length > 0 || current === 'scheduled' ? folderButton(folder) : null,
+          )}
           <button className="nav-item nav-more" aria-expanded={showMore} onClick={toggleMore}>
             <ChevronIcon />
             <span className="nav-name">עוד</span>
@@ -162,6 +178,18 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide }: Props) 
         </nav>
 
         <div className="account">
+          {install.available && (
+            <button
+              className="nav-item"
+              onClick={() => {
+                void promptInstall()
+                onClose()
+              }}
+            >
+              <InstallIcon />
+              <span className="nav-name">התקנת האפליקציה</span>
+            </button>
+          )}
           <button
             className="nav-item"
             onClick={() => {

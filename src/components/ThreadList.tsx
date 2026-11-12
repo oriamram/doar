@@ -23,6 +23,8 @@ import {
 } from './icons'
 import { Loader } from './Loader'
 import { MailSlot } from './MailSlot'
+import { ScheduledList } from './ScheduledList'
+import { Tips } from './Tips'
 import { SenderStamp, TwineBow } from './Postal'
 import { ThreadRow } from './ThreadRow'
 
@@ -71,6 +73,8 @@ function emptyText(view: View): string {
       return 'אין מכתבים מסומנים בכוכב.'
     case 'drafts':
       return 'אין טיוטות. מכתב שתתחילו לכתוב יישמר כאן.'
+    case 'scheduled':
+      return 'אין מכתבים שמחכים למועד. בכתיבת מכתב, השעון שליד „שליחה” קובע לו מועד.'
     case 'sent':
       return 'עוד לא שלחתם מכתבים.'
     case 'archive':
@@ -127,8 +131,9 @@ function BundleRow({ bundle }: { bundle: Bundle }) {
 }
 
 export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels }: Props) {
-  const { view, threads, bundles, loading, loadingMore, nextPageToken, error, unread, labels, open, selection, arrived, me, online } =
+  const { view, threads, bundles, loading, loadingMore, nextPageToken, error, unread, labels, open, selection, arrived, me, online, scheduled } =
     useMailbox()
+  const inScheduled = isFolder(view, 'scheduled')
   const settings = useSettings()
   const [searchText, setSearchText] = useState(view.kind === 'search' ? view.query : '')
   const [listElement, setListElement] = useState<HTMLElement | null>(null)
@@ -310,6 +315,7 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
       <MailSlot pull={pull} phase={pullPhase} />
 
       {!online && <p className="notice">אין חיבור לאינטרנט. מוצג הדואר שכבר נטען.</p>}
+      {inInbox && !searching && selection.size === 0 && <Tips />}
 
       {error && (
         <div className="banner" role="alert">
@@ -319,6 +325,7 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
       )}
 
       <motion.ul className="threads" data-stale={(loading && !!threads && pullPhase !== 'refreshing') || undefined} style={{ y: pull }}>
+        {inScheduled && <ScheduledList />}
         {items.map((item) =>
           item.kind === 'day' ? (
             <li key={`day-${item.label}`} className="day">
@@ -348,7 +355,7 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
             <Loader compact label="מביאים את המכתבים…" />
           </li>
         )}
-        {threads?.length === 0 && items.length === 0 && !loading && (
+        {threads?.length === 0 && items.length === 0 && !loading && !(inScheduled && scheduled.length > 0) && (
           <li className="empty">
             <span className="empty-stamp">{isInboxLike(view) ? 'אין דואר' : 'ריק'}</span>
             <span>{emptyText(view)}</span>

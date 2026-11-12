@@ -22,6 +22,9 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | Sending | The letter is sealed in an airmail envelope, stamped, and flies off |
 | Checking for mail (phones) | Pulling the list down reveals a brass mail slot |
 | Undo notes | A receipt torn off at the top |
+| Sending later | A clock beside the Send stamp; the form "טופס 12 · מועד המשלוח" sets the time |
+| A letter waiting for its time | A slip with a blue edge and a clock, in its own folder ("מתוזמנים") |
+| One-time suggestions (install, notifications) | A paper note with a blue edge at the top of the inbox |
 | Settings and other forms | Printed forms with a form number |
 | "New letter" | A blue airmail label |
 | Your account | A red wax seal with your initial |

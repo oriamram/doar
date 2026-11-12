@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Registered by hand in main.tsx, and only in the browser (not inside the Android app).
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo-envelope.webp', 'logo-envelope-small.webp'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo-envelope.webp', 'logo-envelope-small.webp', 'badge-96.png'],
       workbox: {
         // A new version takes over as soon as it's downloaded, instead of waiting for every
         // open tab to close (the plugin only sets these itself when it also registers the worker).
@@ -21,10 +21,11 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/privacy/],
         // Keep the textures and the font on the device too, so the app opens whole when offline.
         globPatterns: ['**/*.{js,css,html,svg,ttf}'],
-        // Opens the app when a "new mail" notification is tapped.
+        // Notifications, opening the right letter from them, and "share to Doar" (public/sw-extra.js).
         importScripts: ['sw-extra.js'],
       },
       manifest: {
+        id: '/',
         name: 'דואר',
         short_name: 'דואר',
         lang: 'he',
@@ -34,6 +35,25 @@ export default defineConfig({
         background_color: '#d7cdbc',
         display: 'standalone',
         start_url: '/',
+        // Opening Doar again (a notification, a mail link) uses the window that's already open.
+        launch_handler: { client_mode: ['focus-existing', 'auto'] },
+        // Press and hold the icon (phone) or right-click it (PC): straight to a new letter.
+        shortcuts: [
+          {
+            name: 'מכתב חדש',
+            url: '/?compose=1',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' }],
+          },
+        ],
+        // On the PC, clicking an email address on a web page can open a new letter here.
+        protocol_handlers: [{ protocol: 'mailto', url: '/?mailto=%s' }],
+        // On the phone, "Share" in other apps offers Doar; the shared thing becomes a new letter.
+        share_target: {
+          action: '/share',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: { title: 'title', text: 'text', url: 'url', files: [{ name: 'files', accept: ['*/*'] }] },
+        },
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

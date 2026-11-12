@@ -57,6 +57,43 @@ export function postmark(iso: string): { top: string; bottom: string } {
   return { top, bottom }
 }
 
+/** When a scheduled letter goes out: "היום ב־18:00", "מחר ב־08:00", "יום ראשון, 16 בנוב׳, ב־08:00". */
+export function formatWhen(when: Date | string, now = new Date()): string {
+  const date = new Date(when)
+  const time = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+  const days = Math.round((startOfDay(date) - startOfDay(now)) / 86_400_000)
+  if (days === 0) return `היום ב־${time}`
+  if (days === 1) return `מחר ב־${time}`
+  const day = date.toLocaleDateString('he-IL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+  })
+  return `${day}, ב־${time}`
+}
+
+/** Ready-made times to send a letter later, the nearest first. */
+export function schedulePresets(now = new Date()): { label: string; when: Date }[] {
+  const at = (daysAhead: number, hour: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead, hour)
+  const presets: { label: string; when: Date }[] = []
+  const soon = (when: Date) => when.getTime() - now.getTime() > 45 * 60_000
+  if (soon(at(0, 13))) presets.push({ label: 'היום בצהריים', when: at(0, 13) })
+  if (soon(at(0, 18))) presets.push({ label: 'היום בערב', when: at(0, 18) })
+  presets.push({ label: 'מחר בבוקר', when: at(1, 8) })
+  presets.push({ label: 'מחר בצהריים', when: at(1, 13) })
+  // The start of the work week (Sunday), unless that is tomorrow anyway.
+  const toSunday = (7 - now.getDay()) % 7 || 7
+  if (toSunday > 1) presets.push({ label: 'ביום ראשון בבוקר', when: at(toSunday, 8) })
+  return presets
+}
+
+/** The value a date-and-time field expects ("2026-11-13T08:00"), in this device's time. */
+export function toFieldTime(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
 
 /** The heading a date falls under in a list: today, yesterday, this week, this month, or a month's name. */

@@ -2,7 +2,7 @@ import type { Category, Thread } from '../types'
 import type { ListQuery } from './gmail'
 
 /** What the list can show: a folder, one of your labels, a bundle, or search results. */
-export type FolderId = 'inbox' | 'unread' | 'starred' | 'sent' | 'drafts' | 'archive' | 'all' | 'spam' | 'trash'
+export type FolderId = 'inbox' | 'unread' | 'starred' | 'sent' | 'drafts' | 'scheduled' | 'archive' | 'all' | 'spam' | 'trash'
 export type BundleCategory = Exclude<Category, 'primary'>
 
 export type View =
@@ -22,6 +22,7 @@ export const FOLDER_TITLES: Record<FolderId, string> = {
   starred: 'מסומנים בכוכב',
   sent: 'נשלחו',
   drafts: 'טיוטות',
+  scheduled: 'מתוזמנים',
   archive: 'מתויקים',
   all: 'כל הדואר',
   spam: 'ספאם',
@@ -86,6 +87,8 @@ export function viewQuery(view: View, bundles: boolean): ListQuery {
         case 'sent':
           return { labelIds: ['SENT'] }
         case 'drafts':
+        // The scheduled list comes from Doar's server, not from this request (see mailbox.ts).
+        case 'scheduled':
           return { labelIds: ['DRAFT'] }
         case 'archive':
           // Mail you received and filed: out of the inbox, not deleted.

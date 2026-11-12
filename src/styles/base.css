@@ -292,6 +292,8 @@ body::after {
 .suggestions,
 .ticket,
 .file-slip,
+.scheduled-row,
+.tip,
 .flight-envelope {
   background-color: var(--sheet);
   background-image: url('/paper.svg');
@@ -525,4 +527,9 @@ body::after {
 .error {
   max-width: 360px;
   color: var(--accent);
+}
+
+.check[data-disabled] {
+  opacity: 0.55;
+  cursor: default;
 }

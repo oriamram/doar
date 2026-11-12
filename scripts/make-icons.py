@@ -114,6 +114,20 @@ def scaled(icon: Image.Image, size: int) -> Image.Image:
     return small.filter(ImageFilter.UnsharpMask(radius=0.6, percent=70, threshold=0)) if size <= 64 else small
 
 
+def badge(size: int) -> Image.Image:
+    """The small mark Android shows in the status bar: an envelope's outline, white on clear."""
+    big = size * 4
+    mark = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(mark)
+    white = (255, 255, 255, 255)
+    stroke = round(big * 0.075)
+    left, top, right, bottom = big * 0.1, big * 0.24, big * 0.9, big * 0.76
+    draw.rounded_rectangle((left, top, right, bottom), radius=big * 0.07, outline=white, width=stroke)
+    inset = stroke * 0.6
+    draw.line([(left + inset, top + inset), (big / 2, big * 0.55), (right - inset, top + inset)], fill=white, width=stroke, joint="curve")
+    return mark.resize((size, size), Image.LANCZOS)
+
+
 def save(icon: Image.Image, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     icon.save(path, optimize=True)
@@ -133,6 +147,7 @@ def main() -> None:
     save(scaled(on_card(0.76), 180).convert("RGB"), PUBLIC / "apple-touch-icon-180x180.png")
     scaled(tight, 256).save(PUBLIC / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)])
     print("public/favicon.ico  16, 32, 48")
+    save(badge(96), PUBLIC / "badge-96.png")
 
     # Inside the app the envelope lies straight on the desk; CSS gives it its shadow.
     for name, width in (("logo-envelope.webp", 720), ("logo-envelope-small.webp", 168)):

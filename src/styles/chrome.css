@@ -901,3 +901,71 @@
 .guide span {
   color: var(--text-muted);
 }
+
+/* ---------- Choosing when a letter goes out ---------- */
+
+.presets {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.presets button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1.5px solid var(--ink-rule);
+  border-radius: 3px;
+  font-weight: 700;
+  text-align: start;
+  transition: border-color 0.12s;
+}
+
+.presets button:hover,
+.presets button:focus-visible {
+  border-color: var(--ink);
+}
+
+.preset-time {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.schedule-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 14px;
+  margin-bottom: 14px;
+}
+
+.schedule-custom .setting {
+  flex: 1 1 200px;
+  padding: 0;
+}
+
+.schedule-custom input {
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ink-rule);
+  border-radius: 3px;
+  background: transparent;
+  font: inherit;
+  font-family: var(--mono);
+  color: inherit;
+  /* The form is light paper in the night theme too. */
+  color-scheme: light;
+}
+
+.schedule-custom input:focus {
+  outline: 2px solid var(--ink-red);
+  outline-offset: 1px;
+}

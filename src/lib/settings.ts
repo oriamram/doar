@@ -10,10 +10,10 @@ export type Settings = {
   /** Tie promotions, updates and social mail into bundles in the inbox. */
   bundles: boolean
   sounds: boolean
-  /** Tell you about new mail while the app is open in the background. */
-  notifications: boolean
   /** Load pictures that emails link to (off hides them until you ask). */
   remoteImages: boolean
+  /** One-time suggestions (install the app, switch on notifications) that were put away. */
+  tipsDone: string[]
 }
 
 const DEFAULTS: Settings = {
@@ -22,8 +22,8 @@ const DEFAULTS: Settings = {
   undoSendSeconds: 5,
   bundles: true,
   sounds: false,
-  notifications: false,
   remoteImages: true,
+  tipsDone: [],
 }
 
 const KEY = 'doar:settings'

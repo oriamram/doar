@@ -1,12 +1,16 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { formatWhen, schedulePresets, toFieldTime } from '../lib/format'
+import { promptInstall, useInstall } from '../lib/install'
 import { useBackLayer } from '../lib/layers'
 import { mailbox, useMailbox } from '../lib/mailbox'
+import type { NotifyScope } from '../lib/postman'
+import { disablePush, enablePush, setPushScope, testPush, usePush } from '../lib/push'
 import { updateSettings, useSettings, type Settings } from '../lib/settings'
 import { playSound } from '../lib/sound'
 import { toast } from '../lib/toast'
 import { labelLeaf } from '../lib/views'
 import type { Thread } from '../types'
-import { CloseIcon, LogoutIcon } from './icons'
+import { CloseIcon, InstallIcon, LogoutIcon } from './icons'
 import { LabelTape } from './Postal'
 
 type SheetProps = {
@@ -45,13 +49,13 @@ function Sheet({ title, form, onClose, children }: SheetProps) {
   )
 }
 
-type CheckProps = { checked: boolean; onChange: (checked: boolean) => void; title: string; note?: string }
+type CheckProps = { checked: boolean; onChange: (checked: boolean) => void; title: string; note?: string; disabled?: boolean }
 
 /** A form checkbox, ticked in red ink. */
-function Check({ checked, onChange, title, note }: CheckProps) {
+function Check({ checked, onChange, title, note, disabled }: CheckProps) {
   return (
-    <label className="check setting">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label className="check setting" data-disabled={disabled || undefined}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       <span>
         <span className="setting-title">{title}</span>
         {note && <span className="setting-note">{note}</span>}
@@ -73,26 +77,116 @@ const UNDO_TIMES = [
   { seconds: 20, label: '20 שניות' },
 ]
 
+const SCOPES: { id: NotifyScope; label: string }[] = [
+  { id: 'all', label: 'הכל' },
+  { id: 'important', label: 'בלי פרסומות' },
+  { id: 'primary', label: 'רק אישיים' },
+]
+
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const settings = useSettings()
   const { me } = useMailbox()
+  const push = usePush()
+  const install = useInstall()
 
   const setNotifications = async (on: boolean) => {
     if (!on) {
-      updateSettings({ notifications: false })
+      await disablePush()
+      toast('ההתראות כובו במכשיר הזה.')
       return
     }
-    if (!('Notification' in window)) {
-      toast('הדפדפן הזה לא תומך בהתראות.', { tone: 'error' })
-      return
+    const result = await enablePush()
+    if (result === 'on') toast('ההתראות הופעלו במכשיר הזה.')
+    else if (result === 'blocked') toast('ההתראות חסומות בדפדפן. אפשר לאשר אותן בהגדרות האתר (המנעול שליד הכתובת).', { tone: 'error' })
+    else if (result === 'broken') toast('הדפדפן הזה לא מקבל התראות. נסו ב־Chrome.', { tone: 'error' })
+    else if (result === 'unsupported') toast('אי אפשר להפעיל התראות בדפדפן הזה.', { tone: 'error' })
+    else toast('לא הצלחנו להפעיל התראות. בדקו את החיבור ונסו שוב.', { tone: 'error' })
+  }
+
+  const sendTest = async () => {
+    try {
+      const { sent, total } = await testPush()
+      if (total === 0) toast('אין מכשיר שמקבל התראות. הפעילו אותן קודם.', { tone: 'error' })
+      else if (sent === total) toast(total === 1 ? 'התראת ניסיון נשלחה למכשיר אחד.' : `התראת ניסיון נשלחה ל־${total} מכשירים.`)
+      else toast(`התראת הניסיון התקבלה רק ב־${sent} מתוך ${total} מכשירים.`, { tone: 'error' })
+    } catch {
+      toast('אין קשר עם השרת של דואר כרגע. נסו שוב.', { tone: 'error' })
     }
-    const permission = await Notification.requestPermission()
-    if (permission === 'granted') updateSettings({ notifications: true })
-    else toast('ההתראות חסומות בדפדפן. אפשר לאשר אותן בהגדרות האתר.', { tone: 'error' })
   }
 
   return (
     <Sheet title="הגדרות" form="טופס 7 · העדפות הלקוח" onClose={onClose}>
+      <fieldset className="setting-group">
+        <legend>התראות על דואר חדש</legend>
+        {!push.supported ? (
+          <p className="setting-note">הדפדפן הזה לא יכול לקבל התראות.</p>
+        ) : push.broken ? (
+          <p className="setting-note">
+            הדפדפן הזה (Edge בטלפון) לא מקבל התראות מאתרים. פתחו את דואר ב־Chrome, התקינו אותו משם והפעילו שם את ההתראות.
+          </p>
+        ) : (
+          <Check
+            checked={push.on}
+            disabled={push.busy}
+            onChange={(on) => void setNotifications(on)}
+            title="התראות במכשיר הזה"
+            note={
+              push.permission === 'denied'
+                ? 'ההתראות חסומות בדפדפן. מאשרים אותן בהגדרות האתר (המנעול שליד הכתובת).'
+                : 'גם כשדואר סגור: שם השולח והנושא, תוך דקה. כל מכשיר מופעל בנפרד.'
+            }
+          />
+        )}
+        {push.devices > 0 && (
+          <>
+            <div className="setting">
+              <span className="setting-title" id="scope-label">
+                על אילו מכתבים
+              </span>
+              <div className="segments" role="radiogroup" aria-labelledby="scope-label">
+                {SCOPES.map((scope) => (
+                  <button
+                    key={scope.id}
+                    role="radio"
+                    aria-checked={push.scope === scope.id}
+                    onClick={() => void setPushScope(scope.id).catch(() => toast('ההגדרה לא נשמרה. נסו שוב.', { tone: 'error' }))}
+                  >
+                    {scope.label}
+                  </button>
+                ))}
+              </div>
+              <span className="setting-note">„בלי פרסומות” משאיר גם עדכונים, כמו קבלות וקודי אימות.</span>
+            </div>
+            <div className="setting">
+              <button className="pill-btn" onClick={() => void sendTest()}>
+                שליחת התראת ניסיון
+              </button>
+              <span className="setting-note">
+                {push.devices === 1 ? 'מכשיר אחד מקבל התראות.' : `${push.devices} מכשירים מקבלים התראות.`}
+              </span>
+            </div>
+          </>
+        )}
+      </fieldset>
+
+      {!install.installed && (
+        <fieldset className="setting-group">
+          <legend>אפליקציה</legend>
+          <div className="setting">
+            {install.available ? (
+              <button className="pill-btn" onClick={() => void promptInstall()}>
+                <InstallIcon />
+                התקנת דואר במכשיר הזה
+              </button>
+            ) : (
+              <span className="setting-note">
+                כדי שדואר ייפתח כאפליקציה משלו: בתפריט הדפדפן בוחרים „התקנת האפליקציה” או „הוספה למסך הבית”. בטלפון עושים את זה ב־Chrome.
+              </span>
+            )}
+          </div>
+        </fieldset>
+      )}
+
       <fieldset className="setting-group">
         <legend>מראה</legend>
         <div className="segments" role="radiogroup" aria-label="מראה">
@@ -156,7 +250,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       </fieldset>
 
       <fieldset className="setting-group">
-        <legend>צלילים והתראות</legend>
+        <legend>צלילים</legend>
         <Check
           checked={settings.sounds}
           onChange={(sounds) => {
@@ -165,12 +259,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           }}
           title="צלילי שולחן"
           note="חותמת, נייר ומכתב שעף."
-        />
-        <Check
-          checked={settings.notifications}
-          onChange={(on) => void setNotifications(on)}
-          title="התראה על דואר חדש"
-          note="פועלת כל עוד דואר פתוח, גם ברקע."
         />
       </fieldset>
 
@@ -260,6 +348,55 @@ const SHORTCUTS: { keys: string[]; action: string }[] = [
   { keys: ['?'], action: 'הדף הזה' },
 ]
 
+type ScheduleProps = {
+  /** The time the letter is set for now, when changing it. */
+  current?: string
+  onPick: (when: Date) => void
+  onClose: () => void
+}
+
+/** Choose when a letter goes out: a ready-made time, or any date and hour. */
+export function ScheduleSheet({ current, onPick, onClose }: ScheduleProps) {
+  const [now] = useState(() => new Date())
+  const presets = schedulePresets(now)
+  const [custom, setCustom] = useState(() => toFieldTime(current ? new Date(current) : presets.at(-1)!.when))
+  const chosen = new Date(custom)
+  const valid = !Number.isNaN(chosen.getTime()) && chosen.getTime() > now.getTime() + 60_000
+
+  return (
+    <Sheet title="שליחה מאוחר יותר" form="טופס 12 · מועד המשלוח" onClose={onClose}>
+      <ul className="presets">
+        {presets.map((preset) => (
+          <li key={preset.label}>
+            <button type="button" onClick={() => onPick(preset.when)}>
+              <span>{preset.label}</span>
+              <span className="preset-time">{formatWhen(preset.when, now)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <form
+        className="schedule-custom"
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault()
+          if (valid) onPick(chosen)
+        }}
+      >
+        <label className="setting">
+          <span className="setting-title">מועד אחר</span>
+          <input type="datetime-local" value={custom} min={toFieldTime(now)} onChange={(e) => setCustom(e.target.value)} />
+        </label>
+        <button type="submit" className="pill-btn" disabled={!valid}>
+          קביעת המועד
+        </button>
+      </form>
+      <p className="setting-note">
+        המכתב יוצא מהשרת של דואר במועד שקבעתם, גם אם הטלפון והמחשב כבויים. עד אז הוא מחכה ב„מתוזמנים”, ואפשר לשנות או לבטל.
+      </p>
+    </Sheet>
+  )
+}
+
 const GUIDE: { title: string; text: string }[] = [
   {
     title: 'תיוק',
@@ -280,6 +417,14 @@ const GUIDE: { title: string; text: string }[] = [
   {
     title: 'תוויות',
     text: 'תווית היא מדבקה על מכתב, ואפשר לשים כמה. פותחים מכתב, לוחצים על שלוש הנקודות ובוחרים „תוויות”. כל תווית מופיעה בתפריט.',
+  },
+  {
+    title: 'שליחה מאוחר יותר',
+    text: 'בכתיבת מכתב, השעון שליד „שליחה” קובע לו מועד. המכתב יוצא לבד, גם כשהמכשירים כבויים, ועד אז מחכה ב„מתוזמנים”.',
+  },
+  {
+    title: 'התראות',
+    text: 'מפעילים בהגדרות, בכל מכשיר בנפרד. בטלפון: מתקינים את דואר דרך Chrome. במחשב: דרך Edge, שמתריע גם כשהוא סגור.',
   },
   {
     title: 'בדיקת דואר',

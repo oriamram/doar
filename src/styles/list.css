@@ -678,3 +678,133 @@
 .swipe-fg {
   position: relative;
 }
+
+/* ---------- Letters waiting for their time ---------- */
+
+.scheduled-row {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 10px;
+  border-inline-start: 3px solid var(--ink-blue);
+  border-radius: 2px;
+  box-shadow: var(--edge-fresh), var(--shadow-lift);
+}
+
+.scheduled-row[data-failed] {
+  border-inline-start-color: var(--ink-red);
+}
+
+.scheduled-open {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-align: start;
+}
+
+.scheduled-to {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.scheduled-subject {
+  min-height: 1.4em;
+  color: var(--ink-muted);
+}
+
+.scheduled-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-blue);
+}
+
+.scheduled-when svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.scheduled-row[data-failed] .scheduled-when {
+  color: var(--ink-red);
+}
+
+.scheduled-actions {
+  display: flex;
+  gap: 18px;
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--ink-rule);
+}
+
+.scheduled-actions button {
+  min-height: 32px;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.scheduled-actions button:hover {
+  color: var(--ink);
+}
+
+.scheduled-actions button:disabled {
+  opacity: 0.45;
+}
+
+/* ---------- One-time suggestions (install, notifications) ---------- */
+
+.tip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 12px 0;
+  padding: 11px 14px;
+  border-inline-start: 3px solid var(--ink-blue);
+  border-radius: 2px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.tip > svg {
+  flex: none;
+  color: var(--ink-blue);
+}
+
+.tip p {
+  flex: 1 1 200px;
+  margin: 0;
+}
+
+.tip-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-inline-start: auto;
+}
+
+.tip-actions button {
+  min-height: 36px;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.tip-actions .tip-yes {
+  padding: 0 14px;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  color: var(--ink-blue);
+}
+
+.tip-actions button:disabled {
+  opacity: 0.5;
+}
