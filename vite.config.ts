@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Registered by hand in main.tsx, and only in the browser (not inside the Android app).
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'logo.svg', 'apple-touch-icon-180x180.png'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo-envelope.webp', 'logo-envelope-small.webp'],
       workbox: {
         // A new version takes over as soon as it's downloaded, instead of waiting for every
         // open tab to close (the plugin only sets these itself when it also registers the worker).

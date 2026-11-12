@@ -11,6 +11,23 @@
   );
 }
 
+/* ---------- The logo ----------
+   A photo of a sealed airmail envelope on a clear background. It lies on the
+   desk like any other letter, so its shadow is made here and follows the paper's edge. */
+
+.logo {
+  flex: none;
+  display: block;
+  height: auto;
+  filter: drop-shadow(0 1px 1px rgba(40, 25, 10, 0.4)) drop-shadow(0 5px 9px rgba(40, 25, 10, 0.26));
+  user-select: none;
+}
+
+/* The small one beside the name needs a smaller shadow. */
+.brand .logo {
+  filter: drop-shadow(0 1px 1.5px rgba(40, 25, 10, 0.45));
+}
+
 /* ---------- Postage stamp ----------
    After "Doar Ivri" (1948): a coin on a field of one color. The perforation
    holes are cut out with a mask (a grid of holes, plus a solid middle), so the

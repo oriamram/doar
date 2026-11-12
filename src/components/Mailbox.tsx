@@ -8,6 +8,7 @@ import { INBOX, isFolder, type FolderId } from '../lib/views'
 import { Compose } from './Compose'
 import { Loader } from './Loader'
 import { Nav } from './Nav'
+import { Logo } from './Postal'
 import { SendFlight } from './SendFlight'
 import { LabelSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
 import { ThreadList } from './ThreadList'
@@ -163,7 +164,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
           />
         ) : (
           <div className="reader-empty">
-            <img src="/logo.svg" alt="" width={64} height={64} />
+            <Logo width={132} />
             <p className="big">בחרו מכתב כדי לפתוח אותו</p>
             <p className="muted hint">
               <kbd>c</kbd> מכתב חדש · <kbd>/</kbd> חיפוש · <kbd>?</kbd> כל הקיצורים

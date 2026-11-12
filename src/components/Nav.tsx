@@ -16,7 +16,7 @@ import {
   StarIcon,
   TrashIcon,
 } from './icons'
-import { DoarMark, TapeSwatch } from './Postal'
+import { Logo, TapeSwatch } from './Postal'
 
 type Props = {
   /** On phones the folders live in a drawer; this says whether it's pulled out. */
@@ -64,7 +64,7 @@ export function Nav({ open, onClose, onSettings, onShortcuts }: Props) {
       {open && <button className="drawer-backdrop" aria-label="סגירת התיקיות" onClick={onClose} />}
       <aside className="sidebar" data-open={open || undefined}>
         <div className="brand">
-          <DoarMark size={30} />
+          <Logo width={40} />
           דואר
         </div>
 

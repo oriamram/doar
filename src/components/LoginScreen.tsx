@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { signInReturnError, signInWithGoogle } from '../lib/auth'
-import { DoarMark } from './Postal'
+import { Logo } from './Postal'
 
 export function LoginScreen() {
   const [busy, setBusy] = useState(false)
@@ -29,13 +29,7 @@ export function LoginScreen() {
   return (
     <div className="login">
       <div className="airmail-band" aria-hidden="true" />
-      <span className="stamp login-stamp" aria-hidden="true">
-        <span className="stamp-paper">
-          <span className="stamp-face">
-            <DoarMark size={70} />
-          </span>
-        </span>
-      </span>
+      <Logo width={176} className="login-logo" />
       <h1>דואר</h1>
       <p className="tagline">הג׳ימייל שלך, עד הבית</p>
       <button className="google-btn" onClick={signIn} disabled={busy}>

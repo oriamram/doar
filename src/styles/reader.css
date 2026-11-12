@@ -580,9 +580,8 @@
   text-align: center;
 }
 
-.reader-empty img {
-  opacity: 0.6;
-  margin-bottom: 8px;
+.reader-empty .logo {
+  margin-bottom: 18px;
   rotate: -6deg;
 }
 

@@ -116,20 +116,17 @@ export function DuplexCancel({ iso }: { iso: string }) {
   )
 }
 
-/** The Doar envelope mark, drawn in the current accent color. */
-export function DoarMark({ size = 34 }: { size?: number }) {
+/** The logo: a sealed airmail envelope, lying on the desk like the rest of the mail. `width` is in CSS pixels. */
+export function Logo({ width, className }: { width: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 512 512" aria-hidden="true">
-      <rect width="512" height="512" rx="112" fill="var(--accent)" />
-      <rect x="112" y="168" width="288" height="192" rx="28" fill="none" stroke="var(--on-accent)" strokeWidth="28" />
-      <path
-        d="M132 192l124 88 124-88"
-        fill="none"
-        stroke="var(--on-accent)"
-        strokeWidth="28"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <img
+      className={className ? `logo ${className}` : 'logo'}
+      // Two sizes of the same photo (see scripts/make-icons.py): the small one is plenty for the menu.
+      src={width <= 56 ? '/logo-envelope-small.webp' : '/logo-envelope.webp'}
+      width={width}
+      height={Math.round((width * 577) / 720)}
+      alt=""
+      draggable={false}
+    />
   )
 }

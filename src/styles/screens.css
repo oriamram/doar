@@ -20,19 +20,9 @@
   height: 6px;
 }
 
-.login-stamp {
-  --tile: 8px;
-  --hole: 2.5px;
-  --margin: 8px;
-  width: 104px;
-  height: 120px;
-  margin-bottom: 14px;
+.login-logo {
+  margin-bottom: 22px;
   rotate: -4deg;
-}
-
-.login-stamp .stamp-face {
-  background: var(--sheet-letter);
-  box-shadow: none;
 }
 
 .login h1 {

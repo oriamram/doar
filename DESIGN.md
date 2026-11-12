@@ -26,9 +26,16 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | "New letter" | A blue airmail label |
 | Your account | A red wax seal with your initial |
 | Folders | A manila folder tab pulled out toward the mail |
+| The logo and app icon | A fresh, unread letter: an airmail envelope sealed with red wax, a post horn pressed into the seal |
 
 Stamps follow **Doar Ivri (1948)**, Israel's first stamps: a coin on a field of one
 color, each value in its own color. Senders get one of seven such colors, always the same.
+
+**The logo** is one photo-real picture of that envelope (`design/logo/envelope.png`, made
+with an image model in a single take, 12 November 2026). Inside the app it lies straight on
+the desk with a soft shadow; as an app icon it lies on a red card (`--ink-red`).
+`python scripts/make-icons.py` rebuilds every size from it: web app icons, browser tab
+icon, and the Android launcher icons. It carries no text, so it reads the same in any language.
 
 ## Rules (and where they come from)
 
