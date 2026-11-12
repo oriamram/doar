@@ -39,15 +39,15 @@ type Folder = { id: FolderId; icon: ReactNode }
 const FOLDERS: Folder[] = [
   { id: 'inbox', icon: <InboxIcon /> },
   { id: 'starred', icon: <StarIcon /> },
-  { id: 'drafts', icon: <DraftIcon /> },
   { id: 'scheduled', icon: <ClockIcon /> },
   { id: 'sent', icon: <SendIcon /> },
-  { id: 'archive', icon: <ArchiveIcon /> },
+  { id: 'all', icon: <AllMailIcon /> },
 ]
 
 /** Rarely needed, so they wait folded under "more". */
 const MORE_FOLDERS: Folder[] = [
-  { id: 'all', icon: <AllMailIcon /> },
+  { id: 'drafts', icon: <DraftIcon /> },
+  { id: 'archive', icon: <ArchiveIcon /> },
   { id: 'spam', icon: <SpamIcon /> },
   { id: 'trash', icon: <TrashIcon /> },
 ]

@@ -143,7 +143,7 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
   const { pull, phase: pullPhase } = usePullToRefresh(listElement, mailbox.reload)
 
   const inInbox = isFolder(view, 'inbox')
-  const showFilters = (inInbox || isFolder(view, 'unread')) && !searching && selection.size === 0
+  const showFilters = (inInbox || isFolder(view, 'unread') || isFolder(view, 'all')) && !searching && selection.size === 0
   const items = useMemo(
     () => buildItems(threads ?? [], inInbox && settings.bundles ? bundles : []),
     [threads, bundles, inInbox, settings.bundles],
@@ -184,8 +184,10 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
   const selectedThreads = (threads ?? []).filter((thread) => selection.has(thread.id))
   const anyUnread = selectedThreads.some((thread) => thread.unread)
   const filters = [
-    { view: INBOX, label: 'הכל' },
+    // "נכנס" rather than "הכל", so it can't be mistaken for "כל הדואר" beside it.
+    { view: INBOX, label: 'נכנס' },
     { view: { kind: 'folder', id: 'unread' } as View, label: 'לא נקראו', count: unread },
+    { view: { kind: 'folder', id: 'all' } as View, label: 'כל הדואר' },
   ]
 
   return (

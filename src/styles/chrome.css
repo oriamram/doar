@@ -898,8 +898,9 @@
   font-weight: 800;
 }
 
+/* The guide is printed on paper, so its text is ink (the desk's text color is too pale on paper at night). */
 .guide span {
-  color: var(--text-muted);
+  color: var(--ink);
 }
 
 /* ---------- Choosing when a letter goes out ---------- */
