@@ -12,6 +12,11 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.ico', 'logo.svg', 'apple-touch-icon-180x180.png'],
       workbox: {
+        // A new version takes over as soon as it's downloaded, instead of waiting for every
+        // open tab to close (the plugin only sets these itself when it also registers the worker).
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         // Keep the textures and the font on the device too, so the app opens whole when offline.
         globPatterns: ['**/*.{js,css,html,svg,ttf}'],
         // Opens the app when a "new mail" notification is tapped.
