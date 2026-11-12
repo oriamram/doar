@@ -84,6 +84,11 @@
   font-size: 0.8rem;
 }
 
+.fineprint a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+
 /* ---------- Waiting for the mail ---------- */
 
 .loader {

@@ -48,7 +48,9 @@ export function LoginScreen() {
         {busy ? 'פותחים את Google…' : 'התחברות עם Google'}
       </button>
       {error && <p className="error">{error}</p>}
-      <p className="muted fineprint">המכתבים שלך עוברים ישירות מ־Google למכשיר הזה.</p>
+      <p className="muted fineprint">
+        המכתבים שלך עוברים ישירות מ־Google למכשיר הזה. <a href="/privacy.html">פרטיות ותנאים</a>
+      </p>
     </div>
   )
 }

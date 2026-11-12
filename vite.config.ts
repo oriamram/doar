@@ -17,6 +17,8 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // The privacy page is its own page, not a screen of the app.
+        navigateFallbackDenylist: [/^\/privacy/],
         // Keep the textures and the font on the device too, so the app opens whole when offline.
         globPatterns: ['**/*.{js,css,html,svg,ttf}'],
         // Opens the app when a "new mail" notification is tapped.
