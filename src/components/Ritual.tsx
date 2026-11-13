@@ -8,7 +8,7 @@ import { tapHaptic } from '../lib/platform'
 import { ritualSize, type RitualItem } from '../lib/ritual'
 import { playSound } from '../lib/sound'
 import { BUNDLE_TITLES } from '../lib/views'
-import type { Thread } from '../types'
+import type { Contact, Thread } from '../types'
 import { ArchiveIcon, CheckIcon, CloseIcon, HoldIcon, MailOpenIcon, ReplyIcon, TrashIcon } from './icons'
 import { SenderStamp } from './Postal'
 import { ThreadView } from './ThreadView'
@@ -18,6 +18,10 @@ type Props = {
   onClose: () => void
   /** Ask when to bring a letter back (the held-mail form). */
   onHold: (ids: string[]) => void
+  /** Open a sender's card. */
+  onPerson: (contact: Contact) => void
+  /** Ask how long to wait for an answer to a sent letter. */
+  onRegister: (threadId: string, messageId: string) => void
   /** A layer above the ritual is open (a form, the writing form): its keys are not the ritual's. */
   busy: boolean
 }
@@ -27,7 +31,7 @@ type Props = {
  * the thumb. A letter that leaves the inbox (filed, binned, held, returned) makes way
  * for the next by itself. After the last one, the desk is clear.
  */
-export function Ritual({ queue, onClose, onHold, busy }: Props) {
+export function Ritual({ queue, onClose, onHold, onPerson, onRegister, busy }: Props) {
   const { threads, bundles, reminders } = useMailbox()
   // How far the reader has come by hand ("keep" moves on without anything leaving the inbox).
   const [passed, setPassed] = useState(0)
@@ -111,7 +115,7 @@ export function Ritual({ queue, onClose, onHold, busy }: Props) {
       </header>
 
       <div className="ritual-desk" ref={scroller}>
-        {current && <ThreadView key={current.id} thread={current} bare onBack={onClose} onLabels={() => {}} onHold={() => onHold([current.id])} onRegister={() => {}} onPerson={() => {}} />}
+        {current && <ThreadView key={current.id} thread={current} bare onBack={onClose} onLabels={() => {}} onHold={() => onHold([current.id])} onRegister={(messageId) => onRegister(current.id, messageId)} onPerson={onPerson} />}
         {item?.kind === 'bundle' && (
           <div className="ritual-bundle">
             <span className="bundle-tag">{BUNDLE_TITLES[item.category]}</span>

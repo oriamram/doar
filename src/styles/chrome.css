@@ -1389,6 +1389,15 @@
   color: var(--ink-blue);
 }
 
+.person-mark[data-asking] {
+  border-color: var(--ink-red);
+  border-style: dashed;
+}
+
+.person-mark[data-asking] strong {
+  color: var(--ink-red);
+}
+
 .person-mark[data-tone='red'][aria-pressed='true'] {
   border-color: var(--ink-red);
   background: rgba(166, 58, 38, 0.08);

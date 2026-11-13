@@ -33,6 +33,16 @@ export function SenderCard({ contact, onClose, onRules }: CardProps) {
   const refused = has('refused')
   const [count, setCount] = useState<number | null>(null)
   const mine = address === me.email.toLowerCase()
+  // Refusing a sender bins their mail from now on, so it takes two presses: one to ask, one to mean it.
+  const [sure, setSure] = useState(false)
+  const refuse = () => {
+    if (refused) return void mailbox.setMark(address, 'refused', false)
+    if (!sure) return setSure(true)
+    setSure(false)
+    void mailbox.setMark(address, 'refused', true).then((saved) => {
+      if (saved) toast(`מעכשיו מכתבים מ־${shortName(contact)} ילכו ישר לאשפה.`, { action: { label: 'ביטול', run: () => void mailbox.setMark(address, 'refused', false) } })
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -109,10 +119,10 @@ export function SenderCard({ contact, onClose, onRules }: CardProps) {
               <span>להתריע על כל מכתב מהכתובת הזאת, גם מחוץ לשעות הפתיחה.</span>
             </span>
           </button>
-          <button type="button" className="person-mark" data-tone="red" aria-pressed={refused} onClick={() => void mailbox.setMark(address, 'refused', !refused)}>
+          <button type="button" className="person-mark" data-tone="red" data-asking={sure || undefined} aria-pressed={refused} onClick={refuse} onBlur={() => setSure(false)}>
             <HandIcon />
             <span>
-              <strong>החזר לשולח</strong>
+              <strong>{sure ? 'בטוח? לחיצה נוספת תאשר' : 'החזר לשולח'}</strong>
               <span>כל מכתב מהכתובת הזאת ילך ישר לאשפה, בלי התראה. Gmail שומר אותו שם 30 יום.</span>
             </span>
           </button>

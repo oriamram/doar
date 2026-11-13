@@ -412,6 +412,13 @@ try {
   check('the stamp on an envelope opens the sender\'s card', (await desk.text('.person-addr')).includes('ruth.mizrahi@family.example'), await desk.text('.person-addr'))
   await desk.waitFor('.person-count', 6000)
   await shot(desk, 'pc-person')
+  // Refusing a sender from their card takes two presses.
+  await desk.clickText('החזר לשולח', '.person-mark')
+  await sleep(200)
+  check('refusing a sender from their card asks first', (await desk.text('.person-mark[data-tone="red"] strong')).includes('לחיצה נוספת') && !(await desk.evaluate<boolean>(`window.__doarDemo.marks.some((mark) => mark.mark === 'refused' && mark.match === 'ruth.mizrahi@family.example')`)))
+  await desk.click('.person-name')
+  await sleep(200)
+  check('and looking away takes the question back', (await desk.text('.person-mark[data-tone="red"] strong')) === 'החזר לשולח')
   await desk.clickText('כל המכתבים', '.person-action')
   await desk.waitFor('.list[aria-label="חיפוש"] .thread-row')
   check('"all letters" lists the mail with them', (await desk.texts('.thread-row .subject')).some((subject) => subject.includes('תמונות מהשבת')))

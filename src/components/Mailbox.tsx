@@ -268,7 +268,16 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         )}
       </main>
 
-      {ritual && <Ritual queue={ritual} onClose={() => setRitual(null)} onHold={holdLetters} busy={!!sheet || !!state.compose} />}
+      {ritual && (
+        <Ritual
+          queue={ritual}
+          onClose={() => setRitual(null)}
+          onHold={holdLetters}
+          onPerson={(contact) => setSheet({ kind: 'person', contact })}
+          onRegister={(threadId, messageId) => setSheet({ kind: 'register', threadId, messageId })}
+          busy={!!sheet || !!state.compose || palette}
+        />
+      )}
       {state.compose && <Compose key={state.composeKey} initial={state.compose} />}
       {state.flight && <SendFlight to={state.flight.to} />}
       {palette && <Palette entries={places()} onClose={() => setPalette(false)} onSearch={(query) => mailbox.show({ kind: 'search', query })} />}

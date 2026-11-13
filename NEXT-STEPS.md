@@ -94,7 +94,8 @@ you). Phases 0 to 3 were approved on 13 November 2026 and need nothing more from
 you confirmed that notifications show on the phone, and allowed two test emails to your
 own address.
 
-Phases 0, 1 and 2 are live in full. Phase 3 is live in its main parts (opening the
+Phases 0, 1 and 2 are live (two small leftovers of phase 2 are noted in ROADMAP.md).
+Phase 3 is live in its main parts (opening the
 mail one by one, notes, Ctrl+K, right click, dragging, the files drawer, reading with no
 connection); what is not built yet is listed in ROADMAP.md under "Progress", and none of
 it needs anything from you except saying which of them you want.
