@@ -4,6 +4,7 @@ import { shortName } from '../lib/addresses'
 import { newDraft } from '../lib/compose'
 import { countLetters, dayGroup } from '../lib/format'
 import { mailbox, useMailbox, type Bundle } from '../lib/mailbox'
+import { recentSearches, rememberSearch } from '../lib/searches'
 import { useSettings } from '../lib/settings'
 import { usePullToRefresh } from '../lib/usePullToRefresh'
 import { BUNDLE_TITLES, INBOX, isFolder, isInboxLike, viewKey, viewTitle, type View } from '../lib/views'
@@ -131,8 +132,11 @@ function BundleRow({ bundle }: { bundle: Bundle }) {
 }
 
 export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels }: Props) {
-  const { view, threads, bundles, loading, loadingMore, nextPageToken, error, unread, labels, open, selection, arrived, me, online, scheduled } =
+  const { view, threads, bundles, loading, loadingMore, nextPageToken, error, unread, labels, open, selection, arrived, me, online, scheduled, server, rules, marks } =
     useMailbox()
+  // The server looks once a minute while it has something to do for this account; ten minutes of silence means it is stuck.
+  const serverBusy = !!server && (server.devices.length > 0 || rules.length > 0 || marks.length > 0)
+  const serverQuietFor = server?.reachable && server.lookedAt ? Math.floor((server.askedAt - Date.parse(server.lookedAt)) / 60_000) : 0
   const inScheduled = isFolder(view, 'scheduled')
   const settings = useSettings()
   const [searchText, setSearchText] = useState(view.kind === 'search' ? view.query : '')
@@ -171,7 +175,9 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
   const submitSearch = (e: FormEvent) => {
     e.preventDefault()
     const query = searchText.trim()
-    if (query) mailbox.show({ kind: 'search', query })
+    if (!query) return
+    rememberSearch(query)
+    mailbox.show({ kind: 'search', query })
   }
 
   const closeSearch = () => {
@@ -201,6 +207,11 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
               <CloseIcon />
             </button>
             <span className="select-count">{selection.size} נבחרו</span>
+            {selection.size < (threads?.length ?? 0) && (
+              <button className="link-btn" onClick={mailbox.selectAll} title="בחירת כל המכתבים שברשימה">
+                הכל
+              </button>
+            )}
             {isFolder(view, 'trash') ? (
               <button className="icon-btn" onClick={() => mailbox.untrash(selected)} aria-label="שחזור מהאשפה" title="שחזור מהאשפה">
                 <RestoreIcon />
@@ -273,6 +284,22 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
 
         {searching && selection.size === 0 && view.kind !== 'search' && (
           <div className="filters" aria-label="חיפושים מהירים">
+            {recentSearches()
+              .slice(0, 3)
+              .map((query) => (
+                <button
+                  key={`recent-${query}`}
+                  className="filter"
+                  dir="auto"
+                  title="חיפוש קודם"
+                  onClick={() => {
+                    setSearchText(query)
+                    mailbox.show({ kind: 'search', query })
+                  }}
+                >
+                  {query}
+                </button>
+              ))}
             {QUICK_SEARCHES.map((quick) => (
               <button
                 key={quick.query}
@@ -308,6 +335,12 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
               <ArchiveIcon />
               לתייק את כל הצרור
             </button>
+            {threads.some((thread) => thread.unread) && (
+              <button className="filter" onClick={() => mailbox.setRead(threads.map((thread) => thread.id), true, { announce: true })}>
+                <MailOpenIcon />
+                לסמן הכל כנקרא
+              </button>
+            )}
           </div>
         )}
 
@@ -317,6 +350,9 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
       <MailSlot pull={pull} phase={pullPhase} />
 
       {!online && <p className="notice">אין חיבור לאינטרנט. מוצג הדואר שכבר נטען.</p>}
+      {online && serverBusy && serverQuietFor >= 10 && (
+        <p className="notice">השרת של דואר לא בדק דואר כבר {serverQuietFor} דקות. התראות ותיוג אוטומטי עלולים להתעכב.</p>
+      )}
       {inInbox && !searching && selection.size === 0 && <Tips />}
 
       {error && (

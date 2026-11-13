@@ -36,6 +36,9 @@ const STATUS = { idle: '', saving: 'שומרים…', saved: 'הטיוטה נש�
 /** Gmail's limit for one email is 25MB; base64 makes files a third bigger on the way. */
 const MAX_BYTES = 18 * 1024 * 1024
 
+/** Words that promise a file. */
+const MENTIONS_FILE = /מצורף|מצורפת|מצורפים|מצורפות|מצרף|מצרפת|מצ"ב|מצ״ב|רצ"ב|רצ״ב|\battach(?:ed|ment|ments|ing)\b|\benclosed\b/i
+
 const stampStyle = (contact: Contact) => ({ '--stamp': stampColor(contact) }) as CSSProperties
 
 type RecipientsProps = {
@@ -304,9 +307,19 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
     return false
   }
 
+  /** The letter says a file is attached and none is: say so once. A second press sends it as it is. */
+  const warnedNoFile = useRef(false)
+  const filePromised = (): boolean => {
+    if (warnedNoFile.current || latest.current().attachments.length > 0) return false
+    if (!MENTIONS_FILE.test(editor.current?.innerText ?? '')) return false
+    warnedNoFile.current = true
+    setProblem('כתבת שמצורף קובץ, אבל שום קובץ לא צורף. אפשר לצרף עכשיו, או ללחוץ שוב כדי לשלוח בלי קובץ.')
+    return true
+  }
+
   /** Save the letter as it is now, ready to leave. Null (with the reason on screen) if it can't. */
   const ready = async (): Promise<(ComposeDraft & { draftId: string }) | null> => {
-    if (busy || !(await hasRecipient())) return null
+    if (busy || !(await hasRecipient()) || filePromised()) return null
     setBusy(true)
     saver.current.dirty = true
     const saved = await save()
@@ -332,7 +345,7 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
   }
 
   const chooseTime = async () => {
-    if (!busy && (await hasRecipient())) setScheduling(true)
+    if (!busy && (await hasRecipient()) && !filePromised()) setScheduling(true)
   }
 
   const addFiles = (files: Iterable<File>) => {

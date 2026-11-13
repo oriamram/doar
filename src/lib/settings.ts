@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react'
+import { storageKey } from './demo'
+import * as postman from './postman'
 
-/** Your preferences, kept on this device. */
+/** Your preferences. */
 export type Settings = {
   theme: 'auto' | 'light' | 'dark'
   /** Added under every new email you write. */
@@ -26,17 +28,31 @@ const DEFAULTS: Settings = {
   tipsDone: [],
 }
 
-const KEY = 'doar:settings'
+/**
+ * These follow you to every device: Doar's server keeps them, and each device takes
+ * them when it starts. The rest (day or night, sounds, which tips were put away)
+ * belong to the device they were chosen on.
+ */
+const SHARED = ['signature', 'undoSendSeconds', 'bundles', 'remoteImages'] as const
+type SharedKey = (typeof SHARED)[number]
 
-function load(): Settings {
+const KEY = storageKey('doar:settings')
+
+type Stored = Partial<Settings> & { pending?: SharedKey[] }
+
+function load(): Stored {
   try {
-    return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Settings>) }
+    return JSON.parse(localStorage.getItem(KEY) ?? '{}') as Stored
   } catch {
-    return DEFAULTS
+    return {}
   }
 }
 
-let current = load()
+const { pending: unsent = [], ...saved } = load()
+let current: Settings = { ...DEFAULTS, ...saved }
+/** Shared settings changed here that the server hasn't been told about yet. */
+const pending = new Set<SharedKey>(unsent.filter((key) => SHARED.includes(key)))
+
 const listeners = new Set<() => void>()
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
@@ -58,15 +74,70 @@ applyTheme()
 
 export const getSettings = () => current
 
-export function updateSettings(patch: Partial<Settings>) {
-  current = { ...current, ...patch }
+function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(current))
+    localStorage.setItem(KEY, JSON.stringify({ ...current, pending: [...pending] }))
   } catch {
     // Storage is full or blocked; the setting still applies until the app closes.
   }
+}
+
+let pushTimer: ReturnType<typeof setTimeout> | undefined
+
+/** Tell the server what changed, a moment after the last change. */
+function pushSoon() {
+  clearTimeout(pushTimer)
+  pushTimer = setTimeout(() => {
+    if (pending.size === 0) return
+    const keys = [...pending]
+    const sent: Record<string, unknown> = Object.fromEntries(keys.map((key) => [key, current[key]]))
+    postman.prefsSet(sent).then(
+      () => {
+        // A setting changed again while this was on its way stays pending.
+        for (const key of keys) if (current[key] === sent[key]) pending.delete(key)
+        save()
+      },
+      () => {
+        // No connection, or not signed in: it stays pending, and the next start sends it.
+      },
+    )
+  }, 900)
+}
+
+export function updateSettings(patch: Partial<Settings>) {
+  current = { ...current, ...patch }
+  for (const key of SHARED) if (key in patch) pending.add(key)
+  save()
   applyTheme()
   listeners.forEach((listener) => listener())
+  if (pending.size) pushSoon()
+}
+
+/**
+ * Take the settings the server keeps for all your devices (null: it keeps none yet,
+ * so this device's settings become the shared ones). A setting changed here and not
+ * yet sent wins over the server's. Returns the settings that changed on this device.
+ */
+export function applyShared(remote: Record<string, unknown> | null): (keyof Settings)[] {
+  const changed: SharedKey[] = []
+  const next: Record<string, unknown> = { ...current }
+  for (const key of SHARED) {
+    if (pending.has(key)) continue
+    const value = remote?.[key]
+    // The server doesn't have this one (a first device, or a setting newer than its record): send ours.
+    if (value === undefined) pending.add(key)
+    else if (typeof value === typeof DEFAULTS[key] && value !== current[key]) {
+      next[key] = value
+      changed.push(key)
+    }
+  }
+  if (changed.length) {
+    current = next as Settings
+    save()
+    listeners.forEach((listener) => listener())
+  }
+  if (pending.size) pushSoon()
+  return changed
 }
 
 function subscribe(listener: () => void) {

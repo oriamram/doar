@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getAttachmentBytes } from '../lib/gmail'
+import { foldQuotes } from '../lib/quotes'
 import { useSettings } from '../lib/settings'
 import type { Message } from '../types'
 
@@ -29,6 +30,8 @@ ${blocked ? `<meta http-equiv="Content-Security-Policy" content="img-src data: b
   table { max-width: 100%; }
   a { color: #8f2f1f; }
   blockquote { margin: 0 0 0 .8ex; padding-left: 1ex; border-left: 2px solid #cfc4ad; color: #574f42; }
+  .doar-quote-tab { display: block; margin: 12px 0 4px; padding: 0 14px; height: 26px; border: 1px solid #cfc4ad; border-radius: 13px; background: #f0e7d3; color: #574f42; font: 900 16px/20px system-ui, sans-serif; letter-spacing: 3px; cursor: pointer; }
+  .doar-quote-tab:focus-visible { outline: 2px solid #24407a; outline-offset: 2px; }
 </style></head><body dir="auto">${message.bodyHtml}</body></html>`
 
   // Blob addresses made for pictures inside the email; released when the email leaves the screen.
@@ -51,11 +54,17 @@ ${blocked ? `<meta http-equiv="Content-Security-Policy" content="img-src data: b
     const page = frame?.contentDocument?.documentElement
     const body = frame?.contentDocument?.body
     if (!frame || !page || !body) return
-    // The email's own width, measured once before any scaling.
-    const natural = Math.max(body.scrollWidth, page.scrollWidth)
     const fitHeight = () => {
       frame.style.height = `${page.scrollHeight}px`
     }
+    // Earlier letters quoted under this one are folded behind a small tab. Folding makes the
+    // letter shorter, and a frame is never shorter than its page says, so it is emptied first.
+    foldQuotes(body, () => {
+      frame.style.height = '0'
+      fitHeight()
+    })
+    // The email's own width, measured once before any scaling.
+    const natural = Math.max(body.scrollWidth, page.scrollWidth)
     const fitWidth = () => {
       const scale = Math.min(1, frame.clientWidth / natural)
       body.style.zoom = scale < 1 ? String(scale) : ''

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { formatBytes } from '../lib/format'
 import { getAttachmentBytes } from '../lib/gmail'
 import { toast } from '../lib/toast'
@@ -8,10 +9,17 @@ import { CloseIcon, DownloadIcon } from './icons'
 /** Pictures up to this size show as small prints right away; bigger ones wait for a tap. */
 const PREVIEW_LIMIT = 4 * 1024 * 1024
 
-async function toBlobUrl(file: Attachment): Promise<string> {
+async function toBlobUrl(file: Attachment, type = file.mimeType): Promise<string> {
   const bytes = await getAttachmentBytes(file)
-  return URL.createObjectURL(new Blob([bytes], { type: file.mimeType }))
+  return URL.createObjectURL(new Blob([bytes], { type }))
 }
+
+const isPdf = (file: Attachment) => file.mimeType === 'application/pdf' || /\.pdf$/i.test(file.filename)
+
+/** Can this browser show a PDF inside the page? (Desktop browsers can; phones hand it to another app.) */
+const showsPdf = () => (navigator as Navigator & { pdfViewerEnabled?: boolean }).pdfViewerEnabled === true
+
+type Viewing = { url: string; file: Attachment; kind: 'image' | 'pdf' }
 
 async function save(file: Attachment) {
   try {
@@ -32,7 +40,7 @@ function fileKind(file: Attachment): string {
   return (extension || file.mimeType.split('/')[1] || 'קובץ').slice(0, 4).toUpperCase()
 }
 
-function FileCard({ file, onView }: { file: Attachment; onView: (url: string) => void }) {
+function FileCard({ file, onView }: { file: Attachment; onView: (url: string, kind: Viewing['kind']) => void }) {
   const isImage = file.mimeType.startsWith('image/')
   const [thumb, setThumb] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -56,13 +64,20 @@ function FileCard({ file, onView }: { file: Attachment; onView: (url: string) =>
     }
   }, [file, isImage])
 
+  const readable = isPdf(file) && showsPdf()
   const open = async () => {
     if (thumb) {
-      onView(thumb)
+      onView(thumb, 'image')
       return
     }
     setBusy(true)
-    await save(file)
+    if (readable) {
+      try {
+        onView(await toBlobUrl(file, 'application/pdf'), 'pdf')
+      } catch {
+        toast(`לא הצלחנו לפתוח את ${file.filename}.`, { tone: 'error' })
+      }
+    } else await save(file)
     setBusy(false)
   }
 
@@ -77,13 +92,15 @@ function FileCard({ file, onView }: { file: Attachment; onView: (url: string) =>
     )
   }
   return (
-    <button className="file-slip" onClick={open} disabled={busy} title={`הורדת ${file.filename}`}>
+    <button className="file-slip" onClick={open} disabled={busy} title={`${readable ? 'פתיחת' : 'הורדת'} ${file.filename}`}>
       <span className="file-kind">{fileKind(file)}</span>
       <span className="file-text">
         <span className="file-name ellipsis" dir="auto">
           {file.filename}
         </span>
-        <span className="file-size">{busy ? 'מורידים…' : formatBytes(file.size)}</span>
+        <span className="file-size" dir={busy ? undefined : 'ltr'}>
+          {busy ? 'מורידים…' : formatBytes(file.size)}
+        </span>
       </span>
       <DownloadIcon />
     </button>
@@ -92,26 +109,36 @@ function FileCard({ file, onView }: { file: Attachment; onView: (url: string) =>
 
 /** Files attached to an email: photos as prints, everything else as paper slips. */
 export function Attachments({ files }: { files: Attachment[] }) {
-  const [viewing, setViewing] = useState<{ url: string; file: Attachment } | null>(null)
+  const [viewing, setViewing] = useState<Viewing | null>(null)
 
   useEffect(() => {
     if (!viewing) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setViewing(null)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      // A document was fetched just for this look; a photo's print keeps its picture.
+      if (viewing.kind === 'pdf') URL.revokeObjectURL(viewing.url)
+    }
   }, [viewing])
 
   if (files.length === 0) return null
   return (
     <div className="attachments" aria-label="קבצים מצורפים">
       {files.map((file) => (
-        <FileCard key={file.key} file={file} onView={(url) => setViewing({ url, file })} />
+        <FileCard key={file.key} file={file} onView={(url, kind) => setViewing({ url, file, kind })} />
       ))}
 
-      {viewing && (
+      {/* Shown over the whole screen: the letter it came from slides and scales, which would trap it inside. */}
+      {viewing &&
+        createPortal(
         <div className="lightbox" role="dialog" aria-label={viewing.file.filename}>
           <button className="lightbox-backdrop" aria-label="סגירה" onClick={() => setViewing(null)} />
-          <img src={viewing.url} alt={viewing.file.filename} />
+          {viewing.kind === 'pdf' ? (
+            <iframe className="lightbox-doc" src={viewing.url} title={viewing.file.filename} />
+          ) : (
+            <img src={viewing.url} alt={viewing.file.filename} />
+          )}
           <div className="lightbox-bar">
             <button className="icon-btn" onClick={() => void save(viewing.file)} aria-label="הורדה" title="הורדה">
               <DownloadIcon />
@@ -120,8 +147,9 @@ export function Attachments({ files }: { files: Attachment[] }) {
               <CloseIcon />
             </button>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </div>
   )
 }

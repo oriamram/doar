@@ -73,6 +73,24 @@ export function formatWhen(when: Date | string, now = new Date()): string {
   return `${day}, ב־${time}`
 }
 
+/** How long ago something happened: "לפני רגע", "לפני 12 דקות", "לפני 3 שעות", "אתמול ב־14:02", then the date. */
+export function formatAgo(when: Date | string, now = new Date()): string {
+  const date = new Date(when)
+  const minutes = Math.floor((now.getTime() - date.getTime()) / 60_000)
+  if (minutes < 1) return 'לפני רגע'
+  if (minutes === 1) return 'לפני דקה'
+  if (minutes < 60) return `לפני ${minutes} דקות`
+  const hours = Math.floor(minutes / 60)
+  if (hours === 1) return 'לפני שעה'
+  if (hours === 2) return 'לפני שעתיים'
+  if (hours < 12) return `לפני ${hours} שעות`
+  const time = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+  const days = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000)
+  if (days === 0) return `היום ב־${time}`
+  if (days === 1) return `אתמול ב־${time}`
+  return `${date.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' })}, ב־${time}`
+}
+
 /** Ready-made times to send a letter later, the nearest first. */
 export function schedulePresets(now = new Date()): { label: string; when: Date }[] {
   const at = (daysAhead: number, hour: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead, hour)

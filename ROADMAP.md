@@ -385,3 +385,24 @@ Form numbers in use: 4, 7, 9, 11, 12, נספח א׳, נספח ב׳.
 
 Each phase is one stretch of work that ends deployed, with its checks passing and a
 short report. NEXT-STEPS.md keeps the list of what only the user can do.
+
+## Progress
+
+Approved by the owner on 13 November 2026: phases 0 to 3. The clerk (phase 4) is left out for now.
+
+**The server (done once, for phases 0 to 3).** Migration `20261113100000_post_office.sql`
+and `postman` version 4 are live: fault reports, shared preferences, held and registered
+mail, sender marks (express and refused), opening hours, notes, one-click unsubscribe,
+and signed tickets for buttons on notifications. Checked: `scripts/check-postman.ts`
+(codes, hours with sunset times, reminders, tickets), a Deno type check, and the
+once-a-minute timer answering without errors after the deploy. Not yet exercised with a
+real session: every new request from the app (the app's side arrives phase by phase).
+
+**Phase 0 (live).** The demo mailbox (`?demo`), `npm run check` and `npm run check:ui`,
+fault reports, system status in Settings, shared settings, quoted text folded, label
+management (checked against Gmail itself with a temporary label), the forgotten-attachment
+warning, PDFs opening inside Doar on a PC, select all, mark a bundle read, recent searches.
+Found and fixed on the way: a shortcut key was also typed into the form it opened, and a
+picture opened from a letter was trapped inside the letter's area instead of covering the
+screen. Still open from 0.7: a real rule labeling older mail, and a real new letter labeled
+by the timer (both wait for matching mail to arrive).

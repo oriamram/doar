@@ -3,6 +3,7 @@ import type { ComposeDraft, Contact, Label, Message, Thread } from '../types'
 import { shortName } from './addresses'
 import { eraseAccount, signOut } from './auth'
 import { draftFromMessage, replyDraft } from './compose'
+import { isDemo } from './demo'
 import { harvestRecipients, rememberContacts } from './contacts'
 import { formatWhen } from './format'
 import * as api from './gmail'
@@ -11,7 +12,8 @@ import { onLaunch, takeShared, type LaunchIntent } from './launch'
 import { tapHaptic } from './platform'
 import * as postman from './postman'
 import { forgetPush, syncPush } from './push'
-import { getSettings } from './settings'
+import { report } from './report'
+import { applyShared, getSettings } from './settings'
 import { playSound } from './sound'
 import { dismissToast, toast } from './toast'
 import {
@@ -71,11 +73,34 @@ export type MailboxState = {
   scheduled: Scheduled[]
   /** Automatic labels: which sender gets which label. */
   rules: postman.LabelRule[]
+  /** Held letters and registered letters the server is keeping time for (and ones it just brought back). */
+  reminders: postman.Reminder[]
+  /** Senders you marked: express, or refused. */
+  marks: postman.SenderMark[]
+  /** Your notes, by conversation. */
+  notes: Readonly<Record<string, string>>
+  /** Opening hours for notifications; null when they may always arrive. */
+  hours: postman.Hours | null
+  /** What Doar's server last said about itself; null until it has answered once. */
+  server: ServerInfo | null
   online: boolean
+}
+
+export type ServerInfo = {
+  /** Did the last attempt to ask it succeed? */
+  reachable: boolean
+  /** When it answered (milliseconds since 1970). */
+  askedAt: number
+  /** When it last looked for new mail. */
+  lookedAt: string | null
+  devices: postman.Device[]
+  lastReport: postman.ServerStatus['lastReport']
 }
 
 const EMPTY: ReadonlySet<string> = new Set()
 const POLL_MS = 90_000
+/** The demo mailbox announces its own new mail, the way the service worker does for real mail. */
+const DEMO_MAIL = 'doar-demo-mail'
 const SAVED_VERSION = 2
 
 function blank(me: Contact): MailboxState {
@@ -101,6 +126,11 @@ function blank(me: Contact): MailboxState {
     flight: null,
     scheduled: [],
     rules: [],
+    reminders: [],
+    marks: [],
+    notes: {},
+    hours: null,
+    server: null,
     online: navigator.onLine,
   }
 }
@@ -191,6 +221,8 @@ function fail(error: unknown) {
     void signOut()
     return
   }
+  // Gmail refusing something it should accept is worth a trace; being offline or asked to slow down is not.
+  if (!(error instanceof api.GmailError) || (error.status >= 400 && error.status !== 429)) report('mailbox', error)
   set({ error: errorText(error), loading: false, loadingMore: false })
 }
 
@@ -607,6 +639,11 @@ function setLabel(ids: string[], labelId: string, on: boolean) {
   settle(ids.map((id) => (on ? api.modifyThread(id, [labelId], []) : api.modifyThread(id, [], [labelId]))))
 }
 
+function labelProblem(error: unknown): string {
+  if (error instanceof api.GmailError && error.status === 409) return 'כבר יש תווית בשם הזה.'
+  return errorText(error)
+}
+
 async function addLabel(name: string): Promise<Label | null> {
   try {
     const label = await api.createLabel(name.trim())
@@ -614,9 +651,50 @@ async function addLabel(name: string): Promise<Label | null> {
     remember()
     return label
   } catch (error) {
-    toast(errorText(error), { tone: 'error' })
+    toast(labelProblem(error), { tone: 'error' })
     return null
   }
+}
+
+/** Rename a label, or change its tape color (null: no color of its own). */
+async function changeLabel(id: string, change: { name?: string; color?: string | null }): Promise<boolean> {
+  try {
+    const label = await api.updateLabel(id, change)
+    set({
+      labels: state.labels.map((other) => (other.id === id ? label : other)).sort((a, b) => a.name.localeCompare(b.name, 'he')),
+      view: state.view.kind === 'label' && state.view.id === id ? { ...state.view, name: label.name } : state.view,
+    })
+    remember()
+    return true
+  } catch (error) {
+    toast(labelProblem(error), { tone: 'error' })
+    return false
+  }
+}
+
+/** Delete a label. The letters that wore it stay where they are; its automatic rules go with it. */
+async function removeLabel(id: string): Promise<boolean> {
+  try {
+    await api.deleteLabel(id)
+  } catch (error) {
+    toast(labelProblem(error), { tone: 'error' })
+    return false
+  }
+  for (const rule of state.rules.filter((item) => item.labelId === id)) postman.ruleDelete(rule.id).catch(() => {})
+  const strip = (thread: Thread) => (thread.labelIds.includes(id) ? { ...thread, labelIds: without(thread.labelIds, id) } : thread)
+  const wasOpen = state.view.kind === 'label' && state.view.id === id
+  viewCache.clear()
+  set({
+    labels: state.labels.filter((label) => label.id !== id),
+    rules: state.rules.filter((rule) => rule.labelId !== id),
+    threads: state.threads?.map(strip) ?? null,
+    bundles: state.bundles.map((bundle) => ({ ...bundle, threads: bundle.threads.map(strip) })),
+    open: state.open ? strip(state.open) : null,
+  })
+  remember()
+  if (wasOpen) show(INBOX)
+  toast('התווית נמחקה. המכתבים שנשאו אותה נשארו במקומם.')
+  return true
 }
 
 // ---------- Reading ----------
@@ -810,9 +888,22 @@ function watchSends() {
 async function refreshServer() {
   try {
     const status = await postman.serverStatus()
-    set({ scheduled: byTime(status.scheduled.map(describe)), rules: status.rules })
+    set({
+      scheduled: byTime(status.scheduled.map(describe)),
+      rules: status.rules,
+      reminders: status.reminders,
+      marks: status.marks,
+      notes: Object.fromEntries(status.notes.map((note) => [note.threadId, note.text])),
+      hours: status.hours,
+      server: { reachable: true, askedAt: Date.now(), lookedAt: status.lookedAt, devices: status.devices, lastReport: status.lastReport },
+    })
     watchSends()
     void syncPush(status)
+    // Settings changed on another device arrive here; a change to bundles redraws every list.
+    if (applyShared(status.prefs).includes('bundles')) {
+      viewCache.clear()
+      void load({ quiet: true })
+    }
     // Fill in recipients and subjects from Gmail, for the letters we haven't seen yet.
     for (const item of status.scheduled) {
       if (draftInfos.has(item.draftId)) continue
@@ -826,6 +917,7 @@ async function refreshServer() {
     }
   } catch {
     // The server can't be reached right now; mail itself still works.
+    if (state.server) set({ server: { ...state.server, reachable: false } })
   }
 }
 
@@ -1024,10 +1116,13 @@ function start() {
     void load({ quiet: true })
   }
   const onOffline = () => set({ online: false })
+  const onDemoMail = () => void load({ quiet: true })
   document.addEventListener('visibilitychange', onVisible)
   window.addEventListener('online', onOnline)
   window.addEventListener('offline', onOffline)
+  if (isDemo) window.addEventListener(DEMO_MAIL, onDemoMail)
   stopRunning = () => {
+    window.removeEventListener(DEMO_MAIL, onDemoMail)
     stopLaunch()
     clearTimeout(sendTimer)
     clearInterval(poll)
@@ -1062,6 +1157,11 @@ function forgetLocal() {
  */
 function leave() {
   forgetLocal()
+  if (isDemo) {
+    // Leaving the demo: on to the real front door.
+    window.location.assign('/')
+    return
+  }
   // The server must stop notifying this device before the session that proves who we are is gone.
   void forgetPush().finally(() => void signOut())
 }
@@ -1078,6 +1178,10 @@ async function forgetEverything() {
     'הדואר עצמו, ב־Gmail, לא נמחק. להמשיך?',
   ]
   if (!window.confirm(warning.filter(Boolean).join('\n\n'))) return
+  if (isDemo) {
+    leave()
+    return
+  }
   try {
     await forgetPush()
     await eraseAccount()
@@ -1113,7 +1217,11 @@ export const mailbox = {
   toggleStar,
   setLabel,
   addLabel,
+  changeLabel,
+  removeLabel,
   toggleSelect,
+  /** Select every letter in the list on screen. */
+  selectAll: () => set({ selection: new Set((state.threads ?? []).map((thread) => thread.id)) }),
   clearSelection: () => set({ selection: EMPTY }),
   clearArrived: () => state.arrived.size && set({ arrived: EMPTY }),
   compose,

@@ -1,3 +1,4 @@
+import { isDemo } from './demo'
 import { supabase } from './supabase'
 
 /**
@@ -18,6 +19,8 @@ export class ReauthRequiredError extends Error {
 }
 
 async function callTokenFunction<T>(body: Record<string, unknown>): Promise<T> {
+  // The demo mailbox has no Google account behind it; any token will do.
+  if (isDemo) return { access_token: 'demo', expires_in: 3600 } as T
   const { data, error } = await supabase.functions.invoke('google-token', { body })
   if (error) {
     const status = (error as { context?: Response }).context?.status

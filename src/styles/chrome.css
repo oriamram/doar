@@ -79,6 +79,10 @@
   color: var(--text-soft);
 }
 
+.nav-heading-tools {
+  display: flex;
+}
+
 .nav-add {
   display: grid;
   place-items: center;
@@ -753,6 +757,11 @@
   padding: 8px 0;
 }
 
+/* A button on a form keeps its own width instead of stretching across it. */
+.setting > .pill-btn {
+  align-self: flex-start;
+}
+
 .setting.check {
   flex-direction: row;
 }
@@ -842,6 +851,68 @@
 
 .label-new input:focus {
   border-color: var(--ink-red);
+}
+
+/* Managing labels: a row per label, and an editor that opens in its place. */
+.label-manage {
+  display: flex;
+  gap: 10px;
+}
+
+.label-editor {
+  display: grid;
+  gap: 12px;
+  padding: 12px 0 14px;
+  border-bottom: 1px dashed var(--ink-rule);
+}
+
+.label-editor input {
+  height: 42px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  background: transparent;
+  font-size: 16px;
+  outline: none;
+}
+
+.label-editor input:focus {
+  border-color: var(--ink-red);
+}
+
+.label-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* A dot of tape color. The chosen one wears a ring of ink. */
+.swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--sheet);
+  box-shadow: 0 0 0 1px var(--ink-rule);
+}
+
+.swatch[aria-checked='true'] {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.swatch-none {
+  background: repeating-linear-gradient(135deg, var(--sheet-aged) 0 5px, var(--sheet-lining) 5px 10px);
+}
+
+.pill-btn.danger {
+  border-color: var(--ink-red);
+  background: var(--ink-red);
+  color: var(--cream);
 }
 
 .shortcuts {
@@ -1060,6 +1131,38 @@
 }
 
 /* Settings: the deliberate way out (everything off the server, every device signed out). */
+/* What the system says about itself: a small two-column table printed on the form. */
+.status-list {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 0.93rem;
+}
+
+.status-list > div {
+  display: grid;
+  grid-template-columns: 8.5em minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding-block: 4px;
+  border-bottom: 1px dashed var(--ink-rule);
+}
+
+.status-list dt {
+  color: var(--ink-muted);
+}
+
+.status-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.status-list dd[dir='ltr'] {
+  text-align: end;
+  font-family: var(--mono);
+  font-size: 0.86rem;
+}
+
 .erase-link {
   align-self: flex-start;
   min-height: 32px;

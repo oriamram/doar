@@ -6,6 +6,7 @@ import { initMailbox, mailbox, useMailbox } from '../lib/mailbox'
 import { onAndroidBack } from '../lib/platform'
 import { INBOX, isFolder, type FolderId } from '../lib/views'
 import { Compose } from './Compose'
+import { LabelsSheet } from './LabelsSheet'
 import { Loader } from './Loader'
 import { Nav } from './Nav'
 import { Logo } from './Postal'
@@ -20,6 +21,7 @@ type Sheet =
   | { kind: 'shortcuts' }
   | { kind: 'guide' }
   | { kind: 'labels'; ids: string[] }
+  | { kind: 'manage-labels' }
   | { kind: 'rules'; from?: string; labelId?: string }
   | null
 
@@ -87,7 +89,6 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
           mailbox.compose(newDraft())
           break
         case '/':
-          e.preventDefault()
           setSearching(true)
           break
         case '?':
@@ -135,6 +136,8 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         default:
           return
       }
+      // The key did its job; it must not also be typed into the form it just opened.
+      e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -152,6 +155,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         onShortcuts={() => setSheet({ kind: 'shortcuts' })}
         onGuide={() => setSheet({ kind: 'guide' })}
         onRules={() => setSheet({ kind: 'rules' })}
+        onManageLabels={() => setSheet({ kind: 'manage-labels' })}
       />
 
       <ThreadList
@@ -189,6 +193,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       {sheet?.kind === 'labels' && (
         <LabelSheet ids={sheet.ids} onClose={() => setSheet(null)} onRules={(from, labelId) => setSheet({ kind: 'rules', from, labelId })} />
       )}
+      {sheet?.kind === 'manage-labels' && <LabelsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'rules' && <RulesSheet from={sheet.from} labelId={sheet.labelId} onClose={() => setSheet(null)} />}
       <Toasts />
     </div>

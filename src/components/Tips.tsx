@@ -1,8 +1,9 @@
+import { isDemo } from '../lib/demo'
 import { promptInstall, useInstall } from '../lib/install'
 import { enablePush, usePush } from '../lib/push'
 import { updateSettings, useSettings } from '../lib/settings'
 import { toast } from '../lib/toast'
-import { BellIcon, InstallIcon } from './icons'
+import { BellIcon, InstallIcon, MailIcon } from './icons'
 
 /** Edge on Android agrees to notifications but never delivers them (a long-standing fault in that browser). */
 const EDGE_ON_ANDROID = /Android/i.test(navigator.userAgent) && /EdgA\//i.test(navigator.userAgent)
@@ -17,6 +18,25 @@ export function Tips() {
   const { tipsDone } = useSettings()
   const done = (tip: string) => updateSettings({ tipsDone: [...tipsDone, tip] })
   const open = (tip: string) => !tipsDone.includes(tip)
+
+  if (isDemo && open('demo')) {
+    return (
+      <div className="tip">
+        <MailIcon />
+        <p>
+          <strong>זאת תיבת הדגמה.</strong> הדואר כאן מומצא, ושום מכתב לא נשלח באמת. אפשר לנסות הכל.
+        </p>
+        <div className="tip-actions">
+          <a className="tip-yes" href="/">
+            לדואר שלי
+          </a>
+          <button type="button" onClick={() => done('demo')}>
+            הבנתי
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (EDGE_ON_ANDROID && !install.installed && open('edge')) {
     return (

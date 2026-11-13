@@ -7,6 +7,13 @@
 //                       browsers. Nothing it reads is stored.
 //   Automatic labels    on the same look, a new letter from a sender the person listed
 //                       gets the Gmail label they chose for that sender.
+//   Held mail           brings a conversation back to the inbox at the time the person chose.
+//   Registered mail     tells the person when a letter they sent got no answer in time.
+//   Sender marks        "express" senders always notify at once; "refused" senders' mail goes
+//                       straight to the bin.
+//   Opening hours       outside them notifications wait, and one summary is sent at opening time.
+//   Also kept for the app: preferences shared by a person's devices, notes on letters,
+//                       and reports of failures on a device (never mail text).
 //
 // Called by the app, with the person's Supabase session:
 //   POST { action: "status" }                               { scope, endpoints, scheduled, rules }
@@ -21,6 +28,20 @@
 //   POST { action: "rule-create", match, label_id, existing }   { rule, labeled, thread_ids }
 //        match: an address or a domain; existing: also label that sender's mail already here
 //   POST { action: "rule-delete", id }                      { ok }
+//   POST { action: "hold-create", thread_id, due_at }       { reminder }
+//   POST { action: "reply-create", thread_id, after_message_id, days }   { reminder }
+//   POST { action: "reminder-update", id, due_at }          { reminder }
+//   POST { action: "reminder-cancel", id }                  { ok }
+//   POST { action: "mark-set", match, mark, on }            { mark }   mark: "express" | "refused"
+//   POST { action: "hours-set", hours }                     { hours }  null switches them off
+//   POST { action: "note-set", thread_id, text }            { ok }     empty text removes the note
+//   POST { action: "unsubscribe", message_id }              { done, mailto, url }
+//   POST { action: "prefs-set", patch }                     { prefs }
+//   POST { action: "report", place, message, detail, version, device }
+//
+// Called by the service worker when a button on a notification is pressed, with the
+// signed ticket that came inside that notification (no session needed):
+//   POST { action: "ticket", ticket, do }                   do: "read" | "archive" | "drop" | "again"
 //
 // Called by the database's timer every minute (header x-cron-secret, see the migration):
 //   POST { action: "tick" }
@@ -29,7 +50,11 @@
 // Deployed with verify_jwt off because it checks the caller itself.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { labelsFor, normalizeMatch, type Rule } from './rules.ts'
+import { findCode, formatCode } from './codes.ts'
+import { isOpen, validHours } from './hours.ts'
+import { replyState, validDays, validDue } from './reminders.ts'
+import { labelsFor, matches, normalizeMatch, senderAddress, type Rule } from './rules.ts'
+import { readTicket, signTicket } from './tickets.ts'
 import { createVapidKeys, sendPush, type PushResult, type VapidKeys } from './webpush.ts'
 
 const corsHeaders = {
@@ -59,6 +84,9 @@ const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me'
 /** Who is sending the notifications, as push services ask to be told. */
 const SENDER = 'https://doar-henna.vercel.app'
 const SCOPES = ['all', 'important', 'primary']
+/** This function's own address: where a button on a notification reports back to. */
+const SELF = `${Deno.env.get('SUPABASE_URL')}/functions/v1/postman`
+const DAY = 86_400_000
 
 const now = () => new Date().toISOString()
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error))
@@ -242,7 +270,29 @@ function wanted(labels: string[], scope: string): boolean {
   return !noise
 }
 
-type Report = { sent: number; failed: number; retried: number; checked: number; labeled: number; notified: number; errors: string[] }
+type Report = {
+  sent: number
+  failed: number
+  retried: number
+  checked: number
+  labeled: number
+  notified: number
+  /** Held and registered letters brought back to the inbox. */
+  returned: number
+  /** Letters from refused senders put in the bin. */
+  refused: number
+  errors: string[]
+}
+
+// deno-lint-ignore no-explicit-any
+const headerOf = (message: any, name: string): string =>
+  (message?.payload?.headers ?? []).find((h: { name: string }) => h.name.toLowerCase() === name)?.value ?? ''
+
+/** The buttons on a new-mail notification (phones show two). */
+const MAIL_ACTIONS = [
+  { action: 'archive', title: 'לתיוק' },
+  { action: 'read', title: 'נקרא' },
+]
 
 /**
  * Look for mail that arrived since the last look: put the person's automatic labels on
@@ -256,7 +306,7 @@ async function checkMail(userId: string, notify: boolean, report: Report) {
     .update({ checking_until: new Date(Date.now() + 120_000).toISOString() })
     .eq('user_id', userId)
     .or(`checking_until.is.null,checking_until.lt."${now()}"`)
-    .select('history_id, scope, needs_reauth, reauth_at')
+    .select('history_id, scope, needs_reauth, reauth_at, hours, held_threads')
     .maybeSingle()
   if (!watch) return
 
@@ -286,8 +336,14 @@ async function checkMail(userId: string, notify: boolean, report: Report) {
     }
     report.checked++
 
-    const { data: ruleRows } = await admin.from('label_rules').select('id, match, label_id').eq('user_id', userId)
+    const [{ data: ruleRows }, { data: markRows }] = await Promise.all([
+      admin.from('label_rules').select('id, match, label_id').eq('user_id', userId),
+      admin.from('sender_marks').select('match, mark').eq('user_id', userId),
+    ])
     const rules = (ruleRows ?? []) as Rule[]
+    const marked = (mark: string) => (markRows ?? []).filter((row) => row.mark === mark).map((row) => row.match as string)
+    const express = marked('express')
+    const refused = marked('refused')
 
     const bookmark = async () => {
       const profile = await gmail(token, '/profile')
@@ -341,9 +397,31 @@ async function checkMail(userId: string, notify: boolean, report: Report) {
       }
       return answer
     }
-    // deno-lint-ignore no-explicit-any
-    const header = (body: any, name: string): string =>
-      (body.payload?.headers ?? []).find((h: { name: string }) => h.name.toLowerCase() === name)?.value ?? ''
+    const header = headerOf
+
+    // Mail from a sender the person refused goes straight to the bin, and is not announced.
+    if (refused.length) {
+      for (const ref of [...arrived.values()].slice(-60)) {
+        const message = await read(ref.id)
+        if (message.status !== 200) continue
+        const address = senderAddress(header(message.body, 'from'))
+        if (!refused.some((match) => matches(match, address))) continue
+        const binned = await gmail(token, `/messages/${ref.id}/trash`, { method: 'POST' })
+        if (binned.status !== 200) continue
+        report.refused++
+        arrived.delete(ref.id)
+        if (latest.get(ref.threadId)?.id === ref.id) latest.delete(ref.threadId)
+      }
+    }
+
+    // New mail in a conversation settles what was waiting on it: a held letter is back by
+    // itself, and a registered letter has its answer.
+    const touched = [...new Set([...arrived.values()].map((message) => message.threadId))]
+    if (touched.length) {
+      const settle = (kind: string, status: string) =>
+        admin.from('reminders').update({ status, done_at: now() }).eq('user_id', userId).eq('kind', kind).eq('status', 'waiting').in('thread_id', touched)
+      await Promise.all([settle('hold', 'cancelled'), settle('reply', 'answered')])
+    }
 
     // Automatic labels first, so a letter already wears its label when its notification arrives.
     if (rules.length) {
@@ -359,52 +437,95 @@ async function checkMail(userId: string, notify: boolean, report: Report) {
       }
     }
 
-    if (latest.size === 0) {
+    if (!notify) {
       await done(next)
       return
     }
 
     // Read sender and subject; skip anything read or filed in the meantime.
-    const letters: { threadId: string; from: string; subject: string; preview: string }[] = []
+    const letters: { threadId: string; from: string; subject: string; preview: string; code: string | null; urgent: boolean }[] = []
     for (const ref of [...latest.values()].slice(-8)) {
       const message = await read(ref.id)
       if (message.status !== 200 || !wanted(message.body.labelIds ?? [], watch.scope)) continue
+      const from = header(message.body, 'from')
+      const subject = plain(decodeWords(header(message.body, 'subject'))) || '(בלי נושא)'
+      const preview = plain(message.body.snippet ?? '')
+      const code = findCode(subject, preview)
+      const address = senderAddress(from)
       letters.push({
         threadId: message.body.threadId,
-        from: senderName(header(message.body, 'from')),
-        subject: plain(decodeWords(header(message.body, 'subject'))) || '(בלי נושא)',
-        preview: plain(message.body.snippet ?? ''),
+        from: senderName(from),
+        subject,
+        preview,
+        code,
+        // A code is no use in the morning, and an express sender was promised to get through.
+        urgent: !!code || express.some((match) => matches(match, address)),
       })
     }
-    if (letters.length === 0) {
-      await done(next)
+
+    // Outside opening hours only urgent letters are announced; the rest wait for opening time.
+    const hours = validHours(watch.hours)
+    const open = !hours || isOpen(hours, new Date())
+    const announce = open ? letters : letters.filter((letter) => letter.urgent)
+    let held: string[] = watch.held_threads ?? []
+    if (!open) held = [...new Set([...held, ...letters.filter((letter) => !letter.urgent).map((letter) => letter.threadId)])].slice(-50)
+    const flush = open && held.length > 0
+    if (announce.length === 0 && !flush) {
+      await done({ ...next, held_threads: held })
       return
     }
 
     const inbox = await gmail(token, '/labels/INBOX')
     const unread = inbox.status === 200 ? Number(inbox.body.threadsUnread ?? 0) : undefined
 
-    if (letters.length <= 3) {
-      for (const letter of letters) {
+    // Opening time: one note about what arrived while it was closed and is still unread.
+    if (flush) {
+      const names: string[] = []
+      for (const id of held.filter((id) => !announce.some((letter) => letter.threadId === id)).slice(-12)) {
+        const thread = await gmail(token, `/threads/${id}?format=metadata&metadataHeaders=From&fields=messages(labelIds,payload/headers)`)
+        if (thread.status !== 200) continue
+        // deno-lint-ignore no-explicit-any
+        const fresh = (thread.body.messages ?? []).findLast((message: any) => incoming(message.labelIds ?? []) && message.labelIds.includes('UNREAD'))
+        if (fresh) names.push(senderName(header(fresh, 'from')))
+      }
+      if (names.length > 0) {
+        await pushTo(userId, {
+          type: 'summary',
+          title: names.length === 1 ? 'בזמן שהיה סגור הגיע מכתב אחד' : `בזמן שהיה סגור הגיעו ${names.length} מכתבים`,
+          body: clip([...new Set(names)].join(', '), 200),
+          unread,
+        })
+        report.notified += names.length
+      }
+      held = []
+    }
+
+    if (announce.length > 0 && announce.length <= 3) {
+      const secret = await serverKey('ticket_secret')
+      for (const letter of announce) {
+        const ticket = secret ? await signTicket({ u: userId, t: letter.threadId, e: Date.now() + 2 * DAY }, secret) : null
         await pushTo(userId, {
           type: 'mail',
           threadId: letter.threadId,
-          title: clip(letter.from, 60),
-          body: clip(letter.preview ? `${letter.subject}\n${letter.preview}` : letter.subject, 220),
+          title: letter.code ? `קוד: ${formatCode(letter.code)}` : clip(letter.from, 60),
+          body: letter.code
+            ? clip(`${letter.from} · ${letter.subject}`, 220)
+            : clip(letter.preview ? `${letter.subject}\n${letter.preview}` : letter.subject, 220),
           unread,
+          ...(ticket ? { ticket, act: SELF, actions: MAIL_ACTIONS } : {}),
         })
       }
-    } else {
-      const names = [...new Set(letters.map((letter) => letter.from))]
+    } else if (announce.length > 3) {
+      const names = [...new Set(announce.map((letter) => letter.from))]
       await pushTo(userId, {
         type: 'summary',
-        title: `${letters.length} מכתבים חדשים`,
+        title: `${announce.length} מכתבים חדשים`,
         body: clip(names.join(', '), 200),
         unread,
       })
     }
-    report.notified += letters.length
-    await done(next)
+    report.notified += announce.length
+    await done({ ...next, held_threads: held })
   } catch (error) {
     report.errors.push(`mail: ${errorText(error)}`)
     await done()
@@ -423,9 +544,11 @@ type Scheduled = {
   status: string
   attempts: number
   error: string | null
+  /** Registered: when it goes out, start waiting this many days for an answer. */
+  followup_days: number | null
 }
 
-const SCHEDULED_FIELDS = 'id, draft_id, thread_id, message_id, send_at, status, error'
+const SCHEDULED_FIELDS = 'id, draft_id, thread_id, message_id, send_at, status, error, followup_days'
 
 const FAILURES: Record<string, string> = {
   reauth: 'צריך להתחבר מחדש לדואר ולשלוח אותו שוב.',
@@ -457,6 +580,18 @@ async function deliver(row: Scheduled, report: Report) {
     if (result.status === 200) {
       report.sent++
       await admin.from('scheduled_sends').update({ status: 'sent', sent_at: now(), error: null, updated_at: now() }).eq('id', row.id)
+      const days = validDays(row.followup_days)
+      const threadId = result.body?.threadId ?? row.thread_id
+      if (days && threadId && result.body?.id) {
+        await admin.from('reminders').insert({
+          user_id: row.user_id,
+          kind: 'reply',
+          thread_id: threadId,
+          after_message_id: result.body.id,
+          days,
+          due_at: new Date(Date.now() + days * DAY).toISOString(),
+        })
+      }
     } else if (result.status === 404) {
       // After an attempt whose answer never arrived, a missing draft means that attempt went through.
       if (row.attempts > 1) {
@@ -478,8 +613,109 @@ async function deliver(row: Scheduled, report: Report) {
   }
 }
 
+// ---------- Held mail and registered mail ----------
+
+type Reminder = {
+  id: string
+  user_id: string
+  kind: 'hold' | 'reply'
+  thread_id: string
+  after_message_id: string | null
+  days: number | null
+  due_at: string
+  attempts: number
+}
+
+const REMINDER_FIELDS = 'id, kind, thread_id, after_message_id, days, due_at, status, done_at'
+
+/** A reminder whose time has come. Its row is already marked "working". */
+async function remind(row: Reminder, report: Report) {
+  const finish = (status: string) => admin.from('reminders').update({ status, done_at: now() }).eq('id', row.id)
+  // Not now (Gmail is busy, or the person must sign in again): the next minute tries again, a few times.
+  const later = () => admin.from('reminders').update({ status: row.attempts >= 30 ? 'failed' : 'waiting' }).eq('id', row.id)
+
+  let token: string
+  try {
+    token = await googleToken(row.user_id)
+  } catch (error) {
+    await later()
+    if (!(error instanceof Reauth)) throw error
+    return
+  }
+  const thread = await gmail(
+    token,
+    `/threads/${row.thread_id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&fields=messages(id,labelIds,internalDate,payload/headers)`,
+  )
+  if (thread.status === 404) {
+    await finish('cancelled')
+    return
+  }
+  if (thread.status !== 200) {
+    if (thread.status === 401) await admin.from('mail_watch').update({ access_token: null, access_expires_at: null }).eq('user_id', row.user_id)
+    await later()
+    return
+  }
+  // deno-lint-ignore no-explicit-any
+  const messages: any[] = (thread.body.messages ?? []).filter((message: any) => !(message.labelIds ?? []).includes('DRAFT'))
+  const last = messages.at(-1)
+  if (!last || messages.every((message) => (message.labelIds ?? []).includes('TRASH'))) {
+    await finish('cancelled')
+    return
+  }
+
+  if (row.kind === 'reply') {
+    const state = replyState({ messages }, row.after_message_id ?? '')
+    if (state !== 'waiting') {
+      await finish(state === 'answered' ? 'answered' : 'cancelled')
+      return
+    }
+  } else if (incoming(last.labelIds ?? [])) {
+    // New mail already brought the conversation back.
+    await finish('cancelled')
+    return
+  }
+
+  // Back to the inbox, with its latest letter unread so that it stands out.
+  const back = await gmail(token, `/threads/${row.thread_id}/modify`, { method: 'POST', body: JSON.stringify({ addLabelIds: ['INBOX'] }) })
+  if (back.status !== 200) {
+    await later()
+    return
+  }
+  await gmail(token, `/messages/${last.id}/modify`, { method: 'POST', body: JSON.stringify({ addLabelIds: ['UNREAD'] }) })
+  await finish('returned')
+  report.returned++
+
+  const subject = plain(decodeWords(headerOf(last, 'subject'))) || '(בלי נושא)'
+  const secret = await serverKey('ticket_secret')
+  const ticket = secret
+    ? await signTicket(
+        { u: row.user_id, t: row.thread_id, e: Date.now() + 2 * DAY, k: row.kind, ...(row.kind === 'reply' ? { d: row.days ?? 3, m: row.after_message_id ?? '' } : {}) },
+        secret,
+      )
+    : null
+  const buttons = (again: string, drop: string) => (ticket ? { ticket, act: SELF, actions: [{ action: 'again', title: again }, { action: 'drop', title: drop }] } : {})
+  if (row.kind === 'hold') {
+    await pushTo(row.user_id, {
+      type: 'returned',
+      threadId: row.thread_id,
+      title: 'חזר מהדואר השמור',
+      body: clip(`${senderName(headerOf(last, 'from'))} · ${subject}`, 220),
+      ...buttons('להזכיר שוב מחר', 'לתיוק'),
+    })
+  } else {
+    const to = senderName(headerOf(messages.find((message) => message.id === row.after_message_id) ?? last, 'to'))
+    await pushTo(row.user_id, {
+      type: 'no-reply',
+      threadId: row.thread_id,
+      title: 'עדיין אין תשובה',
+      body: clip(`אל ${to} · ${subject}`, 220),
+      ...buttons('להזכיר שוב', 'לוותר'),
+    })
+  }
+}
+
 async function tick(): Promise<Report> {
-  const report: Report = { sent: 0, failed: 0, retried: 0, checked: 0, labeled: 0, notified: 0, errors: [] }
+  const report: Report = { sent: 0, failed: 0, retried: 0, checked: 0, labeled: 0, notified: 0, returned: 0, refused: 0, errors: [] }
 
   // A send that started long ago and never reported back: its outcome is unknown, so it is not repeated.
   const { data: lost } = await admin
@@ -497,13 +733,26 @@ async function tick(): Promise<Report> {
   if (error) report.errors.push(`claim: ${error.message}`)
   for (const row of (due ?? []) as Scheduled[]) await deliver(row, report)
 
-  // Everyone who wants notifications, and everyone who has automatic labels.
-  const [{ data: subscribers }, { data: ruleOwners }] = await Promise.all([
+  // Held letters to bring back, and registered letters to ask about.
+  const { data: reminders, error: remindError } = await admin.rpc('claim_due_reminders')
+  if (remindError) report.errors.push(`reminders: ${remindError.message}`)
+  for (const row of (reminders ?? []) as Reminder[]) {
+    try {
+      await remind(row, report)
+    } catch (error) {
+      report.errors.push(`reminder: ${errorText(error)}`)
+      await admin.from('reminders').update({ status: row.attempts >= 30 ? 'failed' : 'waiting' }).eq('id', row.id).eq('status', 'working')
+    }
+  }
+
+  // Everyone who wants notifications, everyone who has automatic labels, and everyone who refused a sender.
+  const [{ data: subscribers }, { data: ruleOwners }, { data: refusers }] = await Promise.all([
     admin.from('push_subscriptions').select('user_id'),
     admin.from('label_rules').select('user_id'),
+    admin.from('sender_marks').select('user_id').eq('mark', 'refused'),
   ])
   const notified = new Set((subscribers ?? []).map((row) => row.user_id as string))
-  const users = new Set([...notified, ...(ruleOwners ?? []).map((row) => row.user_id as string)])
+  const users = new Set([...notified, ...(ruleOwners ?? []).map((row) => row.user_id as string), ...(refusers ?? []).map((row) => row.user_id as string)])
   await Promise.all([...users].map((userId) => checkMail(userId, notified.has(userId), report)))
   return report
 }
@@ -556,22 +805,218 @@ async function listScheduled(userId: string) {
   return data ?? []
 }
 
+/** An id as Gmail writes them, or null. */
+const idText = (value: unknown): string | null => (typeof value === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(value) ? value : null)
+
+/** A web address the server may be asked to call: an ordinary https site, never a number or a local name. */
+function publicUrl(text: string): boolean {
+  try {
+    const url = new URL(text)
+    return (
+      url.protocol === 'https:' &&
+      !url.username &&
+      (url.port === '' || url.port === '443') &&
+      /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(url.hostname) &&
+      !/(^|\.)(localhost|local|internal|lan|home|corp|test|example|invalid)$/i.test(url.hostname)
+    )
+  } catch {
+    return false
+  }
+}
+
+/** Make a reminder for a conversation, replacing one of the same kind that still waits. */
+async function saveReminder(userId: string, values: { kind: 'hold' | 'reply'; thread_id: string; due_at: string; after_message_id?: string | null; days?: number | null }) {
+  await admin
+    .from('reminders')
+    .update({ status: 'cancelled', done_at: now() })
+    .eq('user_id', userId)
+    .eq('thread_id', values.thread_id)
+    .eq('kind', values.kind)
+    .eq('status', 'waiting')
+  return admin.from('reminders').insert({ user_id: userId, ...values }).select(REMINDER_FIELDS).maybeSingle()
+}
+
 // deno-lint-ignore no-explicit-any
 async function fromApp(userId: string, body: any): Promise<Response> {
   switch (body.action) {
     case 'status': {
-      const [{ data: watch }, { data: subscriptions }, scheduled, { data: rules }] = await Promise.all([
-        admin.from('mail_watch').select('scope').eq('user_id', userId).maybeSingle(),
-        admin.from('push_subscriptions').select('endpoint').eq('user_id', userId),
-        listScheduled(userId),
-        admin.from('label_rules').select('id, match, label_id').eq('user_id', userId).order('created_at'),
-      ])
+      const recently = new Date(Date.now() - 2 * DAY).toISOString()
+      const [{ data: watch }, { data: subscriptions }, scheduled, { data: rules }, { data: prefs }, { data: reminders }, { data: marks }, { data: notes }, { data: reports }] =
+        await Promise.all([
+          admin.from('mail_watch').select('scope, hours, updated_at').eq('user_id', userId).maybeSingle(),
+          admin.from('push_subscriptions').select('endpoint, device, last_ok_at').eq('user_id', userId).order('created_at'),
+          listScheduled(userId),
+          admin.from('label_rules').select('id, match, label_id').eq('user_id', userId).order('created_at'),
+          admin.from('user_prefs').select('data').eq('user_id', userId).maybeSingle(),
+          // What still waits, and what came back in the last two days (so the app can say "returned").
+          admin
+            .from('reminders')
+            .select(REMINDER_FIELDS)
+            .eq('user_id', userId)
+            .or(`status.in.(waiting,working),and(status.eq.returned,done_at.gt."${recently}")`)
+            .order('due_at'),
+          admin.from('sender_marks').select('id, match, mark').eq('user_id', userId).order('created_at'),
+          admin.from('notes').select('thread_id, text, updated_at').eq('user_id', userId).order('updated_at', { ascending: false }).limit(500),
+          admin.from('client_reports').select('at, place, message').eq('user_id', userId).order('at', { ascending: false }).limit(1),
+        ])
       return json({
         scope: watch?.scope ?? 'important',
         endpoints: (subscriptions ?? []).map((row) => row.endpoint),
         scheduled,
         rules: rules ?? [],
+        devices: (subscriptions ?? []).map((row) => ({ device: row.device, last_ok_at: row.last_ok_at })),
+        looked_at: watch?.updated_at ?? null,
+        hours: validHours(watch?.hours),
+        prefs: prefs?.data ?? null,
+        reminders: reminders ?? [],
+        marks: marks ?? [],
+        notes: notes ?? [],
+        last_report: reports?.[0] ?? null,
       })
+    }
+
+    case 'prefs-set': {
+      const patch = body.patch
+      if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return json({ error: 'bad_prefs' }, 400)
+      const { data: row } = await admin.from('user_prefs').select('data').eq('user_id', userId).maybeSingle()
+      const data: Record<string, unknown> = { ...(row?.data ?? {}), ...patch }
+      for (const key of Object.keys(data)) if (data[key] === null) delete data[key]
+      if (JSON.stringify(data).length > 300_000) return json({ error: 'too_big' }, 413)
+      const { error } = await admin.from('user_prefs').upsert({ user_id: userId, data, updated_at: now() }, { onConflict: 'user_id' })
+      if (error) return json({ error: 'Could not save preferences' }, 500)
+      return json({ prefs: data })
+    }
+
+    case 'report': {
+      const text = (value: unknown, max: number) => String(value ?? '').slice(0, max)
+      const { count } = await admin
+        .from('client_reports')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('at', new Date(Date.now() - DAY).toISOString())
+      // A device stuck in a loop must not fill the table.
+      if ((count ?? 0) >= 300) return json({ ok: true, kept: false })
+      let detail: unknown = null
+      try {
+        const raw = JSON.stringify(body.detail ?? null)
+        detail = raw.length <= 6000 ? JSON.parse(raw) : { cut: raw.slice(0, 6000) }
+      } catch {
+        // Not something that can be stored; the message alone is kept.
+      }
+      await admin.from('client_reports').insert({
+        user_id: userId,
+        app_version: text(body.version, 40),
+        device: text(body.device, 60),
+        place: text(body.place, 80) || 'unknown',
+        message: text(body.message, 600),
+        detail,
+      })
+      return json({ ok: true, kept: true })
+    }
+
+    case 'hours-set': {
+      const hours = body.hours === null ? null : validHours(body.hours)
+      if (body.hours !== null && !hours) return json({ error: 'bad_hours' }, 400)
+      // Switching the hours off leaves what was held: the next look announces it.
+      const { error } = await admin.from('mail_watch').upsert({ user_id: userId, hours }, { onConflict: 'user_id' })
+      if (error) return json({ error: 'Could not save hours' }, 500)
+      return json({ hours })
+    }
+
+    case 'hold-create':
+    case 'reply-create': {
+      const hold = body.action === 'hold-create'
+      const threadId = idText(body.thread_id)
+      const days = hold ? null : validDays(body.days)
+      const due = hold ? validDue(body.due_at) : days ? new Date(Date.now() + days * DAY).toISOString() : null
+      const after = hold ? null : idText(body.after_message_id)
+      if (!threadId || !due || (!hold && !after)) return json({ error: 'bad_time' }, 400)
+      const { count } = await admin.from('reminders').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'waiting')
+      if ((count ?? 0) >= 500) return json({ error: 'too_many' }, 409)
+      const saved = await saveReminder(userId, { kind: hold ? 'hold' : 'reply', thread_id: threadId, due_at: due, after_message_id: after, days })
+      if (saved.error || !saved.data) return json({ error: 'Could not save reminder' }, 500)
+      return json({ reminder: saved.data })
+    }
+
+    case 'reminder-update': {
+      const due = validDue(body.due_at)
+      if (!due) return json({ error: 'bad_time' }, 400)
+      const { data } = await admin
+        .from('reminders')
+        .update({ due_at: due })
+        .eq('id', String(body.id ?? ''))
+        .eq('user_id', userId)
+        .eq('status', 'waiting')
+        .select(REMINDER_FIELDS)
+        .maybeSingle()
+      return data ? json({ reminder: data }) : json({ error: 'too_late' }, 409)
+    }
+
+    case 'reminder-cancel':
+      // Also clears a "returned" note the person has seen.
+      await admin.from('reminders').delete().eq('id', String(body.id ?? '')).eq('user_id', userId).in('status', ['waiting', 'returned'])
+      return json({ ok: true })
+
+    case 'mark-set': {
+      const match = normalizeMatch(String(body.match ?? ''))
+      if (!match) return json({ error: 'bad_match' }, 400)
+      if (body.mark !== 'express' && body.mark !== 'refused') return json({ error: 'bad_mark' }, 400)
+      if (body.on === false) {
+        await admin.from('sender_marks').delete().eq('user_id', userId).eq('match', match).eq('mark', body.mark)
+        return json({ ok: true })
+      }
+      const { count } = await admin.from('sender_marks').select('id', { count: 'exact', head: true }).eq('user_id', userId)
+      if ((count ?? 0) >= 500) return json({ error: 'too_many' }, 409)
+      await admin.from('sender_marks').upsert({ user_id: userId, match, mark: body.mark }, { onConflict: 'user_id,match,mark', ignoreDuplicates: true })
+      const { data } = await admin.from('sender_marks').select('id, match, mark').eq('user_id', userId).eq('match', match).eq('mark', body.mark).maybeSingle()
+      return data ? json({ mark: data }) : json({ error: 'Could not save mark' }, 500)
+    }
+
+    case 'note-set': {
+      const threadId = idText(body.thread_id)
+      if (!threadId) return json({ error: 'bad_note' }, 400)
+      const text = String(body.text ?? '').trim().slice(0, 4000)
+      const result = text
+        ? await admin.from('notes').upsert({ user_id: userId, thread_id: threadId, text, updated_at: now() }, { onConflict: 'user_id,thread_id' })
+        : await admin.from('notes').delete().eq('user_id', userId).eq('thread_id', threadId)
+      return result.error ? json({ error: 'Could not save note' }, 500) : json({ ok: true })
+    }
+
+    case 'unsubscribe': {
+      const messageId = idText(body.message_id)
+      if (!messageId) return json({ error: 'message_missing' }, 404)
+      let token: string
+      try {
+        token = await googleToken(userId)
+      } catch (error) {
+        if (error instanceof Reauth) return json({ error: 'reauth' }, 401)
+        throw error
+      }
+      // The list's own instructions are read from the letter itself, not taken from the app.
+      const message = await gmail(
+        token,
+        `/messages/${messageId}?format=metadata&metadataHeaders=List-Unsubscribe&metadataHeaders=List-Unsubscribe-Post&fields=payload/headers`,
+      )
+      if (message.status !== 200) return json({ error: 'message_missing' }, 404)
+      const list = headerOf(message.body, 'list-unsubscribe')
+      const url = /<(https:\/\/[^>\s]+)>/i.exec(list)?.[1] ?? null
+      const mailto = /<mailto:([^>\s]+)>/i.exec(list)?.[1] ?? null
+      // "One click": the list promises that this one request, with no page to fill in, takes the person off.
+      if (url && /one-click/i.test(headerOf(message.body, 'list-unsubscribe-post')) && publicUrl(url)) {
+        try {
+          const answer = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'List-Unsubscribe=One-Click',
+            redirect: 'manual',
+            signal: AbortSignal.timeout(10_000),
+          })
+          if (answer.status < 400) return json({ done: 'posted', mailto, url })
+        } catch {
+          // The list's site didn't answer; the app falls back to the other ways.
+        }
+      }
+      return json({ done: null, mailto, url })
     }
 
     case 'push-key':
@@ -655,6 +1100,7 @@ async function fromApp(userId: string, body: any): Promise<Response> {
         status: 'pending',
         attempts: 0,
         error: null,
+        followup_days: validDays(body.followup_days),
         updated_at: now(),
       }
       // Scheduling a draft that already waits just moves its time.
@@ -748,6 +1194,48 @@ async function fromApp(userId: string, body: any): Promise<Response> {
   return json({ error: 'Unknown action' }, 400)
 }
 
+/** A button on a notification was pressed. The signed ticket inside the notification says for whom and on what. */
+// deno-lint-ignore no-explicit-any
+async function fromTicket(body: any): Promise<Response> {
+  const secret = await serverKey('ticket_secret')
+  const ticket = secret ? await readTicket(body.ticket, secret) : null
+  if (!ticket || !idText(ticket.t)) return json({ error: 'bad_ticket' }, 403)
+  let token: string
+  try {
+    token = await googleToken(ticket.u)
+  } catch (error) {
+    if (error instanceof Reauth) return json({ error: 'reauth' }, 401)
+    throw error
+  }
+  const relabel = async (remove: string[]) => {
+    const result = await gmail(token, `/threads/${ticket.t}/modify`, { method: 'POST', body: JSON.stringify({ removeLabelIds: remove }) })
+    return result.status === 200
+  }
+  switch (body.do) {
+    case 'read':
+      return (await relabel(['UNREAD'])) ? json({ ok: true }) : json({ error: 'gmail' }, 502)
+    case 'archive':
+      return (await relabel(['INBOX'])) ? json({ ok: true }) : json({ error: 'gmail' }, 502)
+    case 'drop':
+      // "File it" or "give up" on a letter the server itself brought back: out of the inbox, and read.
+      return (await relabel(['INBOX', 'UNREAD'])) ? json({ ok: true }) : json({ error: 'gmail' }, 502)
+    case 'again': {
+      if (ticket.k !== 'hold' && ticket.k !== 'reply') return json({ error: 'bad_ticket' }, 400)
+      if (!(await relabel(['INBOX', 'UNREAD']))) return json({ error: 'gmail' }, 502)
+      const days = ticket.k === 'reply' ? (validDays(ticket.d) ?? 3) : 1
+      const saved = await saveReminder(ticket.u, {
+        kind: ticket.k,
+        thread_id: ticket.t,
+        due_at: new Date(Date.now() + days * DAY).toISOString(),
+        after_message_id: ticket.k === 'reply' ? (idText(ticket.m) ?? null) : null,
+        days: ticket.k === 'reply' ? days : null,
+      })
+      return saved.error ? json({ error: 'Could not save reminder' }, 500) : json({ ok: true })
+    }
+  }
+  return json({ error: 'Unknown action' }, 400)
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -760,6 +1248,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // A button on a notification (carries its own proof).
+    if (body.action === 'ticket') return await fromTicket(body)
+
     // The database's timer.
     const cronSecret = req.headers.get('x-cron-secret')
     if (cronSecret) {

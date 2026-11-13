@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "check": "tsc -b && oxlint && node --experimental-strip-types scripts/check-rules.ts && node --experimental-strip-types scripts/check-webpush.ts && node --experimental-strip-types scripts/check-postman.ts",
+    "check:ui": "node --experimental-strip-types scripts/check-ui.ts",
     "preview": "vite preview",
     "android": "npm run build && cap sync android && cap open android",
     "sync": "npm run build && cap sync android",

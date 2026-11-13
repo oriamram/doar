@@ -486,6 +486,16 @@
   box-shadow: var(--shadow-float);
 }
 
+/* A document opened to read: a sheet that fills most of the screen. */
+.lightbox-doc {
+  position: relative;
+  width: min(94vw, 980px);
+  height: 88vh;
+  border: 0;
+  background: #fffdf7;
+  box-shadow: var(--shadow-float);
+}
+
 .lightbox-bar {
   position: absolute;
   top: max(10px, env(safe-area-inset-top));

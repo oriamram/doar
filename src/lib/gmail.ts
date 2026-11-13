@@ -1,7 +1,9 @@
 import type { Attachment, Category, Contact, Label, Message, Thread } from '../types'
 import { decodeWords, parseAddressList, parseContact } from './addresses'
+import { isDemo } from './demo'
 import { clearGoogleAccessToken, getGoogleAccessToken } from './googleToken'
 import { base64UrlToBytes } from './mime'
+import { report } from './report'
 
 /**
  * Gmail REST API client. Calls go straight from this device to Google;
@@ -11,6 +13,11 @@ import { base64UrlToBytes } from './mime'
 
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me'
 const UPLOAD = 'https://gmail.googleapis.com/upload/gmail/v1/users/me'
+
+/** The network. In the demo mailbox, a stand-in for Gmail that runs inside the page (src/demo/server.ts). */
+const http: typeof fetch = isDemo
+  ? (input, init) => import('../demo/server').then((demo) => demo.demoFetch(input, init))
+  : (input, init) => fetch(input, init)
 
 type GmailHeader = { name: string; value: string }
 type GmailPart = {
@@ -51,7 +58,7 @@ async function gmail<T>(path: string, init: RequestInit & { headers?: Record<str
   const token = await getGoogleAccessToken()
   let response: Response
   try {
-    response = await fetch(path.startsWith('https://') ? path : `${API}${path}`, {
+    response = await http(path.startsWith('https://') ? path : `${API}${path}`, {
       ...init,
       headers: {
         Authorization: `Bearer ${token}`,
@@ -59,7 +66,9 @@ async function gmail<T>(path: string, init: RequestInit & { headers?: Record<str
         ...init.headers,
       },
     })
-  } catch {
+  } catch (error) {
+    // With a connection, a request that never got through was stopped by something: worth a trace.
+    if (navigator.onLine) report('gmail.network', error, { path: path.split('?')[0], method: init.method ?? 'GET' })
     throw new GmailError(0, 'אין חיבור לאינטרנט. נסו שוב כשהרשת תחזור.')
   }
   if (response.ok) {
@@ -237,6 +246,20 @@ export async function listLabels(): Promise<Label[]> {
     .sort((a, b) => a.name.localeCompare(b.name, 'he'))
 }
 
+/** The tape colors Doar offers for a label: eight from the fixed palette Gmail accepts for labels. */
+export const LABEL_COLORS = ['#fb4c2f', '#ffad47', '#fad165', '#16a766', '#43d692', '#4a86e8', '#a479e2', '#f691b3']
+
+/** Rename a label, or change its color (null: no color of its own). */
+export async function updateLabel(id: string, change: { name?: string; color?: string | null }): Promise<Label> {
+  const body: Record<string, unknown> = {}
+  if (change.name !== undefined) body.name = change.name
+  // Gmail wants the ink's color too, from the same palette: black on the yellow, white on the rest.
+  if (change.color !== undefined) body.color = change.color ? { backgroundColor: change.color, textColor: change.color === '#fad165' ? '#000000' : '#ffffff' } : null
+  return toLabel(await gmail<GmailLabel>(`/labels/${id}`, { method: 'PATCH', body: JSON.stringify(body) }))
+}
+
+export const deleteLabel = (id: string) => gmail(`/labels/${id}`, { method: 'DELETE' })
+
 export async function createLabel(name: string): Promise<Label> {
   const label = await gmail<GmailLabel>('/labels', {
     method: 'POST',
@@ -299,7 +322,7 @@ export function sendDraft(draftId: string) {
  * hidden or closed while "undo send" is still counting down.
  */
 export function sendDraftOnExit(draftId: string, token: string) {
-  void fetch(`${API}/drafts/send`, {
+  void http(`${API}/drafts/send`, {
     method: 'POST',
     keepalive: true,
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

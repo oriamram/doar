@@ -1,5 +1,6 @@
 import { parseAddressList } from './addresses'
 import { filesToAttachments, newDraft } from './compose'
+import { demoQuery } from './demo'
 import { escapeHtml, textToHtml } from './gmail'
 import type { ComposeDraft } from '../types'
 
@@ -107,7 +108,7 @@ export function onLaunch(handle: (intent: LaunchIntent) => void, onMail: () => v
   // Opened with something in the address: act on it, then tidy the address bar.
   if (window.location.search) {
     take(window.location.href)
-    window.history.replaceState(window.history.state, '', window.location.pathname)
+    window.history.replaceState(window.history.state, '', window.location.pathname + demoQuery)
   }
 
   // Already open, and a notification was tapped (or mail arrived).

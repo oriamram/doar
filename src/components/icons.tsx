@@ -14,6 +14,12 @@ const base: SVGProps<SVGSVGElement> = {
 
 const Icon = ({ children }: { children: ReactNode }) => <svg {...base}>{children}</svg>
 
+export const EditIcon = () => (
+  <Icon>
+    <path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" />
+  </Icon>
+)
+
 export const ClockIcon = () => (
   <Icon>
     <circle cx="12" cy="12" r="9" />

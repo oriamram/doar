@@ -9,6 +9,7 @@ import {
   ChevronIcon,
   ClockIcon,
   DraftIcon,
+  EditIcon,
   HelpIcon,
   InboxIcon,
   InstallIcon,
@@ -33,6 +34,7 @@ type Props = {
   onShortcuts: () => void
   onGuide: () => void
   onRules: () => void
+  onManageLabels: () => void
 }
 
 type Folder = { id: FolderId; icon: ReactNode }
@@ -65,7 +67,7 @@ function savedMore(): boolean {
 }
 
 /** Folders and labels: a sidebar on wide screens, a drawer on phones. */
-export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules }: Props) {
+export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, onManageLabels }: Props) {
   const { view, unread, draftCount, labels, me, scheduled, rules } = useMailbox()
   const install = useInstall()
   const [adding, setAdding] = useState(false)
@@ -154,9 +156,24 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules }
 
           <div className="nav-heading">
             <span>תוויות</span>
-            <button className="nav-add" onClick={() => setAdding((value) => !value)} aria-label="תווית חדשה" title="תווית חדשה">
-              <PlusIcon />
-            </button>
+            <span className="nav-heading-tools">
+              {labels.length > 0 && (
+                <button
+                  className="nav-add"
+                  onClick={() => {
+                    onManageLabels()
+                    onClose()
+                  }}
+                  aria-label="ניהול תוויות"
+                  title="ניהול תוויות: שם, צבע, מחיקה"
+                >
+                  <EditIcon />
+                </button>
+              )}
+              <button className="nav-add" onClick={() => setAdding((value) => !value)} aria-label="תווית חדשה" title="תווית חדשה">
+                <PlusIcon />
+              </button>
+            </span>
           </div>
           {adding && (
             <form className="nav-new" onSubmit={addLabel}>

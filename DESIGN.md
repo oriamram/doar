@@ -27,6 +27,8 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | Automatic labels | The form "טופס 9 · הוראות מיון": a sender, and the tape label its mail gets by itself |
 | One-time suggestions (install, notifications) | A paper note with a blue edge at the top of the inbox |
 | Settings and other forms | Printed forms with a form number |
+| Managing labels | The form "טופס 5 · רישום תוויות": a row per label, and dots of tape color |
+| Earlier letters quoted under a reply | Folded behind a small paper tab ("···") at the foot of the letter |
 | "New letter" | A blue airmail label |
 | Your account | A red wax seal with your initial |
 | Folders | A manila folder tab pulled out toward the mail |

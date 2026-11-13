@@ -90,11 +90,11 @@ to Supabase's allowed addresses.
 ## What comes next
 
 The full plan is in ROADMAP.md (and as a page with pictures that Claude published for
-you). Most of it needs nothing from you. To start, Claude needs:
+you). Phases 0 to 3 were approved on 13 November 2026 and need nothing more from you:
+you confirmed that notifications show on the phone, and allowed two test emails to your
+own address.
 
-1. One answer: do Doar's notifications appear on the phone's screen?
-2. Your OK for two test emails to your own address. Phase 1 uses them to check that
-   "someone answered" is recognized.
-3. For the clerk (phase 4) only: item 7 above, and a monthly limit in the Anthropic console.
+The clerk (phase 4, AI) was left out for now. If you want it later: item 7 above, and a
+monthly limit in the Anthropic console.
 
 Not possible with today's permission: deleting forever (Gmail empties the trash after 30 days).

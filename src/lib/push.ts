@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react'
+import { isDemo } from './demo'
 import { isNative } from './platform'
 import * as postman from './postman'
+import { deviceName } from './report'
 
 /**
  * Notifications about new mail while Doar is closed.
@@ -24,7 +26,7 @@ export type PushState = {
   devices: number
 }
 
-const supported = !isNative && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+const supported = !isDemo && !isNative && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 
 let state: PushState = {
   supported,
@@ -52,14 +54,6 @@ export function usePush(): PushState {
 }
 
 export const pushState = () => state
-
-/** "מחשב · Edge", "טלפון · Chrome": how this device is named in the server's list. */
-function deviceName(): string {
-  const agent = navigator.userAgent
-  const kind = /Android|iPhone|iPad/i.test(agent) ? 'טלפון' : 'מחשב'
-  const browser = /Edg/i.test(agent) ? 'Edge' : /SamsungBrowser/i.test(agent) ? 'Samsung' : /Firefox/i.test(agent) ? 'Firefox' : /Chrome/i.test(agent) ? 'Chrome' : 'דפדפן'
-  return `${kind} · ${browser}`
-}
 
 function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
   const binary = atob(base64url.replace(/-/g, '+').replace(/_/g, '/'))

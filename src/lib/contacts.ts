@@ -1,5 +1,6 @@
 import type { Contact } from '../types'
 import { isEmail } from './addresses'
+import { storageKey } from './demo'
 import { recentRecipients } from './gmail'
 
 /**
@@ -9,8 +10,8 @@ import { recentRecipients } from './gmail'
 
 type Known = Contact & { score: number }
 
-const KEY = 'doar:contacts'
-const HARVEST_KEY = 'doar:contacts:harvested'
+const KEY = storageKey('doar:contacts')
+const HARVEST_KEY = storageKey('doar:contacts:harvested')
 const MAX = 600
 const ROBOT = /no-?reply|do-?not-?reply|mailer-daemon|notifications?@|bounce|postmaster/i
 

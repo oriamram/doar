@@ -103,8 +103,30 @@
           הטיוטה ואת המועד, ומורה ל־Gmail לשלוח אותה בזמן.
         </li>
         <li>
-          בשרת של דואר נשמרים: מזהה החשבון שלך, מפתח התחברות של Google (כדי שלא תצטרכו להתחבר מחדש בכל פעם), כתובת
-          ההתראות של כל מכשיר שהפעלת בו התראות, מועדי המכתבים המתוזמנים, וכללי התיוג האוטומטי (שולח ותווית).
+          <strong>דואר שמור ודואר רשום (רק אם השתמשת בהם):</strong> כשמבקשים להחזיר מכתב במועד אחר, או להזכיר אם לא
+          ענו עליו, השרת של דואר שומר את מזהה השיחה ואת המועד. בזמן הוא מחזיר את השיחה לדואר הנכנס, או בודק ב־Gmail אם
+          הגיעה תשובה. את המכתב עצמו הוא לא שומר.
+        </li>
+        <li>
+          <strong>סימון שולחים (רק אם סימנת):</strong> שולח שסימנת „אקספרס” או „החזר לשולח” נשמר בשרת ככתובת עם סימון.
+          דואר חדש משולח שהוחזר עובר לאשפה של Gmail כשהוא מגיע, ונשאר שם 30 יום. כשמבקשים הסרה מרשימת תפוצה, השרת
+          פונה לכתובת ההסרה שהרשימה עצמה ציינה במכתב.
+        </li>
+        <li>
+          <strong>שעות פתיחה (רק אם קבעת):</strong> השרת שומר את השעות, ובזמן שסגור גם את מזהי השיחות שמחכות להתראה.
+        </li>
+        <li>
+          <strong>פתקים והגדרות:</strong> פתק שכתבת על מכתב, החתימה שלך והעדפות נוספות נשמרים בשרת של דואר, כדי שיהיו
+          זהים בכל המכשירים שלך.
+        </li>
+        <li>
+          <strong>דוחות תקלה:</strong> כשמשהו נכשל באפליקציה, נשלח לשרת דוח קצר: היכן באפליקציה זה קרה, נוסח השגיאה,
+          וסוג המכשיר והדפדפן. אין בו תוכן של מכתבים, והוא נמחק אחרי 14 יום.
+        </li>
+        <li>
+          בסך הכל, בשרת של דואר נשמרים: מזהה החשבון שלך, מפתח התחברות של Google (כדי שלא תצטרכו להתחבר מחדש בכל פעם),
+          כתובת ההתראות של כל מכשיר שהפעלת בו התראות, מועדי המכתבים המתוזמנים, השמורים והרשומים, כללי התיוג האוטומטי
+          וסימוני השולחים, שעות הפתיחה, הפתקים, ההגדרות המשותפות, ודוחות התקלה מ־14 הימים האחרונים.
         </li>
         <li>
           במכשיר שלך נשמרים רשימת המכתבים האחרונים (לפתיחה מהירה), ההגדרות שלך, וכתובות של אנשים שהתכתבת
@@ -134,8 +156,9 @@
         </li>
         <li>
           <strong>מחיקה מלאה</strong> (הגדרות ← „ניתוק מכל המכשירים ומחיקת הנתונים מהשרת של דואר”) מוחקת מהשרת את החשבון
-          שלך ואת כל מה שנשמר בשבילו: מפתח ההתחברות, כתובות ההתראות, מועדי המכתבים המתוזמנים וכללי התיוג. מכתבים
-          מתוזמנים לא יישלחו; הם נשארים בטיוטות של Gmail.
+          שלך ואת כל מה שנשמר בשבילו: מפתח ההתחברות, כתובות ההתראות, המועדים, הכללים והסימונים, שעות הפתיחה, הפתקים,
+          ההגדרות ודוחות התקלה. מכתבים מתוזמנים לא יישלחו; הם נשארים בטיוטות של Gmail. מכתבים שמורים לא יחזרו לבד; הם
+          נשארים ב„כל הדואר”.
         </li>
         <li>כיבוי ההתראות בהגדרות מוחק מהשרת את כתובת ההתראות של המכשיר.</li>
         <li>
@@ -187,9 +210,35 @@
             Doar's server stores only the draft's identifier and the time, and tells Gmail to send it then.
           </li>
           <li>
-            Doar's server stores: your account identifier, a Google sign-in token (so you don't have to sign in
-            every time), the notification address of each device you turned notifications on for, the times of
-            your scheduled letters, and your automatic-label rules (a sender and a label).
+            <strong>Held mail and registered mail (only if you use them):</strong> when you ask for a letter to come
+            back later, or to be told if nobody answered it, Doar's server stores the conversation's identifier and
+            the time. When the time comes it returns the conversation to the inbox, or asks Gmail whether an answer
+            arrived. It does not store the letter.
+          </li>
+          <li>
+            <strong>Sender marks (only if you set them):</strong> a sender you marked "express" or "return to
+            sender" is stored as an address with its mark. New mail from a refused sender is moved to Gmail's Trash
+            when it arrives, where it stays 30 days. When you ask to leave a mailing list, the server calls the
+            unsubscribe address the list itself gave in its letter.
+          </li>
+          <li>
+            <strong>Opening hours (only if you set them):</strong> the server stores the hours, and while closed,
+            the identifiers of the conversations whose notifications are waiting.
+          </li>
+          <li>
+            <strong>Notes and settings:</strong> a note you write on a letter, your signature and other preferences
+            are stored on Doar's server so that they are the same on all your devices.
+          </li>
+          <li>
+            <strong>Fault reports:</strong> when something fails in the app, a short report is sent to the server:
+            where in the app it happened, the error's wording, and the kind of device and browser. It contains no
+            mail text and is deleted after 14 days.
+          </li>
+          <li>
+            In all, Doar's server stores: your account identifier, a Google sign-in token (so you don't have to sign
+            in every time), the notification address of each device you turned notifications on for, the times of
+            scheduled, held and registered letters, your automatic-label rules and sender marks, your opening hours,
+            your notes, your shared settings, and the fault reports of the last 14 days.
           </li>
           <li>
             Your device stores the list of recent letters (for a fast start), your settings, and addresses of people
@@ -221,8 +270,9 @@
           <li>
             <strong>Erasing everything</strong> (Settings, "Disconnect all devices and delete the data from Doar's
             server") deletes your account from the server with everything kept for it: the sign-in token, the
-            notification addresses, the times of scheduled letters and the label rules. Scheduled letters are not
-            sent; they stay in Gmail's Drafts.
+            notification addresses, the times, the rules and marks, the opening hours, the notes, the settings and
+            the fault reports. Scheduled letters are not sent; they stay in Gmail's Drafts. Held letters do not
+            return by themselves; they stay in All Mail.
           </li>
           <li>Turning notifications off in Settings deletes that device's notification address from the server.</li>
           <li>

@@ -43,6 +43,9 @@ export function LoginScreen() {
       </button>
       {error && <p className="error">{error}</p>}
       <p className="muted fineprint">
+        <a href="/?demo">להציץ בלי להתחבר, בתיבת הדגמה</a>
+      </p>
+      <p className="muted fineprint">
         המכתבים שלך עוברים ישירות מ־Google למכשיר הזה. <a href="/privacy.html">פרטיות ותנאים</a>
       </p>
     </div>

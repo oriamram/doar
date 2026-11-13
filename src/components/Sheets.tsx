@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { formatWhen, schedulePresets, toFieldTime } from '../lib/format'
+import { formatAgo, formatWhen, schedulePresets, toFieldTime } from '../lib/format'
 import { promptInstall, useInstall } from '../lib/install'
 import { useBackLayer } from '../lib/layers'
 import { mailbox, useMailbox } from '../lib/mailbox'
 import type { NotifyScope } from '../lib/postman'
 import { disablePush, enablePush, setPushScope, testPush, usePush } from '../lib/push'
+import { APP_VERSION, reportNow } from '../lib/report'
 import { updateSettings, useSettings, type Settings } from '../lib/settings'
 import { playSound } from '../lib/sound'
 import { toast } from '../lib/toast'
@@ -22,7 +23,7 @@ type SheetProps = {
 }
 
 /** A paper form laid over the desk: slides up on phones, sits in the middle on wide screens. */
-function Sheet({ title, form, onClose, children }: SheetProps) {
+export function Sheet({ title, form, onClose, children }: SheetProps) {
   useBackLayer(true, onClose)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -85,9 +86,18 @@ const SCOPES: { id: NotifyScope; label: string }[] = [
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const settings = useSettings()
-  const { me } = useMailbox()
+  const { me, server } = useMailbox()
   const push = usePush()
   const install = useInstall()
+  const [reporting, setReporting] = useState(false)
+
+  const sendReport = async () => {
+    setReporting(true)
+    const sent = await reportNow()
+    setReporting(false)
+    if (sent) toast('הדוח נשלח. תודה.')
+    else toast('הדוח לא נשלח. בדקו את החיבור ונסו שוב.', { tone: 'error' })
+  }
 
   const setNotifications = async (on: boolean) => {
     if (!on) {
@@ -260,6 +270,50 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           title="צלילי שולחן"
           note="חותמת, נייר ומכתב שעף."
         />
+      </fieldset>
+
+      <fieldset className="setting-group">
+        <legend>מצב המערכת</legend>
+        <dl className="status-list">
+          <div>
+            <dt>גרסה</dt>
+            <dd dir="ltr">{APP_VERSION}</dd>
+          </div>
+          <div>
+            <dt>השרת של דואר</dt>
+            <dd>
+              {!server
+                ? 'עוד לא ענה'
+                : !server.reachable
+                  ? 'אין קשר כרגע'
+                  : server.lookedAt
+                    ? `בדק דואר ${formatAgo(server.lookedAt)}`
+                    : 'פועל. הוא בודק דואר כשההתראות או התיוג האוטומטי פועלים'}
+            </dd>
+          </div>
+          {server?.devices.map((device, index) => (
+            <div key={index}>
+              <dt>{device.device || 'מכשיר'}</dt>
+              <dd>{device.lastOkAt ? `קיבל התראה ${formatAgo(device.lastOkAt)}` : 'עוד לא קיבל התראה'}</dd>
+            </div>
+          ))}
+          {server?.lastReport && (
+            <div>
+              <dt>תקלה אחרונה</dt>
+              <dd>
+                {formatAgo(server.lastReport.at)} · <span dir="ltr">{server.lastReport.place}</span>
+              </dd>
+            </div>
+          )}
+        </dl>
+        <div className="setting">
+          <button className="pill-btn" disabled={reporting} onClick={() => void sendReport()}>
+            {reporting ? 'שולחים…' : 'שליחת דוח תקלה'}
+          </button>
+          <span className="setting-note">
+            משהו לא עובד? הדוח מספר איזה מכשיר ודפדפן אלה, ומה השגיאות האחרונות שקרו בהם. אין בו תוכן של מכתבים.
+          </span>
+        </div>
       </fieldset>
 
       <fieldset className="setting-group">
@@ -540,7 +594,11 @@ const GUIDE: { title: string; text: string }[] = [
   },
   {
     title: 'תוויות',
-    text: 'תווית היא מדבקה על מכתב, ואפשר לשים כמה. פותחים מכתב, לוחצים על שלוש הנקודות ובוחרים „תוויות”. כל תווית מופיעה בתפריט.',
+    text: 'תווית היא מדבקה על מכתב, ואפשר לשים כמה. פותחים מכתב, לוחצים על שלוש הנקודות ובוחרים „תוויות”. כל תווית מופיעה בתפריט. העיפרון שליד „תוויות” בתפריט משנה שם וצבע של תווית, או מוחק אותה.',
+  },
+  {
+    title: 'שיחות ארוכות',
+    text: 'מכתבים קודמים שמצוטטים בתוך תשובה מקופלים מאחורי שלוש נקודות. לחיצה עליהן פותחת אותם.',
   },
   {
     title: 'העתקת שם וכתובת',
