@@ -32,6 +32,14 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | A letter the server brought back | Stands first in the inbox under the heading "חזרו אליך", with a red slip |
 | An express sender | A small red express strip beside the name |
 | Opening hours for notifications | Two clocks, the week's days as round stamps, and "סגור בשבת" |
+| A one-time code | A queue ticket ("פתק תור"): pale ticket paper torn at both ends, the digits in large typewriter type, a stub that copies them. Fresh for 15 minutes on the counter at the top of the inbox; faded after |
+| A parcel | A kraft delivery slip, "הודעה על דבר דואר", filled in like a form: carrier, status, number; "2 חבילות בדרך" is a kraft strip on the counter |
+| A receipt | Thermal paper torn off its roll (a zigzag end), the sum at its edge; all of them stand on the receipts spike, "דוקרן הקבלות" (form 16) |
+| An invitation | A card with the day torn off a calendar (red month band, large day) |
+| A leaflet (list mail, promotions) | A thinner row: who and what, no first words |
+| Return to sender | The post office's red double-ruled stamp with a pointing hand, "הוחזר לשולח", struck at an angle; it lands, waits five seconds, then acts |
+| A checked sender | A small red wax seal beside the address: whole when Gmail verified the sender, split in two when something is wrong; the reasons stand on a strip at the head of the letter (red for serious, amber for "worth a look") |
+| The address book | A stamp album, "אלבום הבולים": stamps mounted in rows on a ruled page; a sender's card is form 17 |
 | Managing labels | The form "טופס 5 · רישום תוויות": a row per label, and dots of tape color |
 | Earlier letters quoted under a reply | Folded behind a small paper tab ("···") at the foot of the letter |
 | "New letter" | A blue airmail label |

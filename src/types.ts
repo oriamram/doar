@@ -28,6 +28,8 @@ export type Thread = {
   hasAttachment: boolean
   hasDraft: boolean
   category: Category
+  /** Its latest letter came through a mailing list (it says how to unsubscribe, or calls itself bulk mail). */
+  bulk: boolean
 }
 
 export type Attachment = {
@@ -71,6 +73,12 @@ export type Message = {
   references: string
   /** Where a newsletter says you can unsubscribe. */
   unsubscribe?: { url?: string; mailto?: string }
+  /** It came through a mailing list. */
+  bulk: boolean
+  /** What the receiving servers concluded about the sender ("Authentication-Results"), in order. */
+  auth: string[]
+  /** The text of a calendar invitation carried in the letter. */
+  calendar?: string
 }
 
 export type Label = {

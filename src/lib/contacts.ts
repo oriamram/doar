@@ -76,6 +76,14 @@ export function suggestContacts(typed: string, exclude: Contact[], limit = 5): C
     .map(({ contact }) => ({ name: contact.name, email: contact.email }))
 }
 
+/** The people you exchange the most mail with, the most frequent first (the stamp album). */
+export function topContacts(limit = 60): Contact[] {
+  return [...known.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ name, email }) => ({ name, email }))
+}
+
 /** Once a day, learn who you recently wrote to from the Sent folder. */
 export async function harvestRecipients() {
   const last = Number(localStorage.getItem(HARVEST_KEY) ?? 0)

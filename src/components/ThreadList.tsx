@@ -4,10 +4,12 @@ import { matches } from '../../supabase/functions/postman/rules.ts'
 import { shortName } from '../lib/addresses'
 import { newDraft } from '../lib/compose'
 import { countLetters, dayGroup } from '../lib/format'
+import { isFresh, threadShape, type Shape } from '../lib/kinds'
 import { mailbox, useMailbox, type Bundle } from '../lib/mailbox'
 import type { Reminder } from '../lib/postman'
 import { recentSearches, rememberSearch } from '../lib/searches'
 import { useSettings } from '../lib/settings'
+import { useNow } from '../lib/useNow'
 import { usePullToRefresh } from '../lib/usePullToRefresh'
 import { BUNDLE_TITLES, INBOX, isFolder, isInboxLike, viewKey, viewTitle, type View } from '../lib/views'
 import type { Thread } from '../types'
@@ -25,6 +27,7 @@ import {
   TagIcon,
   TrashIcon,
 } from './icons'
+import { ParcelStrip, QueueTicket } from './Kinds'
 import { Loader } from './Loader'
 import { MailSlot } from './MailSlot'
 import { ScheduledList } from './ScheduledList'
@@ -178,6 +181,35 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
     () => buildItems(threads ?? [], inInbox && settings.bundles ? bundles : [], back),
     [threads, bundles, inInbox, settings.bundles, back],
   )
+
+  // What each letter is: a code, a parcel, a receipt, an invitation, a leaflet, or a letter.
+  const shapes = useMemo(() => {
+    const byThread = new Map<string, Shape>()
+    for (const thread of [...(threads ?? []), ...bundles.flatMap((bundle) => bundle.threads)]) byThread.set(thread.id, threadShape(thread, settings.notKinds))
+    return byThread
+  }, [threads, bundles, settings.notKinds])
+  const shapeOfThread = (thread: Thread): Shape => shapes.get(thread.id) ?? { kind: 'letter' }
+
+  // On the counter, above everything: codes that are still good, and parcels on their way.
+  const now = useNow()
+  const counter = useMemo(() => {
+    const inbox = new Map<string, Thread>()
+    if (inInbox) for (const thread of [...(threads ?? []), ...bundles.flatMap((bundle) => bundle.threads)]) if (thread.labelIds.includes('INBOX')) inbox.set(thread.id, thread)
+    const codes: { thread: Thread; code: string }[] = []
+    const parcels: { thread: Thread; shape: Extract<Shape, { kind: 'parcel' }> }[] = []
+    const seen = new Set<string>()
+    for (const thread of [...inbox.values()].sort((a, b) => (a.date < b.date ? 1 : -1))) {
+      const shape = shapes.get(thread.id)
+      if (shape?.kind === 'code' && isFresh(thread.date, now)) codes.push({ thread, code: shape.code })
+      if (shape?.kind === 'parcel' && shape.status !== 'delivered') {
+        // Several letters about one parcel: the latest speaks for it.
+        const key = shape.number ?? thread.id
+        if (!seen.has(key)) parcels.push({ thread, shape })
+        seen.add(key)
+      }
+    }
+    return { codes: codes.slice(0, 3), parcels }
+  }, [inInbox, threads, bundles, shapes, now])
 
   // Reaching the end of the list fetches the next page.
   useEffect(() => {
@@ -385,6 +417,14 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
         <p className="notice">השרת של דואר לא בדק דואר כבר {serverQuietFor} דקות. התראות ותיוג אוטומטי עלולים להתעכב.</p>
       )}
       {inInbox && !searching && selection.size === 0 && <Tips />}
+      {inInbox && !searching && selection.size === 0 && (counter.codes.length > 0 || counter.parcels.length > 0) && (
+        <div className="counter" aria-label="על הדלפק">
+          {counter.codes.map(({ thread, code }) => (
+            <QueueTicket key={thread.id} thread={thread} code={code} now={now} />
+          ))}
+          <ParcelStrip parcels={counter.parcels} />
+        </div>
+      )}
 
       {error && (
         <div className="banner" role="alert">
@@ -416,6 +456,7 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
                 arrived={arrived.has(item.thread.id)}
                 reminder={reminderOf.get(item.thread.id)}
                 express={isExpress(item.thread)}
+                shape={shapeOfThread(item.thread)}
                 onHold={onHold}
               />
             </li>

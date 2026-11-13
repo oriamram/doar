@@ -1,11 +1,13 @@
 import { memo, useRef, type MouseEvent, type PointerEvent } from 'react'
 import { shortName } from '../lib/addresses'
 import { formatListDate } from '../lib/format'
+import type { Shape } from '../lib/kinds'
 import { mailbox } from '../lib/mailbox'
 import type { Reminder } from '../lib/postman'
 import { isFolder, type View } from '../lib/views'
 import type { Label, Thread } from '../types'
 import { ArchiveIcon, CheckIcon, HoldIcon, MailIcon, MailOpenIcon, RestoreIcon, TrashIcon } from './icons'
+import { CodeCopy, KindLine, KindTag } from './Kinds'
 import { GoldStar, LabelTape, Paperclip, ReminderSlip, SenderStamp } from './Postal'
 import { SwipeRow, type SwipeAction } from './SwipeRow'
 
@@ -22,6 +24,8 @@ type Props = {
   reminder?: Reminder
   /** Its sender is marked "express". */
   express?: boolean
+  /** What kind of mail it is: a code, a parcel, a receipt, an invitation, a leaflet, or a letter. */
+  shape: Shape
   /** Ask when to bring these letters back (opens the held-mail form). */
   onHold: (ids: string[]) => void
 }
@@ -81,7 +85,7 @@ function useHold(onHold: () => void) {
   }
 }
 
-export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selected, selecting, current, arrived, reminder, express, onHold }: Props) {
+export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selected, selecting, current, arrived, reminder, express, shape, onHold }: Props) {
   const hold = useHold(() => mailbox.toggleSelect(thread.id))
   const ids = [thread.id]
   const person = shortName(thread.from)
@@ -100,6 +104,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
     <SwipeRow {...swipes(thread, view)} disabled={selecting}>
       <div
         className="thread-row"
+        data-kind={shape.kind === 'letter' ? undefined : shape.kind}
         data-unread={thread.unread || undefined}
         data-selected={selected || undefined}
         data-arrived={arrived || undefined}
@@ -128,6 +133,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
               {name}
             </span>
             {express && <span className="express-mark">אקספרס</span>}
+            {shape.kind === 'invitation' && <KindTag shape={shape} />}
             {thread.messageCount > 1 && (
               <span className="msg-count" title={`${thread.messageCount} הודעות בשיחה`}>
                 {thread.messageCount}
@@ -148,9 +154,14 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
             {thread.subject}
           </span>
           <span className="row-bottom">
-            <span className="snippet ellipsis" dir="auto">
-              {thread.snippet}
-            </span>
+            {shape.kind === 'code' || shape.kind === 'parcel' ? (
+              <KindLine shape={shape} date={thread.date} />
+            ) : (
+              <span className="snippet ellipsis" dir="auto">
+                {thread.snippet}
+              </span>
+            )}
+            {shape.kind === 'receipt' && <KindTag shape={shape} />}
             {tapes.slice(0, 2).map((label) => (
               <LabelTape key={label.id} label={label} />
             ))}
@@ -160,6 +171,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
         </button>
 
         {thread.hasAttachment && <Paperclip />}
+        {shape.kind === 'code' && !selecting && <CodeCopy code={shape.code} />}
 
         {/* Quick actions for a mouse; phones swipe instead. */}
         <span className="row-actions">

@@ -3,15 +3,18 @@ import { newDraft } from '../lib/compose'
 import { peekMessages } from '../lib/gmail'
 import { hasOpenLayers, useBackLayer } from '../lib/layers'
 import { initMailbox, mailbox, useMailbox } from '../lib/mailbox'
+import type { Contact } from '../types'
 import { onAndroidBack } from '../lib/platform'
 import { INBOX, isFolder, type FolderId } from '../lib/views'
 import { Compose } from './Compose'
 import { LabelsSheet } from './LabelsSheet'
 import { Loader } from './Loader'
 import { Nav } from './Nav'
+import { SenderCard, StampAlbum } from './People'
 import { Logo } from './Postal'
 import { SendFlight } from './SendFlight'
 import { GuideSheet, HoldSheet, LabelSheet, RegisterSheet, RulesSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
+import { SpikeSheet } from './Spike'
 import { ThreadList } from './ThreadList'
 import { ThreadView } from './ThreadView'
 import { Toasts } from './Toasts'
@@ -25,6 +28,9 @@ type Sheet =
   | { kind: 'hold'; ids: string[]; current?: string }
   | { kind: 'register'; threadId: string; messageId: string }
   | { kind: 'rules'; from?: string; labelId?: string }
+  | { kind: 'person'; contact: Contact }
+  | { kind: 'album' }
+  | { kind: 'spike' }
   | null
 
 const GO_TO: Record<string, FolderId> = { i: 'inbox', s: 'starred', t: 'sent', d: 'drafts', a: 'all' }
@@ -162,6 +168,8 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         onGuide={() => setSheet({ kind: 'guide' })}
         onRules={() => setSheet({ kind: 'rules' })}
         onManageLabels={() => setSheet({ kind: 'manage-labels' })}
+        onAlbum={() => setSheet({ kind: 'album' })}
+        onSpike={() => setSheet({ kind: 'spike' })}
       />
 
       <ThreadList
@@ -182,6 +190,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
             onLabels={() => setSheet({ kind: 'labels', ids: [state.open!.id] })}
             onHold={(current) => setSheet({ kind: 'hold', ids: [state.open!.id], current })}
             onRegister={(messageId) => setSheet({ kind: 'register', threadId: state.open!.id, messageId })}
+            onPerson={(contact) => setSheet({ kind: 'person', contact })}
           />
         ) : (
           <div className="reader-empty">
@@ -225,6 +234,9 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         />
       )}
       {sheet?.kind === 'rules' && <RulesSheet from={sheet.from} labelId={sheet.labelId} onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'person' && <SenderCard contact={sheet.contact} onClose={() => setSheet(null)} onRules={(from) => setSheet({ kind: 'rules', from })} />}
+      {sheet?.kind === 'album' && <StampAlbum onClose={() => setSheet(null)} onPerson={(contact) => setSheet({ kind: 'person', contact })} />}
+      {sheet?.kind === 'spike' && <SpikeSheet onClose={() => setSheet(null)} />}
       <Toasts />
     </div>
   )

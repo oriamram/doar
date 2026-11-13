@@ -59,6 +59,9 @@
   --stamp-paper: #fffdf7;
   --manila: #ecd9a8;
   --kraft: #d2b78c;
+  /* A queue ticket's paper, and the thermal paper of a receipt. */
+  --ticket: #f3f6ec;
+  --thermal: #fdfcf8;
 
   /* Ink on paper. */
   --ink: #1f2a3a;
@@ -132,6 +135,8 @@
   --stamp-paper: #efe7d5;
   --manila: #d6c18c;
   --kraft: #bfa277;
+  --ticket: #d6dbca;
+  --thermal: #e6e1d3;
 
   --ink-muted: #474033;
   --ink-faded: #524a3d;

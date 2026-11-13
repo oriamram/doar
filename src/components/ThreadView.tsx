@@ -4,9 +4,13 @@ import { sameEmail, shortName } from '../lib/addresses'
 import { realAttachments } from '../lib/compose'
 import { copyText } from '../lib/clipboard'
 import { countDays, formatDay, formatFullDate, formatLetterDate, formatListDate, formatWhen } from '../lib/format'
-import { loadMessages, peekMessages, sendRaw } from '../lib/gmail'
+import { lettersFrom, loadMessages, peekMessages } from '../lib/gmail'
+import { inspectSender, type Finding } from '../lib/inspector'
+import { LETTER, shapeOf, type Kind, type Shape } from '../lib/kinds'
+import { DEMO_KNOWN, KNOWN_SENDERS } from '../lib/known-senders'
+import { isDemo } from '../lib/demo'
 import { mailbox, useMailbox } from '../lib/mailbox'
-import { buildMime } from '../lib/mime'
+import { useSettings } from '../lib/settings'
 import { toast } from '../lib/toast'
 import type { Contact, Message, Thread } from '../types'
 import { Attachments } from './Attachments'
@@ -17,6 +21,7 @@ import {
   CopyIcon,
   ExpressIcon,
   ForwardIcon,
+  HandIcon,
   HoldIcon,
   InboxIcon,
   MailIcon,
@@ -30,7 +35,25 @@ import {
   TagIcon,
   TrashIcon,
 } from './icons'
+import { InspectStrip, ReturnedStamp, Seal } from './Inspector'
+import { KindCard } from './Kinds'
 import { DuplexCancel, GoldStar, LabelTape, SenderStamp } from './Postal'
+
+const KNOWN = isDemo ? [...KNOWN_SENDERS, ...DEMO_KNOWN] : KNOWN_SENDERS
+
+const isCalendarFile = (file: { mimeType: string; filename: string }) => /^(?:text\/calendar|application\/ics)$/i.test(file.mimeType) || /\.ics$/i.test(file.filename)
+
+/** What an open letter is, now that all of it can be read. */
+function letterShape(letter: Message, thread: Thread, notKinds: Record<string, string[]>): Shape {
+  return shapeOf({
+    subject: letter.subject || thread.subject,
+    text: letter.bodyText,
+    bulk: letter.bulk,
+    promotion: thread.category === 'promotions',
+    calendar: !!letter.calendar || letter.attachments.some(isCalendarFile),
+    not: notKinds[letter.from.email.toLowerCase()] as Kind[] | undefined,
+  })
+}
 
 type CopyableProps = {
   text: string
@@ -66,38 +89,13 @@ type Props = {
   onHold: (current?: string) => void
   /** Ask how long to wait for an answer to this sent letter. */
   onRegister: (messageId: string) => void
+  /** Open a sender's card. */
+  onPerson: (contact: Contact) => void
 }
 
-/** Ask a mailing list to stop writing: by email when it accepts that, otherwise on its web page. */
-async function unsubscribe(message: Message, me: Contact) {
-  const { mailto, url } = message.unsubscribe ?? {}
-  if (mailto) {
-    const [address = '', query = ''] = mailto.split('?')
-    const params = new URLSearchParams(query)
-    try {
-      await sendRaw(
-        buildMime({
-          from: me,
-          to: [{ name: '', email: decodeURIComponent(address) }],
-          cc: [],
-          bcc: [],
-          subject: params.get('subject') ?? 'unsubscribe',
-          html: '<div>unsubscribe</div>',
-          text: params.get('body') ?? 'unsubscribe',
-          attachments: [],
-        }),
-      )
-      toast('נשלחה בקשה להסרה מרשימת התפוצה')
-    } catch (error) {
-      toast(error instanceof Error ? error.message : String(error), { tone: 'error' })
-    }
-  } else if (url) {
-    window.open(url, '_blank', 'noopener')
-  }
-}
-
-export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Props) {
-  const { labels, openRevision, me, reminders, marks } = useMailbox()
+export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPerson }: Props) {
+  const { labels, openRevision, me, reminders, marks, returning } = useMailbox()
+  const { notKinds, trusted } = useSettings()
   const { id, historyId } = thread
   const [messages, setMessages] = useState<Message[] | null>(() => peekMessages(thread))
   const [error, setError] = useState<string | null>(null)
@@ -137,6 +135,34 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Pro
   const awaited = reminders.find((reminder) => reminder.threadId === id && reminder.kind === 'reply' && reminder.status !== 'returned')
   const cameBack = reminders.find((reminder) => reminder.threadId === id && reminder.status === 'returned')
   const express = !!other && marks.some((mark) => mark.mark === 'express' && matches(mark.match, other.email.toLowerCase()))
+  const refused = !!other && marks.some((mark) => mark.mark === 'refused' && matches(mark.match, other.email.toLowerCase()))
+  const beingReturned = returning.has(id)
+
+  // The latest letter that isn't yours: what the conversation "is", and what the inspector looks at.
+  const subject = letters.findLast((message) => !mine(message))
+  const shape = subject ? letterShape(subject, thread, notKinds) : LETTER
+  const findings = new Map<string, Finding>()
+  for (const message of letters) {
+    if (mine(message)) continue
+    findings.set(message.id, inspectSender({ name: message.from.name, email: message.from.email, auth: message.auth, list: message.bulk, trusted: trusted.includes(message.from.email.toLowerCase()) }, KNOWN))
+  }
+  const finding = subject ? findings.get(subject.id) : undefined
+  const flagged = !!finding && (finding.warnings.length > 0 || finding.cautions.length > 0)
+
+  // A first letter from an address is worth knowing about (asked once per address).
+  const [firstLetter, setFirstLetter] = useState(false)
+  const stranger = subject && letters.filter((message) => !mine(message)).length === 1 && !inTrash && !inSpam ? subject.from.email : ''
+  useEffect(() => {
+    if (!stranger) return
+    let cancelled = false
+    lettersFrom(stranger).then(
+      (count) => !cancelled && setFirstLetter(count <= 1),
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [stranger])
 
   // Like Gmail: the latest message and anything unread start open, older ones folded.
   const startsOpen = (message: Message) => message.id === last?.id || message.labelIds.includes('UNREAD')
@@ -231,6 +257,12 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Pro
                     {express ? 'להסיר אקספרס מהשולח' : 'אקספרס: להתריע תמיד על השולח'}
                   </button>
                 )}
+                {subject && !inSpam && !inTrash && !refused && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => mailbox.returnToSender(thread, subject))}>
+                    <HandIcon />
+                    החזר לשולח: לא לקבל ממנו עוד
+                  </button>
+                )}
                 {!inSpam && !inTrash && (
                   <button role="menuitem" className="menu-item" onClick={pick(() => mailbox.spam(ids))}>
                     <SpamIcon />
@@ -264,6 +296,8 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Pro
         )}
       </header>
 
+      {(beingReturned || refused) && <ReturnedStamp />}
+
       <h2 className="thread-subject" dir="auto">
         {thread.subject}
       </h2>
@@ -272,6 +306,21 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Pro
           {tapes.map((label) => (
             <LabelTape key={label.id} label={label} />
           ))}
+        </div>
+      )}
+
+      {finding && subject && !inTrash && (
+        <InspectStrip
+          finding={finding}
+          onTrust={() => mailbox.trustSender(subject.from)}
+          onSpam={() => mailbox.spam(ids)}
+          onReturn={() => mailbox.returnToSender(thread, subject)}
+        />
+      )}
+      {firstLetter && subject && !finding?.warnings.length && !subject.bulk && shape.kind !== 'code' && shape.kind !== 'leaflet' && (
+        <div className="thread-slip first-slip">
+          <span>מכתב ראשון מהכתובת הזאת.</span>
+          <button onClick={() => onPerson(subject.from)}>כרטיס השולח</button>
         </div>
       )}
 
@@ -307,6 +356,8 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Pro
           {cameBack.kind === 'reply' && <button onClick={() => void mailbox.unregister(id)}>לוותר</button>}
         </div>
       )}
+
+      {subject && <KindCard thread={thread} message={subject} shape={shape} onNot={(kind, sender) => kind !== 'letter' && mailbox.notKind(kind, sender)} />}
 
       {error && <p className="error">לא הצלחנו לפתוח את המכתב. {error}</p>}
       {!messages && !error && <p className="muted thread-wait">פותחים את המעטפה…</p>}
@@ -354,6 +405,7 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Pro
               <span className="envelope-label">מאת</span>
               {message.from.name && <Copyable className="envelope-name" dir="auto" text={message.from.name} done="השם הועתק" />}
               {message.from.email && <Copyable className="envelope-addr" dir="ltr" text={message.from.email} done="הכתובת הועתקה" hint />}
+              {findings.get(message.id) && <Seal finding={findings.get(message.id)!} />}
               {message.to.length + message.cc.length > 0 && (
                 <span className="envelope-addr envelope-to ellipsis" dir="auto">
                   אל: {recipients(message)}
@@ -361,24 +413,20 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Pro
               )}
               <span className="envelope-date">{formatLetterDate(message.date)}</span>
               <span className="envelope-stamp">
-                <SenderStamp contact={message.from} size="lg" />
+                <button type="button" className="stamp-btn" onClick={() => onPerson(message.from)} aria-label={`כרטיס השולח: ${message.from.name || message.from.email}`} title="כרטיס השולח">
+                  <SenderStamp contact={message.from} size="lg" />
+                </button>
                 <DuplexCancel iso={message.date} />
               </span>
               {message.id === last?.id && thread.starred && <GoldStar className="envelope-star" />}
             </div>
             <div className="letter">
-              <EmailBody message={message} />
+              <EmailBody message={message} flagged={message.id === subject?.id && flagged} />
               <Attachments files={realAttachments(message)} />
             </div>
           </section>
         )
       })}
-
-      {last?.unsubscribe && !inTrash && (
-        <button className="link-btn unsubscribe" onClick={() => void unsubscribe(last, me)}>
-          הסרה מרשימת התפוצה
-        </button>
-      )}
 
       {last && !inTrash && (
         <div className="reply-bar">
@@ -396,6 +444,13 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Pro
             <ForwardIcon />
             העבר
           </button>
+          {/* Mail from a list is answered by sending it back. */}
+          {subject && (subject.bulk || shape.kind === 'leaflet') && !refused && !inSpam && (
+            <button className="ticket ticket-return" onClick={() => mailbox.returnToSender(thread, subject)} disabled={beingReturned}>
+              <HandIcon />
+              החזר לשולח
+            </button>
+          )}
         </div>
       )}
     </article>

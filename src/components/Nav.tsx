@@ -4,6 +4,7 @@ import { promptInstall, useInstall } from '../lib/install'
 import { mailbox, useMailbox } from '../lib/mailbox'
 import { FOLDER_TITLES, labelLeaf, viewKey, type FolderId, type View } from '../lib/views'
 import {
+  AlbumIcon,
   AllMailIcon,
   ArchiveIcon,
   ChevronIcon,
@@ -22,6 +23,7 @@ import {
   SendIcon,
   SettingsIcon,
   SpamIcon,
+  SpikeIcon,
   StarIcon,
   TagIcon,
   TrashIcon,
@@ -37,6 +39,8 @@ type Props = {
   onGuide: () => void
   onRules: () => void
   onManageLabels: () => void
+  onAlbum: () => void
+  onSpike: () => void
 }
 
 type Folder = { id: FolderId; icon: ReactNode }
@@ -71,7 +75,7 @@ function savedMore(): boolean {
 }
 
 /** Folders and labels: a sidebar on wide screens, a drawer on phones. */
-export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, onManageLabels }: Props) {
+export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, onManageLabels, onAlbum, onSpike }: Props) {
   const { view, unread, draftCount, labels, me, scheduled, rules, reminders } = useMailbox()
   const keeping = (kind: 'hold' | 'reply') => reminders.filter((reminder) => reminder.kind === kind && reminder.status !== 'returned').length
   // Folders that exist only while something is in them.
@@ -206,6 +210,26 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
             <TagIcon />
             <span className="nav-name">תיוג אוטומטי</span>
             {rules.length > 0 && <span className="count">{rules.length}</span>}
+          </button>
+          <button
+            className="nav-item"
+            onClick={() => {
+              onAlbum()
+              onClose()
+            }}
+          >
+            <AlbumIcon />
+            <span className="nav-name">אלבום הבולים</span>
+          </button>
+          <button
+            className="nav-item"
+            onClick={() => {
+              onSpike()
+              onClose()
+            }}
+          >
+            <SpikeIcon />
+            <span className="nav-name">דוקרן הקבלות</span>
           </button>
         </nav>
 

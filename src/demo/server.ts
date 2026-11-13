@@ -97,8 +97,10 @@ function term(operator: string, raw: string): Test {
   }
 }
 
-/** A Gmail search as a test for one message. Words are "and"; OR joins the words on its two sides; "-" negates. */
-function compile(query: string): Test {
+/** A Gmail search as a test for one message. Words are "and"; OR joins the words on its two sides, and so do braces around several; "-" negates. */
+function compile(search: string): Test {
+  // "{a b c}" means any of them: the same as "a OR b OR c".
+  const query = search.replace(/\{([^}]*)\}/g, (_, inner: string) => (inner.match(/(?:\w+:)?(?:"[^"]*"|\S+)/g) ?? []).join(' OR '))
   const groups: Test[][] = []
   let either = false
   for (const token of query.match(/-?(?:\w+:)?(?:\([^)]*\)|"[^"]*"|[^\s()]+)/g) ?? []) {

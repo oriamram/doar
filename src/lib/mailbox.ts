@@ -7,13 +7,15 @@ import { isDemo } from './demo'
 import { harvestRecipients, rememberContacts } from './contacts'
 import { formatDay, formatWhen } from './format'
 import * as api from './gmail'
+import { KIND_NAMES, type Kind } from './kinds'
+import { buildMime } from './mime'
 import { peekGoogleAccessToken, ReauthRequiredError } from './googleToken'
 import { onLaunch, takeShared, type LaunchIntent } from './launch'
 import { tapHaptic } from './platform'
 import * as postman from './postman'
 import { forgetPush, syncPush } from './push'
 import { report } from './report'
-import { applyShared, getSettings } from './settings'
+import { applyShared, getSettings, updateSettings } from './settings'
 import { playSound } from './sound'
 import { dismissToast, toast } from './toast'
 import {
@@ -81,6 +83,8 @@ export type MailboxState = {
   notes: Readonly<Record<string, string>>
   /** Opening hours for notifications; null when they may always arrive. */
   hours: postman.Hours | null
+  /** Letters being returned to their sender right now: the stamp is on, and "undo" is still open. */
+  returning: ReadonlySet<string>
   /** What Doar's server last said about itself; null until it has answered once. */
   server: ServerInfo | null
   online: boolean
@@ -101,7 +105,7 @@ const EMPTY: ReadonlySet<string> = new Set()
 const POLL_MS = 90_000
 /** The demo mailbox announces its own new mail, the way the service worker does for real mail. */
 const DEMO_MAIL = 'doar-demo-mail'
-const SAVED_VERSION = 2
+const SAVED_VERSION = 3
 
 function blank(me: Contact): MailboxState {
   return {
@@ -130,6 +134,7 @@ function blank(me: Contact): MailboxState {
     marks: [],
     notes: {},
     hours: null,
+    returning: EMPTY,
     server: null,
     online: navigator.onLine,
   }
@@ -706,6 +711,100 @@ async function removeMark(id: string) {
   }
 }
 
+// ---------- Return to sender, corrections, and senders you know ----------
+
+/** Ask a mailing list to stop writing, by the email its own letters name for that. */
+async function mailUnsubscribe(mailto: string) {
+  const [address = '', query = ''] = mailto.split('?')
+  const params = new URLSearchParams(query)
+  await api.sendRaw(
+    buildMime({
+      from: state.me,
+      to: [{ name: '', email: decodeURIComponent(address) }],
+      cc: [],
+      bcc: [],
+      subject: params.get('subject') ?? 'unsubscribe',
+      html: '<div>unsubscribe</div>',
+      text: params.get('body') ?? 'unsubscribe',
+      attachments: [],
+    }),
+  )
+}
+
+/**
+ * Return to sender: this letter goes to the bin, the sender's future mail goes straight
+ * there too, and a mailing list is asked, the proper way, to stop writing. Nothing
+ * happens for five seconds, while "undo" is open; leaving a list cannot be taken back.
+ */
+function returnToSender(thread: Thread, message: Message) {
+  const sender = message.from
+  const address = sender.email.toLowerCase()
+  if (!address || state.returning.has(thread.id)) return
+  const done = () => set({ returning: new Set([...state.returning].filter((id) => id !== thread.id)) })
+  set({ returning: new Set([...state.returning, thread.id]) })
+  playSound('thump')
+  tapHaptic()
+
+  const carryOut = async () => {
+    if (!(await setMark(address, 'refused', true))) return done()
+    let page: string | null = null
+    if (message.unsubscribe) {
+      try {
+        // The server sends the list's own "one click" request; where a list has none, its email or its page.
+        const answer = await postman.unsubscribe(message.id)
+        if (answer.done !== 'posted') {
+          if (answer.mailto) await mailUnsubscribe(answer.mailto)
+          else page = answer.url
+        }
+      } catch {
+        // The sender is refused either way; only the request to the list did not go out.
+        page = message.unsubscribe.url ?? null
+      }
+    }
+    trash([thread.id], { quiet: true })
+    done()
+    if (page) {
+      const url = page
+      toast('השולח נחסם. כדי לרדת גם מרשימת התפוצה שלו, יש לו דף הסרה.', { duration: 9000, action: { label: 'לדף ההסרה', run: () => window.open(url, '_blank', 'noopener') } })
+    }
+  }
+
+  let undone = false
+  toast(`הוחזר לשולח. מכתבים מ־${shortName(sender)} יגיעו מעכשיו ישר לאשפה.`, {
+    duration: 5000,
+    countdown: true,
+    action: {
+      label: 'ביטול',
+      run: () => {
+        undone = true
+        done()
+      },
+    },
+    onExpire: () => {
+      if (!undone) void carryOut()
+    },
+  })
+}
+
+/** "This is not a parcel": remembered for the sender, on every device. */
+function notKind(kind: Exclude<Kind, 'letter'>, sender: Contact) {
+  const address = sender.email.toLowerCase()
+  const before = getSettings().notKinds
+  const already = before[address] ?? []
+  if (!address || already.includes(kind)) return
+  updateSettings({ notKinds: { ...before, [address]: [...already, kind] } })
+  toast(`מכתבים מ־${shortName(sender)} לא יוצגו עוד כ${KIND_NAMES[kind]}.`, { action: { label: 'ביטול', run: () => updateSettings({ notKinds: before }) } })
+}
+
+/** "The sender is known to me": the inspector's soft notes about them are put away. */
+function trustSender(sender: Contact) {
+  const address = sender.email.toLowerCase()
+  const before = getSettings().trusted
+  if (!address || before.includes(address)) return
+  updateSettings({ trusted: [...before, address] })
+  toast(`הכתובת של ${shortName(sender)} נרשמה כמוכרת.`, { action: { label: 'ביטול', run: () => updateSettings({ trusted: before }) } })
+}
+
 /** Opening hours for notifications (null: they may arrive at any time). */
 async function setHours(hours: postman.Hours | null) {
   const before = state.hours
@@ -738,7 +837,7 @@ function archive(ids: string[]) {
   )
 }
 
-function trash(ids: string[]) {
+function trash(ids: string[], options: { quiet?: boolean } = {}) {
   const originals = lookup(ids)
   if (originals.length === 0) return
   settleReturned(ids)
@@ -751,6 +850,7 @@ function trash(ids: string[]) {
   showUnreadCount()
   playSound('paper')
   settle(ids.map((id) => api.trashThread(id)))
+  if (options.quiet) return
   // Gmail takes a deleted letter out of the inbox and doesn't put it back by itself.
   const wasInInbox = new Set(originals.filter((thread) => thread.labelIds.includes('INBOX')).map((thread) => thread.id))
   undoable(many(ids, 'המכתב הועבר לאשפה', (n) => `${n} מכתבים הועברו לאשפה`), before, originals, () =>
@@ -1449,6 +1549,9 @@ export const mailbox = {
   setMark,
   removeMark,
   setHours,
+  returnToSender,
+  notKind,
+  trustSender,
   addRule,
   removeRule,
   forgetEverything,

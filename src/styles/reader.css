@@ -708,3 +708,514 @@
 .envelope .copyable:active {
   opacity: 0.6;
 }
+
+/* ---------- What a letter is: the object above it ---------- */
+
+.thread {
+  position: relative;
+}
+
+/* The ticket, the delivery slip, the receipt or the card that a shaped letter is. */
+.kind-card {
+  --paper: var(--sheet);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: -6px 4px 22px;
+  padding: 14px 16px 30px;
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.kind-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.kind-label {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.kind-title {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.kind-sub {
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.kind-action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--ink-blue);
+  text-decoration: none;
+}
+
+.kind-action svg {
+  width: 17px;
+  height: 17px;
+}
+
+.kind-action:active {
+  translate: 0 1px;
+}
+
+@media (hover: hover) {
+  .kind-action:hover {
+    background: rgba(36, 64, 122, 0.08);
+  }
+}
+
+/* "This is not a code": small, at the foot of the object, with room to press. */
+.kind-not {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 8px;
+  padding: 8px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* A code: the queue ticket, torn at both ends. */
+.kind-card[data-kind='code'] {
+  --paper: var(--ticket);
+  margin-block: 0 28px;
+  border-radius: 0;
+  box-shadow: var(--shadow-rest);
+}
+
+.kind-card[data-kind='code']::before,
+.kind-card[data-kind='code']::after,
+.kind-card[data-kind='receipt']::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  height: 5px;
+  pointer-events: none;
+}
+
+.kind-card[data-kind='code']::before {
+  inset-block-start: -5px;
+  background: conic-gradient(from 135deg at 50% 0, var(--paper) 90deg, transparent 0) 0 0 / 10px 5px repeat-x;
+}
+
+.kind-card[data-kind='code']::after,
+.kind-card[data-kind='receipt']::after {
+  inset-block-end: -5px;
+  background: conic-gradient(from -45deg at 50% 100%, var(--paper) 90deg, transparent 0) 0 0 / 10px 5px repeat-x;
+}
+
+.kind-card .qt-digits {
+  font-family: var(--mono);
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.08em;
+  text-align: end;
+}
+
+.kind-card[data-stale] .qt-digits {
+  color: var(--ink-faded);
+  opacity: 0.7;
+}
+
+/* A parcel: the kraft slip, filled in like a form. */
+.kind-card[data-kind='parcel'] {
+  --paper: var(--kraft);
+}
+
+.kind-card[data-kind='parcel'] .kind-label,
+.kind-card[data-kind='parcel'] .kind-not,
+.kind-card[data-kind='parcel'] .slip-key {
+  color: #4a3f2c;
+}
+
+.slip-rows {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 3px 14px;
+  margin-top: 4px;
+}
+
+.slip-key {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.slip-value {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.slip-number {
+  font-family: var(--mono);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: copy;
+}
+
+/* A receipt: narrow thermal paper, the sum under a dashed line. */
+.kind-card[data-kind='receipt'] {
+  --paper: var(--thermal);
+  max-width: 400px;
+  margin-block-end: 28px;
+  border-radius: 2px 2px 0 0;
+}
+
+.receipt-total {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 5px;
+  padding-top: 7px;
+  border-top: 1.5px dashed var(--ink-rule);
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.receipt-sum {
+  margin-inline-start: auto;
+  font-size: 1.55rem;
+  line-height: 1.2;
+}
+
+/* An invitation: a card with the day torn off a calendar. */
+.kind-card[data-kind='invitation'] {
+  --paper: var(--sheet-letter);
+  outline: 1px solid var(--ink-rule);
+  outline-offset: -5px;
+}
+
+.invite-date {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 62px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--stamp-paper);
+  box-shadow:
+    0 0 0 1px var(--ink-rule),
+    0 1px 2px rgba(60, 40, 10, 0.2);
+}
+
+.invite-month {
+  align-self: stretch;
+  padding: 2px 0;
+  background: var(--ink-red);
+  color: var(--cream);
+  font-size: 12.5px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.invite-day {
+  font-family: var(--mono);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.invite-weekday {
+  padding-bottom: 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+@media (max-width: 420px) {
+  .kind-card {
+    flex-wrap: wrap;
+  }
+  .kind-card .kind-action {
+    margin-inline-start: auto;
+  }
+}
+
+/* ---------- The inspector ---------- */
+
+/* The wax seal beside the sender's address. */
+.seal-line {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 26px;
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.seal-line[data-state='broken'] {
+  color: var(--ink-red);
+}
+
+.seal {
+  flex: none;
+  position: relative;
+  width: 17px;
+  height: 17px;
+  border-radius: 52% 46% 50% 48% / 47% 52% 46% 51%;
+  background: radial-gradient(circle at 36% 30%, #de7d66 0 10%, #a63a26 52%, #7d2415 100%);
+  box-shadow:
+    inset 0 0 0 2.5px rgba(110, 30, 16, 0.45),
+    0 1px 1px rgba(60, 20, 10, 0.4);
+}
+
+/* A broken seal: the wax is split in two. */
+.seal-line[data-state='broken'] .seal {
+  -webkit-mask: linear-gradient(112deg, #000 43%, transparent 43% 57%, #000 57%);
+  mask: linear-gradient(112deg, #000 43%, transparent 43% 57%, #000 57%);
+  rotate: -8deg;
+}
+
+/* What the inspector found, at the head of the letter. */
+.inspect-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+  margin: -8px 4px 20px;
+  padding: 12px 14px;
+  border-inline-start: 5px solid var(--ink-red);
+  border-radius: 2px;
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.inspect-strip[data-level='caution'] {
+  border-inline-start-color: #b9862b;
+}
+
+.inspect-strip > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ink-red);
+}
+
+.inspect-strip[data-level='caution'] > svg {
+  color: #8a6212;
+}
+
+.inspect-text {
+  flex: 1 1 15em;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 14.5px;
+}
+
+.inspect-text strong {
+  font-size: 15.5px;
+  font-weight: 800;
+}
+
+.inspect-advice {
+  color: var(--ink-muted);
+}
+
+.inspect-actions {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.inspect-actions button,
+.first-slip button {
+  min-height: 36px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.inspect-actions button:hover {
+  color: var(--ink);
+}
+
+.first-slip {
+  border-inline-start-color: #b9862b;
+  font-weight: 600;
+}
+
+/* Before a doubtful link opens. */
+.link-slip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 12px 12px 0;
+  padding: 11px 13px;
+  border: 1.5px solid var(--ink-red);
+  border-radius: 3px;
+  background: var(--sheet);
+  color: var(--ink);
+  font-size: 14.5px;
+}
+
+.link-slip > svg {
+  flex: none;
+  color: var(--ink-red);
+}
+
+.link-slip-text {
+  flex: 1 1 14em;
+  overflow-wrap: anywhere;
+}
+
+.link-slip-actions {
+  display: flex;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+.link-slip-actions button {
+  min-height: 40px;
+  padding: 0 13px;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-slip-actions .link-slip-stay {
+  background: var(--ink);
+  color: var(--sheet);
+  text-decoration: none;
+}
+
+/* "2 tracking marks were removed", under the letter. */
+.marks-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 16px 12px;
+  font-size: 12.5px;
+  color: var(--ink-faded);
+}
+
+.marks-note svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* The stamp on an open envelope opens the sender's card. */
+.stamp-btn {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  z-index: 1;
+  pointer-events: auto;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.envelope-stamp .stamp-btn .stamp {
+  position: static;
+}
+
+.stamp-btn:focus-visible {
+  outline: 2px solid var(--ink-red);
+  outline-offset: 3px;
+}
+
+/* ---------- Return to sender ---------- */
+
+/* The post office's red stamp, struck across the letter. Its holder takes no room and
+   stays under the top bar, so the stamp is in sight wherever the letter is scrolled to. */
+.returned-holder {
+  position: sticky;
+  z-index: 3;
+  top: 150px;
+  height: 0;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.returned-stamp {
+  flex: none;
+  align-self: flex-start;
+  margin-inline-end: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 10px;
+  border: 3px double var(--ink-red);
+  border-radius: 4px;
+  color: var(--ink-red);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  opacity: 0.9;
+  rotate: -9deg;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  animation: stamp-down 0.26s var(--ease-out);
+}
+
+.returned-stamp svg {
+  width: 30px;
+  height: 30px;
+  stroke-width: 1.7;
+}
+
+@keyframes stamp-down {
+  from {
+    scale: 1.7;
+    opacity: 0;
+  }
+}
+
+.ticket-return {
+  color: var(--ink-red);
+}
+
+.ticket-return:disabled {
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .returned-stamp {
+    animation: none;
+  }
+}

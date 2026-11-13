@@ -423,6 +423,29 @@ own address (both in the bin afterwards, no reminder left behind):
   on delivery, pointing at the letter that was actually sent.
 - A letter to oneself is not taken for an answer, and does not notify.
 
+**Phase 2 (live).** Kinds of mail (`src/lib/kinds.ts`): a code is a queue ticket on the
+counter at the top of the inbox, a parcel is a kraft delivery slip ("2 חבילות בדרך"), a
+receipt is receipt paper with its sum, an invitation is a card that leads to the calendar,
+list mail is a thin leaflet; "זה לא…" corrects, per sender, on every device. Return to
+sender (the red stamp, five seconds to undo, then: the sender refused, the list asked to
+stop, the letter binned). A sender's card (form 17) from the stamp on an envelope, the
+stamp album, and the receipts spike (form 16). The inspector (`src/lib/inspector.ts`,
+`known-senders.ts`): Gmail's own verdict as a wax seal, names of well-known bodies on
+addresses that are not theirs, near-copies of well-known sites, links that lead elsewhere
+than they say (asked about before they open; the wrapping that mail systems add is looked
+through), tracking pictures taken out and counted, and a slip on a first letter from an
+address. It all runs on the device; the server was not changed.
+
+Checks: `scripts/check-kinds.ts` (about 60 samples, with look-alikes that must stay
+letters), `scripts/check-inspector.ts` (about 70), and the screen checks walk every kind,
+the correction, return to sender with undo and without, the card, the album and the spike.
+On the real mailbox only one thing was asked: that the receipts search is understood by
+Gmail (it is; a count came back, nothing was read). How the kinds and the inspector judge
+real mail will show in daily use; every judgement has a one-press correction.
+
+Left for later from the plan: the invitation's date in the list (it shows once the letter
+is open), and a parcel's page when the letter gives no link.
+
 Not checked on real mail, because it needs mail from someone else to arrive: a code in a
 notification's title, the summary at opening time, an express sender passing closed hours,
 and an answer taking a registration off (all four are covered by `check-postman.ts` and

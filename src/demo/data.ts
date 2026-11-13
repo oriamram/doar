@@ -318,7 +318,7 @@ function specs(): Spec[] {
     {
       thread: 't-invite',
       from: roi,
-      subject: 'הזמנה: ישיבת צוות',
+      subject: `הזמנה: ישיבת צוות @ ${meeting.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} 10:00 - 11:00 (IST)`,
       ago: 600,
       html: rtl('שלום לכולם,', 'מזמין אתכם לישיבת הצוות השבועית.', `<b>מתי:</b> ${meeting.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' })}, 10:00 עד 11:00`, '<b>איפה:</b> חדר ישיבות 2', '', 'רועי'),
       labels: ['INBOX', 'UNREAD', PERSONAL, L_WORK],

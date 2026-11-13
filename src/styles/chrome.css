@@ -1245,3 +1245,312 @@
   text-underline-offset: 3px;
   color: var(--ink-red);
 }
+
+/* ---------- A sender's card, the stamp album, the receipts spike ---------- */
+
+.person-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.person-head .stamp {
+  flex: none;
+  rotate: -3deg;
+}
+
+.person-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.person-name {
+  max-width: 100%;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: start;
+  cursor: copy;
+}
+
+.person-addr {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  min-height: 30px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--ink-muted);
+  cursor: copy;
+}
+
+.person-addr span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-addr svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+}
+
+.person-count {
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+
+.person-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.person-action {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 1.5px solid var(--ink-rule);
+  border-radius: 3px;
+  font-size: 14.5px;
+  font-weight: 700;
+  text-align: start;
+}
+
+.person-action svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--ink-blue);
+}
+
+.person-action:active,
+.person-mark:active {
+  translate: 0 1px;
+}
+
+.person-marks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--ink-rule);
+}
+
+.person-mark {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--ink-rule);
+  border-radius: 3px;
+  text-align: start;
+}
+
+.person-mark > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ink-muted);
+}
+
+.person-mark > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+
+.person-mark strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.person-mark[aria-pressed='true'] {
+  border-color: var(--ink-blue);
+  background: rgba(36, 64, 122, 0.08);
+}
+
+.person-mark[aria-pressed='true'] > svg,
+.person-mark[aria-pressed='true'] strong {
+  color: var(--ink-blue);
+}
+
+.person-mark[data-tone='red'][aria-pressed='true'] {
+  border-color: var(--ink-red);
+  background: rgba(166, 58, 38, 0.08);
+}
+
+.person-mark[data-tone='red'][aria-pressed='true'] > svg,
+.person-mark[data-tone='red'][aria-pressed='true'] strong {
+  color: var(--ink-red);
+}
+
+@media (hover: hover) {
+  .person-action:hover,
+  .person-mark:hover {
+    border-color: var(--ink-muted);
+  }
+}
+
+/* The album: stamps mounted in rows on a page. */
+.album-search {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.album {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 6px 4px;
+  margin: 0;
+  padding: 12px 8px;
+  border-radius: 2px;
+  background:
+    linear-gradient(var(--ink-rule) 1px, transparent 0) 0 0 / 100% 118px,
+    var(--sheet-aged);
+  box-shadow: inset 0 0 0 1px var(--ink-rule);
+  list-style: none;
+}
+
+.album-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 110px;
+  padding: 8px 4px 6px;
+  border-radius: 3px;
+}
+
+.album-stamp .stamp {
+  transition: rotate 0.15s, translate 0.15s;
+}
+
+.album li:nth-child(3n + 1) .stamp {
+  rotate: -2deg;
+}
+
+.album li:nth-child(3n + 2) .stamp {
+  rotate: 1.5deg;
+}
+
+.album-name {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (hover: hover) {
+  .album-stamp:hover .stamp {
+    rotate: 0deg;
+    translate: 0 -3px;
+  }
+}
+
+.album-stamp:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The spike: receipts by month, each month with its sum. */
+.spike-month {
+  margin-bottom: 18px;
+}
+
+.spike-month header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.spike-month h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.spike-sum {
+  margin-inline-start: auto;
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.spike-month ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.spike-month li + li {
+  border-top: 1px dashed var(--ink-rule);
+}
+
+.spike-month li button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 2px;
+  text-align: start;
+}
+
+.spike-day {
+  flex: none;
+  width: 26px;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink-muted);
+}
+
+.spike-what {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+
+.spike-what strong {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.spike-amount {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.spike-note {
+  font-size: 12.5px;
+}
+
+@media (hover: hover) {
+  .spike-month li button:hover {
+    background: rgba(80, 60, 30, 0.06);
+  }
+}

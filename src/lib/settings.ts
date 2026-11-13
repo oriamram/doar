@@ -16,6 +16,10 @@ export type Settings = {
   remoteImages: boolean
   /** One-time suggestions (install the app, switch on notifications) that were put away. */
   tipsDone: string[]
+  /** Corrections: kinds of mail a sender's letters are not ("this is not a parcel"), by address. */
+  notKinds: Record<string, string[]>
+  /** Senders you said you know, so the inspector's soft notes about them are put away. */
+  trusted: string[]
 }
 
 const DEFAULTS: Settings = {
@@ -26,6 +30,8 @@ const DEFAULTS: Settings = {
   sounds: false,
   remoteImages: true,
   tipsDone: [],
+  notKinds: {},
+  trusted: [],
 }
 
 /**
@@ -33,7 +39,7 @@ const DEFAULTS: Settings = {
  * them when it starts. The rest (day or night, sounds, which tips were put away)
  * belong to the device they were chosen on.
  */
-const SHARED = ['signature', 'undoSendSeconds', 'bundles', 'remoteImages'] as const
+const SHARED = ['signature', 'undoSendSeconds', 'bundles', 'remoteImages', 'notKinds', 'trusted'] as const
 type SharedKey = (typeof SHARED)[number]
 
 const KEY = storageKey('doar:settings')
@@ -94,7 +100,7 @@ function pushSoon() {
     postman.prefsSet(sent).then(
       () => {
         // A setting changed again while this was on its way stays pending.
-        for (const key of keys) if (current[key] === sent[key]) pending.delete(key)
+        for (const key of keys) if (JSON.stringify(current[key]) === JSON.stringify(sent[key])) pending.delete(key)
         save()
       },
       () => {
@@ -126,7 +132,7 @@ export function applyShared(remote: Record<string, unknown> | null): (keyof Sett
     const value = remote?.[key]
     // The server doesn't have this one (a first device, or a setting newer than its record): send ours.
     if (value === undefined) pending.add(key)
-    else if (typeof value === typeof DEFAULTS[key] && value !== current[key]) {
+    else if (typeof value === typeof DEFAULTS[key] && Array.isArray(value) === Array.isArray(DEFAULTS[key]) && JSON.stringify(value) !== JSON.stringify(current[key])) {
       next[key] = value
       changed.push(key)
     }

@@ -856,3 +856,361 @@
 .tip-actions button:disabled {
   opacity: 0.5;
 }
+
+/* ---------- Kinds of mail: each is the object it is ---------- */
+
+/* What a shaped letter shows in place of its first words. */
+.kind-line {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kind-line svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.kind-note {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+/* A one-time code is a queue ticket: pale ticket paper, a perforated top, the number in large type. */
+.thread-row[data-kind='code'] {
+  --paper: var(--ticket);
+  background-image: linear-gradient(to right, var(--ink-rule) 55%, transparent 0);
+  background-size: 9px 1px;
+  background-repeat: repeat-x;
+  background-position: 0 3px;
+}
+
+.code-digits {
+  min-width: 6.2em;
+  font-family: var(--mono);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  text-align: end;
+  color: var(--ink);
+}
+
+.kind-code .kind-note {
+  display: none;
+}
+
+.kind-code[data-stale] .code-digits {
+  color: var(--ink-faded);
+  opacity: 0.75;
+}
+
+.kind-code[data-stale] .kind-note {
+  display: block;
+  margin-inline-start: 92px;
+}
+
+/* The copy button stands beside the number, over the part of the letter that opens it. */
+.row-copy {
+  position: absolute;
+  z-index: 3;
+  inset-block-end: 9px;
+  inset-inline-start: calc(81px + 6.2 * 1.35rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  background: var(--ticket);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-blue);
+}
+
+/* A wider place to press than the button looks. */
+.row-copy::after {
+  content: '';
+  position: absolute;
+  inset: -5px -4px;
+}
+
+.row-copy svg {
+  width: 15px;
+  height: 15px;
+}
+
+.row-copy:active {
+  translate: 0 1px;
+}
+
+/* A parcel is a kraft delivery slip. */
+.thread-row[data-kind='parcel'] {
+  --paper: var(--kraft);
+}
+
+.thread-row[data-kind='parcel'] .row-date,
+.thread-row[data-kind='parcel']:not([data-unread]) .sender,
+.thread-row[data-kind='parcel']:not([data-unread]) .subject,
+.thread-row[data-kind='parcel']:not([data-unread]) .row-date {
+  color: #4a3f2c;
+}
+
+.parcel-status {
+  flex: none;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--ink-blue);
+}
+
+/* On kraft paper the red ink is a shade deeper, so that small text still reads. */
+.parcel-status[data-status='ready'],
+.parcel-status[data-status='problem'] {
+  color: #7a2212;
+}
+
+.parcel-status[data-status='delivered'] {
+  color: #4a3f2c;
+}
+
+.parcel-number {
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: #4a3f2c;
+}
+
+/* A receipt is thermal paper torn off its roll, the sum at its edge. */
+.thread-row[data-kind='receipt'] {
+  --paper: var(--thermal);
+  margin-bottom: 5px;
+}
+
+.thread-row[data-kind='receipt']::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: -5px;
+  height: 5px;
+  background: conic-gradient(from -45deg at 50% 100%, var(--paper) 90deg, transparent 0) 0 0 / 10px 5px repeat-x;
+  pointer-events: none;
+}
+
+.kind-tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.kind-tag svg {
+  width: 13px;
+  height: 13px;
+}
+
+.kind-tag[data-kind='receipt'] {
+  padding-inline-start: 8px;
+  border-inline-start: 1px dashed var(--ink-rule);
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* An invitation carries a calendar leaf beside the sender's name. */
+.kind-tag[data-kind='invitation'] {
+  padding: 1px 6px;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  color: var(--ink-blue);
+}
+
+/* A leaflet is thin: who it is from and what it says, in two lines. */
+.thread-row[data-kind='leaflet'] {
+  padding-block: 9px;
+}
+
+.thread-row[data-kind='leaflet'] .snippet {
+  display: none;
+}
+
+.thread-row[data-kind='leaflet'] .sender {
+  font-size: 15.5px;
+}
+
+/* ---------- The counter: what is waiting for you, above the mail ---------- */
+
+.counter {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin: 14px 12px 2px;
+}
+
+/* A fresh code as a queue ticket torn from its roll, with a stub that copies the number. */
+.queue-ticket {
+  --paper: var(--ticket);
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  margin-block: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+  rotate: -0.35deg;
+  animation: arrive 0.42s var(--ease-out);
+}
+
+.queue-ticket::before,
+.queue-ticket::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  height: 5px;
+  pointer-events: none;
+}
+
+.queue-ticket::before {
+  inset-block-start: -5px;
+  background: conic-gradient(from 135deg at 50% 0, var(--paper) 90deg, transparent 0) 0 0 / 10px 5px repeat-x;
+}
+
+.queue-ticket::after {
+  inset-block-end: -5px;
+  background: conic-gradient(from -45deg at 50% 100%, var(--paper) 90deg, transparent 0) 0 0 / 10px 5px repeat-x;
+}
+
+.qt-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 11px 16px 10px;
+  text-align: start;
+}
+
+.qt-head {
+  max-width: 100%;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink-muted);
+}
+
+.qt-digits {
+  font-family: var(--mono);
+  font-size: 2.35rem;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.qt-foot {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink-faded);
+}
+
+.qt-copy {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 84px;
+  padding: 0 14px;
+  border-inline-start: 1.5px dashed rgba(60, 50, 30, 0.35);
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink-blue);
+}
+
+.qt-copy:active {
+  background: rgba(36, 64, 122, 0.08);
+}
+
+.qt-open:focus-visible,
+.qt-copy:focus-visible,
+.parcel-strip-head:focus-visible,
+.parcel-list button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+/* "2 חבילות בדרך": a kraft strip that opens to the parcels themselves. */
+.parcel-strip {
+  border-radius: 2px;
+  background: var(--kraft);
+  color: var(--ink);
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+}
+
+.parcel-strip-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: start;
+}
+
+.parcel-strip-head svg {
+  flex: none;
+}
+
+.parcel-strip-note {
+  margin-inline-start: auto;
+  font-size: 13px;
+  color: #7a2212;
+}
+
+.parcel-list {
+  margin: 0;
+  padding: 2px 0 6px;
+  border-top: 1px dashed rgba(60, 40, 10, 0.35);
+  list-style: none;
+}
+
+.parcel-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 14px;
+  font-size: 14.5px;
+  text-align: start;
+}
+
+.parcel-from {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .parcel-list button:hover,
+  .parcel-strip-head:hover {
+    background: rgba(60, 40, 10, 0.07);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .queue-ticket {
+    animation: none;
+  }
+}

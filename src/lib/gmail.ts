@@ -122,7 +122,7 @@ export function patchCachedThread(thread: Thread) {
   threadCache.set(thread.id, thread)
 }
 
-const LIST_HEADERS = ['From', 'To', 'Subject', 'Content-Type'].map((h) => `metadataHeaders=${h}`).join('&')
+const LIST_HEADERS = ['From', 'To', 'Subject', 'Content-Type', 'List-Unsubscribe', 'List-Id', 'Precedence'].map((h) => `metadataHeaders=${h}`).join('&')
 
 export async function listThreads(query: ListQuery, pageToken?: string, maxResults = 25): Promise<ThreadPage> {
   const params = new URLSearchParams({ maxResults: String(maxResults) })
@@ -349,6 +349,20 @@ export async function listDraftIds(): Promise<Map<string, string>> {
   return ids
 }
 
+/** How many letters this address has sent you (up to `max`): tells a first letter from a familiar sender. */
+const sentCounts = new Map<string, Promise<number>>()
+export function lettersFrom(email: string, max = 3): Promise<number> {
+  const address = email.toLowerCase()
+  const key = `${address} ${max}`
+  let count = sentCounts.get(key)
+  if (!count) {
+    count = gmail<{ messages?: { id: string }[] }>(`/messages?q=${encodeURIComponent(`from:${address}`)}&maxResults=${max}`).then((list) => list.messages?.length ?? 0)
+    sentCounts.set(key, count)
+    count.catch(() => sentCounts.delete(key))
+  }
+  return count
+}
+
 /** People you recently wrote to, for suggesting recipients. */
 export async function recentRecipients(max = 40) {
   const list = await gmail<{ messages?: { id: string }[] }>(`/messages?q=${encodeURIComponent('in:sent')}&maxResults=${max}`)
@@ -367,6 +381,9 @@ function header(part: GmailPart, name: string): string {
   const lower = name.toLowerCase()
   return part.headers?.find((h) => h.name.toLowerCase() === lower)?.value ?? ''
 }
+
+/** Mail sent to a list says how to leave it, names the list, or calls itself bulk. */
+const isBulk = (part: GmailPart) => !!header(part, 'List-Unsubscribe') || !!header(part, 'List-Id') || /^(?:bulk|list)$/i.test(header(part, 'Precedence').trim())
 
 const CATEGORY_LABELS: Record<string, Category> = {
   CATEGORY_PERSONAL: 'primary',
@@ -411,6 +428,7 @@ function toThread(thread: GmailThread, snippet: string): Thread {
     hasAttachment: thread.messages.some((message) => /^multipart\/mixed/i.test(header(message.payload, 'Content-Type'))),
     hasDraft: thread.messages.some((message) => has(message, 'DRAFT')),
     category,
+    bulk: !!incoming && isBulk(incoming.payload),
   }
 }
 
@@ -425,6 +443,7 @@ function toMessage(message: GmailMessage): Message {
   const unsubscribe = header(payload, 'List-Unsubscribe')
   const unsubscribeUrl = unsubscribe.match(/<(https:\/\/[^>]+)>/i)?.[1]
   const unsubscribeMailto = unsubscribe.match(/<mailto:([^>]+)>/i)?.[1]
+  const calendar = findPart(payload, 'text/calendar')
 
   return {
     id: message.id,
@@ -446,6 +465,9 @@ function toMessage(message: GmailMessage): Message {
     inReplyTo: header(payload, 'In-Reply-To'),
     references: header(payload, 'References'),
     unsubscribe: unsubscribeUrl || unsubscribeMailto ? { url: unsubscribeUrl, mailto: unsubscribeMailto } : undefined,
+    bulk: isBulk(payload),
+    auth: (payload.headers ?? []).filter((h) => h.name.toLowerCase() === 'authentication-results').map((h) => h.value),
+    calendar: calendar ? decodePart(calendar) : undefined,
   }
 }
 

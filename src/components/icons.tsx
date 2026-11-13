@@ -275,3 +275,59 @@ export const ChevronIcon = () => (
     <path d="M6 9l6 6 6-6" />
   </Icon>
 )
+
+/** A parcel: a box tied with tape. */
+export const ParcelIcon = () => (
+  <Icon>
+    <path d="M3.5 8 12 3.5 20.5 8v8L12 20.5 3.5 16zM3.5 8 12 12.5 20.5 8M12 12.5v8M7.7 5.8l8.6 4.6" />
+  </Icon>
+)
+
+/** A receipt: narrow paper with a torn end. */
+export const ReceiptIcon = () => (
+  <Icon>
+    <path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21zM9 8h6M9 12h6" />
+  </Icon>
+)
+
+/** The receipts spike: a pin standing on its base, papers pushed onto it. */
+export const SpikeIcon = () => (
+  <Icon>
+    <path d="M12 2v17M7 21h10M12 19c-2 0-4 .8-5 2M12 19c2 0 4 .8 5 2M6 9l12-2M5.5 13.5l13-1.5" />
+  </Icon>
+)
+
+/** A calendar leaf. */
+export const CalendarIcon = () => (
+  <Icon>
+    <path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" />
+  </Icon>
+)
+
+/** Return to sender: the pointing hand of the post office's stamp. */
+export const HandIcon = () => (
+  <Icon>
+    <path d="M21 11H9.5M9.5 11V8.2c0-.9-.6-1.7-1.5-1.7H6.5L3 8.5v8l2.5 1.5h6a1.8 1.8 0 0 0 0-3.4M9.5 11h3.2a1.7 1.7 0 0 1 0 3.4H11M12 14.4h.6a1.6 1.6 0 0 1 0 3.2H11" />
+  </Icon>
+)
+
+/** The stamp album: a book with a stamp on its page. */
+export const AlbumIcon = () => (
+  <Icon>
+    <path d="M5 3h13a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5zM5 3v18M9 8h6v5H9z" />
+  </Icon>
+)
+
+/** A person's card. */
+export const CardIcon = () => (
+  <Icon>
+    <path d="M3 5h18v14H3zM7 15c.5-1.6 4.5-1.6 5 0M9.5 11.2a1.7 1.7 0 1 0 0-3.4 1.7 1.7 0 0 0 0 3.4M15 9.5h3M15 13h3" />
+  </Icon>
+)
+
+/** A shield: the inspector. */
+export const ShieldIcon = () => (
+  <Icon>
+    <path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 9.5 4.1-1.9 7-5.3 7-9.5V6z" />
+  </Icon>
+)

@@ -290,6 +290,157 @@ try {
   check('nothing went wrong on the PC', pc.errors.length === 0, pc.errors.join(' | ').slice(0, 300))
   pc.close()
 
+  // ================= Kinds of mail, return to sender, the inspector (a PC, from a fresh start) =================
+  const desk = await browser.open(`${SITE}/?demo=fast`, PC)
+  await start(desk)
+  // The counter fills in a moment after the list (its letters come with the bundles).
+  await desk.waitFor('.queue-ticket')
+  await sleep(700)
+  const settings = () => desk.evaluate<{ notKinds: Record<string, string[]>; trusted: string[] }>(`JSON.parse(localStorage.getItem('doar:settings:demo'))`)
+  const frameText = (selector: string) => desk.evaluate<string>(`[...document.querySelectorAll('.letter iframe')].at(-1).contentDocument.querySelector(${JSON.stringify(selector)})?.outerHTML ?? ''`)
+  const toInbox = async () => {
+    await desk.clickText('דואר נכנס', '.nav-item')
+    await desk.waitFor('.list[aria-label="דואר נכנס"] .thread-row')
+  }
+
+  // The counter: a fresh code as a queue ticket, and the parcels on their way.
+  check('a fresh code stands on the counter as a queue ticket', (await desk.text('.queue-ticket .qt-digits')) === '482 913', await desk.text('.queue-ticket .qt-digits'))
+  // A hidden browser never answers the clipboard's permission question, so the clipboard is stood in for.
+  await desk.evaluate(`(Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (text) => ((window.__copied = text), Promise.resolve()) } }), 0)`)
+  await desk.click('.qt-copy')
+  await desk.waitFor(`!!document.querySelector('.toast-text')`)
+  check('one press copies it', (await toast(desk)) === 'הקוד הועתק' && (await desk.evaluate<string>('window.__copied')) === '482913', `${await toast(desk)}: ${await desk.evaluate<string>('window.__copied')}`)
+  check('parcels on their way are counted', (await desk.text('.parcel-strip-head')).includes('2 חבילות בדרך'), await desk.text('.parcel-strip-head'))
+  await desk.click('.parcel-strip-head')
+  await desk.waitFor('.parcel-list')
+  check('and listed, each with its number', (await desk.texts('.parcel-list .parcel-number')).includes('RR123456789IL'), (await desk.texts('.parcel-list .parcel-number')).join(', '))
+  await shot(desk, 'pc-counter')
+  await desk.click('.parcel-strip-head')
+
+  // In a bundle, each kind is the object it is.
+  await desk.clickText('עדכונים', '.bundle')
+  await desk.waitFor('.list[aria-label="עדכונים"] .thread-row')
+  const kinds = await desk.evaluate<string[]>(`[...document.querySelectorAll('.thread-row')].map((row) => row.dataset.kind ?? 'letter')`)
+  check('codes, parcels and receipts are told apart in the list', ['code', 'parcel', 'receipt'].every((kind) => kinds.includes(kind)), kinds.join(', '))
+  check('a receipt shows its sum at its edge', (await desk.text('.thread-row[data-kind="receipt"] .kind-tag')).includes('128.00'), await desk.text('.thread-row[data-kind="receipt"] .kind-tag'))
+  check('a code shows its digits, with a button that copies them', (await desk.text('.thread-row[data-kind="code"] .code-digits')) === '482 913' && (await desk.count('.thread-row[data-kind="code"] .row-copy')) === 1)
+  await shot(desk, 'pc-kinds')
+
+  // A parcel, open: the delivery slip; and the correction "this is not a parcel".
+  await desk.clickText('החבילה שלך ממתינה לאיסוף', '.thread-row .subject')
+  await desk.waitFor('.kind-card[data-kind="parcel"]')
+  const slip = await desk.text('.kind-card')
+  const track = await desk.evaluate<string>(`document.querySelector('.kind-card a.kind-action')?.href ?? ''`)
+  check('an open parcel is a delivery slip', slip.includes('ממתינה לאיסוף') && slip.includes('RR123456789IL') && track.includes('zariz-delivery.example/track'), `${slip.slice(0, 80)} | ${track}`)
+  await shot(desk, 'pc-parcel')
+  await desk.clickText('זה לא חבילה', '.kind-not')
+  await desk.waitFor(`!document.querySelector('.kind-card')`)
+  check('"this is not a parcel" is remembered for the sender', JSON.stringify((await settings()).notKinds['updates@zariz-delivery.example']) === '["parcel"]', JSON.stringify((await settings()).notKinds))
+  await desk.waitFor(`!!(window.__doarDemo.prefs?.notKinds?.['updates@zariz-delivery.example'])`, 6000)
+  check('and kept for every device', true)
+  await desk.click('.toast-action')
+  await desk.waitFor('.kind-card[data-kind="parcel"]')
+  check('undo brings the slip back', Object.keys((await settings()).notKinds).length === 0)
+
+  // A receipt, open.
+  await desk.clickText('קבלה על הזמנה 10482', '.thread-row .subject')
+  await desk.waitFor('.kind-card[data-kind="receipt"]')
+  check('an open receipt shows its total', (await desk.text('.receipt-sum')).includes('128.00'), await desk.text('.receipt-sum'))
+
+  // An invitation, open: the day, the hour, and the way to the calendar.
+  await toInbox()
+  await desk.clickText('הזמנה: ישיבת צוות', '.thread-row .subject')
+  await desk.waitFor('.kind-card[data-kind="invitation"]')
+  const meeting = new Date()
+  meeting.setDate(meeting.getDate() + 3)
+  const calendar = await desk.evaluate<string>(`document.querySelector('.kind-card a.kind-action')?.href ?? ''`)
+  check(
+    'an invitation is a card with its day, and leads to the calendar',
+    (await desk.text('.invite-day')) === String(meeting.getDate()) && (await desk.text('.kind-title')) === 'ישיבת צוות' && calendar.startsWith('https://calendar.google.com/calendar/render?action=TEMPLATE'),
+    `${await desk.text('.invite-day')} ${await desk.text('.kind-title')} ${calendar.slice(0, 60)}`,
+  )
+  check('an invitation is marked in the list', (await desk.count('.thread-row[data-kind="invitation"] .kind-tag')) === 1)
+  await shot(desk, 'pc-invitation')
+
+  // The inspector: a verified sender, and a letter that pretends to be the bank.
+  await desk.clickText('אישור פגישה ביום שלישי', '.thread-row .subject')
+  await desk.waitFor('.seal-line')
+  check('a verified sender carries an intact seal', (await desk.evaluate<string>(`document.querySelector('.seal-line').dataset.state`)) === 'intact')
+  await desk.clickText('חשבונך הוגבל', '.thread-row .subject')
+  await desk.waitFor('.inspect-strip')
+  const strip = await desk.text('.inspect-strip')
+  check(
+    'a letter that pretends to be the bank is flagged',
+    (await desk.evaluate<string>(`document.querySelector('.inspect-strip').dataset.level`)) === 'warning' && strip.includes('לא הצליח לאמת') && strip.includes('בנק הדוגמה') && (await desk.evaluate<string>(`document.querySelector('.seal-line').dataset.state`)) === 'broken',
+    strip.slice(0, 140),
+  )
+  await sleep(400)
+  await desk.evaluate(`[...document.querySelectorAll('.letter iframe')].at(-1).contentDocument.querySelector('a').click()`)
+  await desk.waitFor('.link-slip')
+  check('its link says where it really leads before it opens', (await desk.text('.link-slip-text')).includes('bank-dugma-login.example') && (await desk.text('.link-slip-text')).includes('www.bank-dugma.example'), await desk.text('.link-slip-text'))
+  await shot(desk, 'pc-inspector')
+  await desk.clickText('לא לפתוח', '.link-slip button')
+  await desk.waitFor(`!document.querySelector('.link-slip')`)
+
+  // A leaflet: its tracking mark is taken out, and it can be returned to its sender.
+  await desk.clickText('פרסומות', '.bundle')
+  await desk.waitFor('.list[aria-label="פרסומות"] .thread-row')
+  check('promotions are thin leaflets', (await desk.count('.thread-row[data-kind="leaflet"]')) >= 2)
+  await desk.clickText('מבצעי סוף העונה', '.thread-row .subject')
+  await desk.waitFor('.marks-note')
+  await sleep(400)
+  check('a tracking mark is taken out of the letter', (await desk.text('.marks-note')) === 'הוסר סימן מעקב אחד' && (await frameText('img[src*="open.gif"]')) === '' && (await frameText('a')) !== '', await desk.text('.marks-note'))
+  await desk.click('.ticket-return')
+  await desk.waitFor('.returned-stamp')
+  check('"return to sender" stamps the letter and waits', (await toast(desk)).includes('הוחזר לשולח') && (await desk.evaluate<number>('window.__doarDemo.marks.length')) === 0, await toast(desk))
+  await shot(desk, 'pc-returned')
+  await desk.click('.toast-action')
+  await desk.waitFor(`!document.querySelector('.returned-stamp')`)
+  await sleep(300)
+  check('undo takes the stamp off, and nothing was sent', (await desk.evaluate<number>('window.__doarDemo.marks.length')) === 0)
+  await desk.click('.ticket-return')
+  await desk.waitFor(`window.__doarDemo.marks.some((mark) => mark.mark === 'refused' && mark.match === 'news@naalayim.example')`, 12_000)
+  await desk.waitFor(`![...document.querySelectorAll('.thread-row .subject')].some((el) => el.textContent.includes('מבצעי סוף העונה'))`, 6000)
+  check('left alone, the sender is refused and the letter goes to the bin', true)
+
+  // A sender's card, from the stamp on the envelope.
+  await toInbox()
+  await desk.clickText('תמונות מהשבת', '.thread-row .subject')
+  await desk.waitFor('.stamp-btn')
+  await desk.click('.stamp-btn')
+  await desk.waitFor('.person-head')
+  check('the stamp on an envelope opens the sender\'s card', (await desk.text('.person-addr')).includes('ruth.mizrahi@family.example'), await desk.text('.person-addr'))
+  await desk.waitFor('.person-count', 6000)
+  await shot(desk, 'pc-person')
+  await desk.clickText('כל המכתבים', '.person-action')
+  await desk.waitFor('.list[aria-label="חיפוש"] .thread-row')
+  check('"all letters" lists the mail with them', (await desk.texts('.thread-row .subject')).some((subject) => subject.includes('תמונות מהשבת')))
+  await desk.click('[aria-label="סגירת החיפוש"]')
+  await desk.waitFor('.list[aria-label="דואר נכנס"] .thread-row')
+
+  // The stamp album and the receipts spike, from the menu.
+  await desk.clickText('אלבום הבולים', '.nav-item')
+  await desk.waitFor('.album-stamp')
+  check('the album shows the people you exchange mail with', (await desk.count('.album-stamp')) >= 5, `${await desk.count('.album-stamp')} stamps`)
+  await shot(desk, 'pc-album')
+  await desk.click('.album-stamp')
+  await desk.waitFor('.person-head')
+  check('a stamp in the album opens that person\'s card', true)
+  await desk.key('Escape')
+  await desk.waitFor(`!document.querySelector('.sheet')`)
+  await desk.clickText('דוקרן הקבלות', '.nav-item')
+  await desk.waitFor('.spike-month')
+  const sums = (await desk.texts('.spike-sum')).join(' | ')
+  const amounts = (await desk.texts('.spike-amount')).join(' | ')
+  check('the spike gathers receipts by month, with a sum', amounts.includes('128.00') && amounts.includes('342.50') && /\d/.test(sums), `${sums} / ${amounts}`)
+  await shot(desk, 'pc-spike')
+  await desk.key('Escape')
+
+  const strays = await desk.evaluate<{ place: string; message: string }[]>('window.__doarDemo.reports')
+  check('no fault was reported along the way', strays.length === 0, strays.map((report) => `${report.place}: ${report.message}`).join(' | ').slice(0, 400))
+  check('nothing went wrong at the desk', desk.errors.length === 0, desk.errors.join(' | ').slice(0, 300))
+  desk.close()
+
   // ================= The front door =================
   const door = await browser.open(SITE, PHONE)
   await door.waitFor('.google-btn', 25_000)
