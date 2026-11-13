@@ -12,6 +12,7 @@ import type { Contact } from '../types'
 import { onAndroidBack } from '../lib/platform'
 import { FOLDER_TITLES, INBOX, isFolder, labelLeaf, type FolderId } from '../lib/views'
 import { Compose } from './Compose'
+import { FilesDrawer } from './Files'
 import { LabelsSheet } from './LabelsSheet'
 import { Loader } from './Loader'
 import { Nav } from './Nav'
@@ -38,6 +39,7 @@ type Sheet =
   | { kind: 'person'; contact: Contact }
   | { kind: 'album' }
   | { kind: 'spike' }
+  | { kind: 'files' }
   | null
 
 const GO_TO: Record<string, FolderId> = { i: 'inbox', s: 'starred', t: 'sent', d: 'drafts', a: 'all' }
@@ -202,6 +204,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       ...(ritualSize(queue) > 0 ? [act('ritual', 'פתיחת הדואר, אחד־אחד', 'טקס הדוור ritual', () => (mailbox.close(), setRitual(queue)))] : []),
       act('album', 'אלבום הבולים', 'אנשים כתובות contacts', () => setSheet({ kind: 'album' })),
       act('spike', 'דוקרן הקבלות', 'קבלות חשבוניות receipts', () => setSheet({ kind: 'spike' })),
+      act('files', 'מגירת הקבצים', 'קבצים מצורפים files attachments', () => setSheet({ kind: 'files' })),
       act('rules', 'תיוג אוטומטי', 'כללים rules מיון', () => setSheet({ kind: 'rules' })),
       act('labels', 'ניהול תוויות', 'labels צבע', () => setSheet({ kind: 'manage-labels' })),
       act('settings', 'הגדרות', 'settings התראות חתימה', () => setSheet({ kind: 'settings' })),
@@ -227,6 +230,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         onManageLabels={() => setSheet({ kind: 'manage-labels' })}
         onAlbum={() => setSheet({ kind: 'album' })}
         onSpike={() => setSheet({ kind: 'spike' })}
+        onFiles={() => setSheet({ kind: 'files' })}
       />
 
       <ThreadList
@@ -300,6 +304,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       {sheet?.kind === 'person' && <SenderCard contact={sheet.contact} onClose={() => setSheet(null)} onRules={(from) => setSheet({ kind: 'rules', from })} />}
       {sheet?.kind === 'album' && <StampAlbum onClose={() => setSheet(null)} onPerson={(contact) => setSheet({ kind: 'person', contact })} />}
       {sheet?.kind === 'spike' && <SpikeSheet onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'files' && <FilesDrawer onClose={() => setSheet(null)} />}
       <Toasts />
     </div>
   )

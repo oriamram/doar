@@ -4,6 +4,7 @@ import { isDemo } from './demo'
 import { clearGoogleAccessToken, getGoogleAccessToken } from './googleToken'
 import { base64UrlToBytes } from './mime'
 import { report } from './report'
+import * as store from './store'
 
 /**
  * Gmail REST API client. Calls go straight from this device to Google;
@@ -177,23 +178,49 @@ export async function loadMessages(thread: Pick<Thread, 'id' | 'historyId'>): Pr
   if (cached) return cached
   let load = messageLoads.get(thread.id)
   if (!load) {
-    load = gmail<GmailThread>(`/threads/${thread.id}?format=full`)
-      .then((full) => {
-        const loaded = { historyId: full.historyId, messages: full.messages.map(toMessage) }
-        messageCache.set(thread.id, loaded)
-        // Keep memory in check: only the most recently opened conversations stay.
-        if (messageCache.size > 60) messageCache.delete(messageCache.keys().next().value!)
-        return loaded
-      })
-      .finally(() => messageLoads.delete(thread.id))
+    load = fetchMessages(thread).finally(() => messageLoads.delete(thread.id))
     messageLoads.set(thread.id, load)
   }
   return (await load).messages
 }
 
+function holdInMemory(id: string, loaded: LoadedMessages): LoadedMessages {
+  messageCache.set(id, loaded)
+  // Keep memory in check: only the most recently opened conversations stay.
+  if (messageCache.size > 60) messageCache.delete(messageCache.keys().next().value!)
+  return loaded
+}
+
+/**
+ * A conversation's letters: from what this device kept when Gmail hasn't changed the
+ * conversation since, otherwise from Gmail (and then kept). With no connection, an
+ * older copy is better than none. The demo mailbox keeps nothing.
+ */
+async function fetchMessages(thread: Pick<Thread, 'id' | 'historyId'>): Promise<LoadedMessages> {
+  const kept = isDemo ? null : await store.keptMessages(thread.id).catch(() => null)
+  if (kept && BigInt(kept.historyId) >= BigInt(thread.historyId)) return holdInMemory(thread.id, kept)
+  try {
+    const full = await gmail<GmailThread>(`/threads/${thread.id}?format=full`)
+    const loaded = { historyId: full.historyId, messages: full.messages.map(toMessage) }
+    if (!isDemo) store.keepMessages(thread.id, loaded.historyId, loaded.messages).catch(() => {})
+    return holdInMemory(thread.id, loaded)
+  } catch (error) {
+    // Not held in memory, so that the fresh letters are fetched once the connection is back.
+    if (kept && error instanceof GmailError && error.status === 0) return kept
+    throw error
+  }
+}
+
 /** Forget a conversation's messages (after sending a reply or saving a draft in it). */
 export function forgetMessages(threadId: string) {
   messageCache.delete(threadId)
+}
+
+/** Forget every letter held in memory and kept on this device (signing out). */
+export function forgetAllMessages() {
+  messageCache.clear()
+  threadCache.clear()
+  void store.forgetLetters()
 }
 
 const attachmentCache = new Map<string, Promise<Uint8Array<ArrayBuffer>>>()

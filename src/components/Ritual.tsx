@@ -4,6 +4,7 @@ import { countLetters, formatWhen } from '../lib/format'
 import { peekMessages } from '../lib/gmail'
 import { useBackLayer } from '../lib/layers'
 import { mailbox, useMailbox } from '../lib/mailbox'
+import { tapHaptic } from '../lib/platform'
 import { ritualSize, type RitualItem } from '../lib/ritual'
 import { playSound } from '../lib/sound'
 import { BUNDLE_TITLES } from '../lib/views'
@@ -47,7 +48,10 @@ export function Ritual({ queue, onClose, onHold, busy }: Props) {
   const item = queue[index]
   const current = item?.kind === 'letter' ? byId.get(item.id) : undefined
   const waiting = item?.kind === 'bundle' ? item.ids.filter(inInbox) : []
-  const next = () => setPassed(index + 1)
+  const next = () => {
+    tapHaptic()
+    setPassed(index + 1)
+  }
 
   // A letter shown is a letter read; each one starts at its top.
   const currentId = current?.id

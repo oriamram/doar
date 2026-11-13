@@ -94,6 +94,17 @@ you). Phases 0 to 3 were approved on 13 November 2026 and need nothing more from
 you confirmed that notifications show on the phone, and allowed two test emails to your
 own address.
 
+Phases 0, 1 and 2 are live in full. Phase 3 is live in its main parts (opening the
+mail one by one, notes, Ctrl+K, right click, dragging, the files drawer, reading with no
+connection); what is not built yet is listed in ROADMAP.md under "Progress", and none of
+it needs anything from you except saying which of them you want.
+
+Worth trying once on your own mail, because only real mail can show it:
+1. Open Doar when three or more new letters wait, and press "הדוור הביא…".
+2. On a newsletter you don't want, press "החזר לשולח" (five seconds to change your mind).
+3. If a letter is shown as the wrong kind (a parcel that isn't one), press "זה לא…" on
+   its card. Doar remembers it for that sender.
+
 The clerk (phase 4, AI) was left out for now. If you want it later: item 7 above, and a
 monthly limit in the Anthropic console.
 

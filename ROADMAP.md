@@ -356,7 +356,7 @@ logged from `usage`.
 | The clerk's summary | A typed slip clipped to the letter |
 
 Already taken, do not reuse: the telegram is the writing form ("טופס 11").
-Form numbers in use: 4, 7, 9, 11, 12, נספח א׳, נספח ב׳.
+Form numbers in use: 4, 5, 7, 9, 11, 12, 14, 15, 16, 17, 18, נספח א׳, נספח ב׳, נספח ג׳.
 
 ## Risks
 
@@ -445,6 +445,35 @@ real mail will show in daily use; every judgement has a one-press correction.
 
 Left for later from the plan: the invitation's date in the list (it shows once the letter
 is open), and a parcel's page when the letter gives no link.
+
+**Phase 3 (live, in part).** Built and checked:
+- 3.1 Opening the mail: the strip "הדוור הביא…", one open letter at a time with five
+  answers (reply, file, later, bin, keep; `r`, `e`, `b`, `#`, space), people first, then
+  codes, parcels and receipts, then each bundle as one decision, and the clear desk at the
+  end (the lamp, the blotter, the date stamp, what returns tomorrow).
+- 3.2 Notes: a yellow slip on a letter, kept by the server for every device, a yellow
+  corner in the list, the `n` key.
+- 3.3, the reading half: the letters of the last 300 opened conversations are kept on the
+  device (`src/lib/store.ts`, IndexedDB), so they open at once and can be read with no
+  connection; signing out empties it. Checked in a real browser: keeping, reading back,
+  making room, emptying.
+- 3.4 The files drawer (form 18), by kind.
+- 3.5 Search chips that write pieces of the search and take them off.
+- 3.6 On a PC: Ctrl+K "לאן?", a right-click menu on a letter, dragging letters onto a
+  folder, a label or the bin.
+- 3.7 On a phone: larger text in letters, reading a letter aloud.
+- 3.8 The lamp's chain, the postal scale, a clean print of one letter, the Hebrew date
+  beside a letter's date.
+
+Not built yet (each is its own piece of work):
+- 3.3 Writing with no connection ("התיבה האדומה"), and filing, stars and read marks made
+  with no connection. Today these need a connection, as before.
+- 3.6 The desk reaching the top of the window, a split that can be dragged, a new letter in
+  its own window.
+- 3.7 Swipe choices in Settings, swiping between letters, the fingerprint lock, a buzz on
+  every stamp press (it buzzes on swipes, on "keep" and on return to sender).
+- 3.8 A signature written by hand, and the pad of ready-made replies ("נוסחים").
+- The files drawer by person, the "from whom" search chip, and a guide page per worker.
 
 Not checked on real mail, because it needs mail from someone else to arrive: a code in a
 notification's title, the summary at opening time, an express sender passing closed hours,

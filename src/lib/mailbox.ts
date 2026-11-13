@@ -1469,6 +1469,8 @@ function forgetLocal() {
   stop()
   viewCache.clear()
   draftInfos.clear()
+  // The letters kept on this device for opening at once and with no connection.
+  if (!isDemo) api.forgetAllMessages()
   state = blank({ name: '', email: '' })
   document.title = 'דואר'
 }

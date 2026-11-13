@@ -112,11 +112,18 @@ function emptyText(view: View): string {
   }
 }
 
-const QUICK_SEARCHES = [
-  { label: 'עם קבצים מצורפים', query: 'has:attachment' },
-  { label: 'מהשבוע האחרון', query: 'newer_than:7d' },
-  { label: 'ממני', query: 'from:me' },
+/** Plain words for the parts of a search; each one writes (or takes off) a piece of the search text. */
+const SEARCH_CHIPS = [
+  { label: 'עם קובץ', piece: 'has:attachment' },
+  { label: 'מהשבוע', piece: 'newer_than:7d' },
+  { label: 'מהחודש', piece: 'newer_than:30d' },
+  { label: 'ממני', piece: 'from:me' },
+  { label: 'לא נקראו', piece: 'is:unread' },
+  { label: 'בכוכב', piece: 'is:starred' },
+  { label: 'בדואר הנכנס', piece: 'in:inbox' },
 ]
+
+const pieces = (text: string) => text.split(/\s+/).filter(Boolean)
 
 /** A bundle: several letters of one kind, tied with twine. */
 function BundleRow({ bundle }: { bundle: Bundle }) {
@@ -358,36 +365,45 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
           </div>
         )}
 
-        {searching && selection.size === 0 && view.kind !== 'search' && (
-          <div className="filters" aria-label="חיפושים מהירים">
-            {recentSearches()
-              .slice(0, 3)
-              .map((query) => (
+        {searching && selection.size === 0 && (
+          <div className="filters" aria-label="חלקי החיפוש">
+            {view.kind !== 'search' &&
+              recentSearches()
+                .slice(0, 3)
+                .map((query) => (
+                  <button
+                    key={`recent-${query}`}
+                    className="filter"
+                    dir="auto"
+                    title="חיפוש קודם"
+                    onClick={() => {
+                      setSearchText(query)
+                      mailbox.show({ kind: 'search', query })
+                    }}
+                  >
+                    {query}
+                  </button>
+                ))}
+            {SEARCH_CHIPS.map((chip) => {
+              const on = pieces(searchText).includes(chip.piece)
+              return (
                 <button
-                  key={`recent-${query}`}
-                  className="filter"
-                  dir="auto"
-                  title="חיפוש קודם"
+                  key={chip.piece}
+                  className="filter search-chip"
+                  aria-pressed={on}
+                  title={chip.piece}
                   onClick={() => {
+                    // The chip writes its piece into the search (or takes it out), and the search runs again.
+                    const query = (on ? pieces(searchText).filter((piece) => piece !== chip.piece) : [...pieces(searchText), chip.piece]).join(' ')
                     setSearchText(query)
-                    mailbox.show({ kind: 'search', query })
+                    if (query) mailbox.show({ kind: 'search', query })
+                    else if (view.kind === 'search') mailbox.show(INBOX)
                   }}
                 >
-                  {query}
+                  {chip.label}
                 </button>
-              ))}
-            {QUICK_SEARCHES.map((quick) => (
-              <button
-                key={quick.query}
-                className="filter"
-                onClick={() => {
-                  setSearchText(quick.query)
-                  mailbox.show({ kind: 'search', query: quick.query })
-                }}
-              >
-                {quick.label}
-              </button>
-            ))}
+              )
+            })}
           </div>
         )}
 

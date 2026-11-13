@@ -1670,3 +1670,73 @@
 .thread-row[draggable='true'] {
   -webkit-user-drag: element;
 }
+
+/* ---------- The files drawer ---------- */
+
+.drawer-sorts {
+  margin-bottom: 14px;
+}
+
+.drawer-files {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drawer-file {
+  width: 100%;
+  text-align: start;
+}
+
+/* ---------- The lamp's chain: day and night ---------- */
+
+.brand {
+  position: relative;
+}
+
+.lamp-chain {
+  position: absolute;
+  top: -18px;
+  inset-inline-end: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 30px;
+  padding-bottom: 4px;
+  transition: translate 0.18s var(--ease-out);
+}
+
+.lamp-chain:active {
+  translate: 0 7px;
+}
+
+/* A bead chain, and the small brass pull at its end. */
+.chain-beads {
+  width: 4px;
+  height: 46px;
+  background: radial-gradient(circle at 50% 50%, #c9a85f 0 1.6px, transparent 1.9px) 0 0 / 4px 5px repeat-y;
+}
+
+.chain-pull {
+  width: 9px;
+  height: 14px;
+  border-radius: 3px 3px 5px 5px;
+  background: linear-gradient(to right, #8a6a2c, #e3c57c 45%, #9a7733);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.lamp-chain:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ---------- Search chips ---------- */
+
+.search-chip[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--sheet);
+}

@@ -8,6 +8,7 @@ import {
   AllMailIcon,
   ArchiveIcon,
   ChevronIcon,
+  ClipIcon,
   ClockIcon,
   DraftIcon,
   EditIcon,
@@ -29,6 +30,7 @@ import {
   TrashIcon,
 } from './icons'
 import { carriesLetters, droppedLetters } from '../lib/dragging'
+import { resolvedTheme, updateSettings } from '../lib/settings'
 import { toast } from '../lib/toast'
 import { Logo, TapeSwatch } from './Postal'
 
@@ -43,6 +45,7 @@ type Props = {
   onManageLabels: () => void
   onAlbum: () => void
   onSpike: () => void
+  onFiles: () => void
 }
 
 type Folder = { id: FolderId; icon: ReactNode }
@@ -85,7 +88,7 @@ function savedMore(): boolean {
 }
 
 /** Folders and labels: a sidebar on wide screens, a drawer on phones. */
-export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, onManageLabels, onAlbum, onSpike }: Props) {
+export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, onManageLabels, onAlbum, onSpike, onFiles }: Props) {
   const { view, unread, draftCount, labels, me, scheduled, rules, reminders } = useMailbox()
   const keeping = (kind: 'hold' | 'reply') => reminders.filter((reminder) => reminder.kind === kind && reminder.status !== 'returned').length
   // Folders that exist only while something is in them.
@@ -189,6 +192,16 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
         <div className="brand">
           <Logo width={40} />
           דואר
+          <button
+            type="button"
+            className="lamp-chain"
+            onClick={() => updateSettings({ theme: resolvedTheme() === 'dark' ? 'light' : 'dark' })}
+            aria-label="שרשרת המנורה: מעבר בין יום ללילה"
+            title="שרשרת המנורה: יום או לילה"
+          >
+            <span className="chain-beads" aria-hidden="true" />
+            <span className="chain-pull" aria-hidden="true" />
+          </button>
         </div>
 
         <button
@@ -284,6 +297,16 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
           >
             <SpikeIcon />
             <span className="nav-name">דוקרן הקבלות</span>
+          </button>
+          <button
+            className="nav-item"
+            onClick={() => {
+              onFiles()
+              onClose()
+            }}
+          >
+            <ClipIcon />
+            <span className="nav-name">מגירת הקבצים</span>
           </button>
         </nav>
 
