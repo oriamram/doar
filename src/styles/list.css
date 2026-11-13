@@ -454,9 +454,12 @@
   gap: 2px;
   padding-inline: 34px 8px;
   background: linear-gradient(to right, var(--paper) 72%, transparent);
+  /* Only the buttons take clicks; a click beside them still opens the letter underneath. */
+  pointer-events: none;
 }
 
 .row-actions button {
+  pointer-events: auto;
   display: grid;
   place-items: center;
   width: 36px;
@@ -755,6 +758,51 @@
 
 .scheduled-actions button:disabled {
   opacity: 0.45;
+}
+
+/* A slip on a letter that Doar's server is keeping time for: when it comes back, or what it waits for. */
+.row-slip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-blue);
+}
+
+.row-slip svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.row-slip[data-returned] {
+  color: var(--ink-red);
+}
+
+/* The "R" of a registered label. */
+.reg-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  font: 700 13px/1 Georgia, 'Times New Roman', serif;
+}
+
+/* A sender marked "express": a red express strip beside the name. */
+.express-mark {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: var(--ink-red);
+  color: var(--cream);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 /* ---------- One-time suggestions (install, notifications) ---------- */

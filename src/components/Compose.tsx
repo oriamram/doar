@@ -13,15 +13,15 @@ import {
 import { isEmail, parseAddressList, shortName, uniqueContacts } from '../lib/addresses'
 import { buildRaw, filesToAttachments, isBlank, sanitizeForEditor } from '../lib/compose'
 import { rememberContacts, suggestContacts } from '../lib/contacts'
-import { formatBytes, formatWhen } from '../lib/format'
+import { countDays, formatBytes, formatWhen } from '../lib/format'
 import { saveDraft } from '../lib/gmail'
 import { useBackLayer } from '../lib/layers'
 import { mailbox, useMailbox } from '../lib/mailbox'
 import { stampColor, stampLetter } from '../lib/stamps'
 import { toast } from '../lib/toast'
 import type { ComposeAttachment, ComposeDraft, Contact } from '../types'
-import { ClipIcon, ClockIcon, CloseIcon, ListIcon, SendIcon, TrashIcon } from './icons'
-import { ScheduleSheet } from './Sheets'
+import { ClipIcon, ClockIcon, CloseIcon, ListIcon, RegisteredIcon, SendIcon, TrashIcon } from './icons'
+import { RegisterSheet, ScheduleSheet } from './Sheets'
 
 const TITLES: Record<ComposeDraft['mode'], string> = {
   new: 'מכתב חדש',
@@ -183,6 +183,9 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
   const { me, scheduled } = useMailbox()
   // This letter already waits for a time (it was opened from "scheduled").
   const waiting = scheduled.find((item) => item.draftId === initial.draftId && item.status !== 'failed')
+  // Registered: how many days to wait for an answer before the letter comes back (null: not registered).
+  const [followup, setFollowup] = useState<number | null>(waiting?.followupDays ?? null)
+  const [registering, setRegistering] = useState(false)
   const [scheduling, setScheduling] = useState(false)
   const [to, setTo] = useState(initial.to)
   const [cc, setCc] = useState(initial.cc)
@@ -336,12 +339,12 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
 
   const send = async () => {
     const draft = await ready()
-    if (draft) mailbox.send(draft)
+    if (draft) mailbox.send(draft, followup)
   }
 
   const sendLater = async (when: Date) => {
     const draft = await ready()
-    if (draft) void mailbox.schedule(draft, when)
+    if (draft) void mailbox.schedule(draft, when, followup)
   }
 
   const chooseTime = async () => {
@@ -570,6 +573,19 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
           </p>
         )}
 
+        {followup !== null && (
+          <p className="scheduled-note registered-note">
+            <RegisteredIcon />
+            <span>רשום: אם לא יענו בתוך {countDays(followup)}, המכתב יחזור אליך</span>
+            <button type="button" onClick={() => setRegistering(true)}>
+              שינוי
+            </button>
+            <button type="button" onClick={() => setFollowup(null)}>
+              בלי רישום
+            </button>
+          </p>
+        )}
+
         <footer className="telegram-foot">
           <div className="format-bar" role="toolbar" aria-label="עיצוב">
             {/* Keep the cursor in the letter while pressing these. */}
@@ -590,6 +606,17 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
             </button>
           </div>
           <span className="word-count">מילים: {words}</span>
+          <button
+            type="button"
+            className="later-btn registered-btn"
+            onClick={() => setRegistering(true)}
+            disabled={busy}
+            aria-pressed={followup !== null}
+            aria-label="דואר רשום: להזכיר לי אם לא יענו"
+            title="דואר רשום: להזכיר לי אם לא יענו"
+          >
+            <RegisteredIcon />
+          </button>
           <button
             type="button"
             className="later-btn"
@@ -624,6 +651,16 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
         }}
       />
       {dragging && <div className="drop-note">שחררו כאן כדי לצרף</div>}
+      {registering && (
+        <RegisterSheet
+          current={followup}
+          onPick={(days) => {
+            setFollowup(days)
+            setRegistering(false)
+          }}
+          onClose={() => setRegistering(false)}
+        />
+      )}
       {scheduling && (
         <ScheduleSheet
           current={waiting?.sendAt}

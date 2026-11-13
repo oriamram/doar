@@ -106,6 +106,29 @@ export function schedulePresets(now = new Date()): { label: string; when: Date }
   return presets
 }
 
+/** Ready-made times to bring a letter back to the inbox, the nearest first. */
+export function holdPresets(now = new Date()): { label: string; when: Date }[] {
+  const at = (daysAhead: number, hour: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead, hour)
+  const presets: { label: string; when: Date }[] = []
+  if (at(0, 18).getTime() - now.getTime() > 45 * 60_000) presets.push({ label: 'היום בערב', when: at(0, 18) })
+  presets.push({ label: 'מחר בבוקר', when: at(1, 8) })
+  const day = now.getDay()
+  // The weekend starts on Friday; from Thursday on, "tomorrow" already covers it.
+  if (day <= 3) presets.push({ label: 'בסוף השבוע', when: at(5 - day, 9) })
+  const toSunday = (7 - day) % 7 || 7
+  if (toSunday > 1) presets.push({ label: 'בשבוע הבא', when: at(toSunday, 8) })
+  return presets
+}
+
+/** A day, without the hour: "היום", "מחר", "יום שלישי, 17 בנוב׳". */
+export function formatDay(when: Date | string, now = new Date()): string {
+  const date = new Date(when)
+  const days = Math.round((startOfDay(date) - startOfDay(now)) / 86_400_000)
+  if (days === 0) return 'היום'
+  if (days === 1) return 'מחר'
+  return date.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'short' })
+}
+
 /** The value a date-and-time field expects ("2026-11-13T08:00"), in this device's time. */
 export function toFieldTime(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -131,6 +154,11 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** "יום" / "יומיים" / "3 ימים". */
+export function countDays(days: number): string {
+  return days === 1 ? 'יום' : days === 2 ? 'יומיים' : `${days} ימים`
 }
 
 /** "מכתב אחד" / "3 מכתבים". */

@@ -406,3 +406,26 @@ Found and fixed on the way: a shortcut key was also typed into the form it opene
 picture opened from a letter was trapped inside the letter's area instead of covering the
 screen. Still open from 0.7: a real rule labeling older mail, and a real new letter labeled
 by the timer (both wait for matching mail to arrive).
+
+**Phase 1 (live).** Held mail (form 14, the hourglass, the folder "שמורים", `b`),
+registered mail (form 15, the "R" beside Send, the folder "ממתינים לתשובה"), letters the
+server brought back standing first under "חזרו אליך", buttons on notifications, codes in
+the notification's title, opening hours with "סגור בשבת", and express senders.
+
+Checked against the real mailbox on 13 November 2026, with two test letters to the owner's
+own address (both in the bin afterwards, no reminder left behind):
+- A registered letter nobody answered came back: `returned: 1` in the timer's report, the
+  conversation in the inbox and unread, both devices accepted the notification.
+- "להזכיר שוב" on that notification filed it again and made a new reminder of the same kind.
+- A held letter came back at its time the same way; "לתיוק" took it out again.
+- "נקרא" and "לתיוק" on a new-mail notification changed exactly those labels in Gmail.
+- A letter scheduled with a registration was sent by the timer, and its reminder was made
+  on delivery, pointing at the letter that was actually sent.
+- A letter to oneself is not taken for an answer, and does not notify.
+
+Not checked on real mail, because it needs mail from someone else to arrive: a code in a
+notification's title, the summary at opening time, an express sender passing closed hours,
+and an answer taking a registration off (all four are covered by `check-postman.ts` and
+by the demo). The app's own requests (`hold-create`, `reply-create`, `hours-set`,
+`mark-set`) run for the first time with a real session when the owner uses them; the
+filter the server reads reminders with was checked for form against the live database.

@@ -11,6 +11,13 @@ const SHARE_CACHE = 'doar-share'
 
 const openWindows = () => self.clients.matchAll({ type: 'window', includeUncontrolled: true })
 
+/** Where tapping a notification leads. */
+function target(data) {
+  if ((data.type === 'mail' || data.type === 'returned' || data.type === 'no-reply') && data.threadId) return `/?thread=${encodeURIComponent(data.threadId)}`
+  if (data.type === 'send-failed') return '/?view=scheduled'
+  return '/'
+}
+
 self.addEventListener('push', (event) => {
   let data = {}
   try {
@@ -21,47 +28,65 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     (async () => {
       const windows = await openWindows()
-      if (data.type === 'mail' || data.type === 'summary') {
+      if (data.type === 'mail' || data.type === 'summary' || data.type === 'returned' || data.type === 'no-reply') {
         // An open Doar refreshes its list; the app's icon shows how many are unread.
         for (const client of windows) client.postMessage({ type: 'doar-new-mail' })
         if (typeof data.unread === 'number' && self.navigator.setAppBadge) self.navigator.setAppBadge(data.unread).catch(() => {})
         // Looking at Doar right now: the letter just appears in the list, with no interruption.
         if (windows.some((client) => client.visibilityState === 'visible' && client.focused)) return
       }
-      const url =
-        data.type === 'mail' && data.threadId
-          ? `/?thread=${encodeURIComponent(data.threadId)}`
-          : data.type === 'send-failed'
-            ? '/?view=scheduled'
-            : '/'
+      // Buttons need the signed ticket the server sent along, and the address to hand it back to.
+      const actions = data.ticket && data.act && Array.isArray(data.actions) ? data.actions.slice(0, 2) : []
       await self.registration.showNotification(data.title || 'דואר', {
         body: data.body || '',
         icon: ICON,
         badge: BADGE,
         // One notification per conversation: a newer letter replaces the older note.
-        tag: data.type === 'mail' ? `doar-thread-${data.threadId}` : `doar-${data.type || 'note'}`,
+        tag: data.threadId ? `doar-thread-${data.threadId}` : `doar-${data.type || 'note'}`,
         renotify: true,
         dir: 'rtl',
         lang: 'he',
-        data: { url },
+        actions,
+        data: { url: target(data), ticket: data.ticket, act: data.act },
       })
     })(),
   )
 })
 
-// Tapping a notification brings Doar to the front (or opens it) on the letter it was about.
+/** Bring Doar to the front (or open it) on the letter a notification was about. */
+async function openDoar(url) {
+  const open = (await openWindows()).find((client) => 'focus' in client)
+  if (open) {
+    await open.focus()
+    open.postMessage({ type: 'doar-open', url })
+    return
+  }
+  await self.clients.openWindow(url)
+}
+
+// A tap on a notification opens its letter. A tap on one of its buttons ("file", "read",
+// "remind me again") is done right here: the ticket goes back to Doar's server, which
+// does it in Gmail, and Doar stays closed.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/'
+  const data = event.notification.data || {}
+  const url = data.url || '/'
   event.waitUntil(
     (async () => {
-      const open = (await openWindows()).find((client) => 'focus' in client)
-      if (open) {
-        await open.focus()
-        open.postMessage({ type: 'doar-open', url })
-        return
+      if (!event.action || !data.ticket || !data.act) return openDoar(url)
+      try {
+        const answer = await fetch(data.act, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'ticket', ticket: data.ticket, do: event.action }),
+        })
+        if (!answer.ok) throw new Error(`ticket ${answer.status}`)
+        // An open Doar shows the change.
+        for (const client of await openWindows()) client.postMessage({ type: 'doar-new-mail' })
+      } catch {
+        // The button could not do its job (no connection, or the ticket is too old): open the letter instead.
+        await openDoar(url)
       }
-      await self.clients.openWindow(url)
     })(),
   )
 })

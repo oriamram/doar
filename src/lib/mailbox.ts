@@ -5,7 +5,7 @@ import { eraseAccount, signOut } from './auth'
 import { draftFromMessage, replyDraft } from './compose'
 import { isDemo } from './demo'
 import { harvestRecipients, rememberContacts } from './contacts'
-import { formatWhen } from './format'
+import { formatDay, formatWhen } from './format'
 import * as api from './gmail'
 import { peekGoogleAccessToken, ReauthRequiredError } from './googleToken'
 import { onLaunch, takeShared, type LaunchIntent } from './launch'
@@ -257,6 +257,17 @@ async function load({ quiet = false }: { quiet?: boolean } = {}) {
     set({ threads: [], nextPageToken: undefined, pages: 1, loading: false, error: null })
     return
   }
+  // Held letters and registered letters: the server knows which, Gmail knows what they are.
+  if (isFolder(view, 'held') || isFolder(view, 'waiting')) {
+    await refreshServer()
+    const kind = isFolder(view, 'held') ? 'hold' : 'reply'
+    const rows = state.reminders.filter((reminder) => reminder.kind === kind && reminder.status !== 'returned')
+    const found = await Promise.all(rows.map((reminder) => api.getThread(reminder.threadId).catch(() => null)))
+    if (seq !== loadSeq) return
+    lastLoadAt = Date.now()
+    set({ threads: found.filter((thread) => thread !== null), nextPageToken: undefined, pages: 1, loading: false, error: null })
+    return
+  }
   try {
     const [page, counts, bundles] = await Promise.all([
       api.listThreads(viewQuery(view, bundlesOn)),
@@ -283,6 +294,16 @@ async function load({ quiet = false }: { quiet?: boolean } = {}) {
       threads = [...fresh, ...old.filter((thread) => !ids.has(thread.id) && thread.date < oldest)]
       nextPageToken = state.nextPageToken
       pages = state.pages
+    }
+
+    // A letter the server brought back belongs in the inbox list however old it is (the list shows it first).
+    if (inbox) {
+      const have = new Set(threads.map((thread) => thread.id))
+      const back = [...new Set(state.reminders.filter((reminder) => reminder.status === 'returned').map((reminder) => reminder.threadId))]
+      const missing = await Promise.all(back.filter((id) => !have.has(id)).map((id) => api.getThread(id).catch(() => null)))
+      if (seq !== loadSeq) return
+      const extra = missing.filter((thread) => thread !== null && thread.labelIds.includes('INBOX')) as Thread[]
+      if (extra.length) threads = [...threads, ...extra].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     }
 
     // New mail: anything newer than what was at the top before this check.
@@ -520,10 +541,188 @@ const unreadInInbox = (threads: Thread[]) => threads.filter((thread) => thread.u
 const without = (labels: string[], ...remove: string[]) => labels.filter((label) => !remove.includes(label))
 const withLabel = (labels: string[], label: string) => (labels.includes(label) ? labels : [...labels, label])
 
+// ---------- Held mail and registered mail ----------
+
+/** The reminder Doar's server keeps for a conversation: a hold, or a wait for an answer. */
+const reminderFor = (threadId: string, kind: postman.Reminder['kind'], status: 'waiting' | 'returned' = 'waiting') =>
+  state.reminders.find((reminder) => reminder.threadId === threadId && reminder.kind === kind && (reminder.status === 'returned') === (status === 'returned'))
+
+const withoutReminders = (gone: postman.Reminder[]) => state.reminders.filter((reminder) => !gone.some((other) => other.id === reminder.id))
+
+function reminderProblem(error: unknown): string {
+  if (error instanceof api.GmailError) return error.message
+  const code = error instanceof postman.PostmanError ? error.code : ''
+  if (code === 'bad_time') return 'המועד שנבחר כבר עבר או רחוק מדי. בחרו מועד אחר.'
+  if (code === 'too_late') return 'מאוחר מדי: המכתב כבר חזר.'
+  if (code === 'too_many') return 'יש כבר יותר מדי מכתבים שמורים.'
+  return 'אין קשר עם השרת של דואר כרגע. נסו שוב.'
+}
+
+/** A letter that came back has been dealt with: its "came back" note is no longer needed. */
+function settleReturned(ids: string[]) {
+  const done = state.reminders.filter((reminder) => reminder.status === 'returned' && ids.includes(reminder.threadId))
+  if (done.length === 0) return
+  set({ reminders: withoutReminders(done) })
+  for (const reminder of done) postman.reminderCancel(reminder.id).catch(() => {})
+}
+
+/**
+ * Held mail: the letters leave the inbox now, and Doar's server brings them back
+ * at `when`, to the top and unread, with a notification.
+ */
+function hold(ids: string[], when: Date) {
+  const originals = lookup(ids)
+  if (originals.length === 0) return
+  const before = snapshot()
+  const next = successor(ids)
+  settleReturned(ids)
+  set({ unread: Math.max(0, state.unread - unreadInInbox(originals)) })
+  change(ids, (thread) => ({ ...thread, labelIds: without(thread.labelIds, 'INBOX') }))
+  if (isInboxLike(state.view)) drop(ids)
+  else set({ selection: EMPTY })
+  moveOn(next)
+  showUnreadCount()
+  playSound('thump')
+
+  const made: postman.Reminder[] = []
+  const work = Promise.all(
+    ids.map(async (id) => {
+      await api.modifyThread(id, [], ['INBOX'])
+      made.push(await postman.holdCreate(id, when))
+    }),
+  ).then(
+    () => {
+      set({ reminders: [...state.reminders.filter((reminder) => !(reminder.kind === 'hold' && reminder.status === 'waiting' && ids.includes(reminder.threadId))), ...made] })
+      countsSoon()
+      return true
+    },
+    (error) => {
+      toast(reminderProblem(error), { tone: 'error' })
+      void refreshServer().then(() => load({ quiet: true }))
+      return false
+    },
+  )
+  undoable(many(ids, `המכתב יחזור ${formatWhen(when)}`, (n) => `${n} מכתבים יחזרו ${formatWhen(when)}`), before, originals, () => [
+    work.then(() => {
+      set({ reminders: withoutReminders(made) })
+      return Promise.all([...ids.map((id) => api.modifyThread(id, ['INBOX'], [])), ...made.map((reminder) => postman.reminderCancel(reminder.id))])
+    }),
+  ])
+}
+
+/** Move a held letter to another time. */
+async function rehold(threadId: string, when: Date) {
+  const waiting = reminderFor(threadId, 'hold')
+  if (!waiting) return
+  try {
+    const moved = await postman.reminderUpdate(waiting.id, when)
+    set({ reminders: state.reminders.map((reminder) => (reminder.id === moved.id ? moved : reminder)) })
+    toast(`המכתב יחזור ${formatWhen(when)}`)
+  } catch (error) {
+    toast(reminderProblem(error), { tone: 'error' })
+    void refreshServer()
+  }
+}
+
+/** Bring a held letter back to the inbox right now. */
+async function bringBack(threadId: string) {
+  const waiting = reminderFor(threadId, 'hold')
+  if (waiting) set({ reminders: withoutReminders([waiting]) })
+  const next = isFolder(state.view, 'held') ? successor([threadId]) : undefined
+  change([threadId], (thread) => ({ ...thread, labelIds: withLabel(thread.labelIds, 'INBOX') }))
+  if (isFolder(state.view, 'held')) drop([threadId])
+  moveOn(next)
+  try {
+    await Promise.all([api.modifyThread(threadId, ['INBOX'], []), waiting ? postman.reminderCancel(waiting.id) : undefined])
+    toast('המכתב חזר לדואר הנכנס')
+    countsSoon()
+  } catch (error) {
+    toast(reminderProblem(error), { tone: 'error' })
+    void refreshServer().then(() => load({ quiet: true }))
+  }
+}
+
+/**
+ * Registered mail: Doar's server watches a sent letter, and if nobody has answered
+ * it within `days`, brings the conversation back to the inbox and says so.
+ */
+async function register(threadId: string, afterMessageId: string, days: number, announce = true): Promise<boolean> {
+  try {
+    const reminder = await postman.replyCreate(threadId, afterMessageId, days)
+    set({ reminders: [...state.reminders.filter((other) => !(other.kind === 'reply' && other.threadId === threadId)), reminder] })
+    if (announce) toast(`המכתב נרשם. אם לא יענו עד ${formatDay(reminder.dueAt)}, הוא יחזור אליך.`)
+    return true
+  } catch (error) {
+    toast(`לא הצלחנו לרשום את המכתב. ${reminderProblem(error)}`, { tone: 'error' })
+    return false
+  }
+}
+
+/** Stop waiting for an answer to a registered letter (also clears its "no answer" note). */
+async function unregister(threadId: string) {
+  const rows = state.reminders.filter((reminder) => reminder.kind === 'reply' && reminder.threadId === threadId)
+  if (rows.length === 0) return
+  set({ reminders: withoutReminders(rows) })
+  const next = isFolder(state.view, 'waiting') ? successor([threadId]) : undefined
+  if (isFolder(state.view, 'waiting')) drop([threadId])
+  moveOn(next)
+  try {
+    await Promise.all(rows.map((reminder) => postman.reminderCancel(reminder.id)))
+    toast('הרישום בוטל. לא תגיע תזכורת.')
+  } catch (error) {
+    toast(reminderProblem(error), { tone: 'error' })
+    void refreshServer()
+  }
+}
+
+// ---------- Marked senders and opening hours ----------
+
+/**
+ * Mark a sender (an address, or a whole site): "express" always notifies at once;
+ * "refused" sends their future mail straight to the bin. `on: false` takes the mark off.
+ */
+async function setMark(sender: string, mark: postman.SenderMark['mark'], on: boolean): Promise<boolean> {
+  try {
+    const saved = await postman.markSet(sender, mark, on)
+    if (saved) set({ marks: [...state.marks.filter((other) => other.id !== saved.id), saved] })
+    else void refreshServer()
+    return true
+  } catch (error) {
+    const code = error instanceof postman.PostmanError ? error.code : ''
+    toast(code === 'bad_match' ? 'לא הבנו את הכתובת הזאת.' : code === 'too_many' ? 'יש כבר יותר מדי שולחים מסומנים.' : 'אין קשר עם השרת של דואר כרגע. נסו שוב.', { tone: 'error' })
+    return false
+  }
+}
+
+async function removeMark(id: string) {
+  const mark = state.marks.find((other) => other.id === id)
+  if (!mark) return
+  set({ marks: state.marks.filter((other) => other.id !== id) })
+  try {
+    await postman.markSet(mark.match, mark.mark, false)
+  } catch {
+    set({ marks: [...state.marks, mark] })
+    toast('אין קשר עם השרת של דואר כרגע. נסו שוב.', { tone: 'error' })
+  }
+}
+
+/** Opening hours for notifications (null: they may arrive at any time). */
+async function setHours(hours: postman.Hours | null) {
+  const before = state.hours
+  set({ hours })
+  try {
+    await postman.hoursSet(hours)
+  } catch {
+    set({ hours: before })
+    toast('השעות לא נשמרו. בדקו את החיבור ונסו שוב.', { tone: 'error' })
+  }
+}
+
 /** File: out of the inbox, still in "all mail". */
 function archive(ids: string[]) {
   const originals = lookup(ids)
   if (originals.length === 0) return
+  settleReturned(ids)
   const before = snapshot()
   const next = successor(ids)
   set({ unread: Math.max(0, state.unread - unreadInInbox(originals)) })
@@ -542,6 +741,7 @@ function archive(ids: string[]) {
 function trash(ids: string[]) {
   const originals = lookup(ids)
   if (originals.length === 0) return
+  settleReturned(ids)
   const before = snapshot()
   const next = successor(ids)
   set({ unread: Math.max(0, state.unread - unreadInInbox(originals)) })
@@ -790,7 +990,7 @@ async function discardDraft(draftId: string | undefined, threadId?: string) {
  * Send a saved draft. The letter leaves the screen at once; the actual send
  * waits a few seconds so it can still be taken back.
  */
-function send(draft: ComposeDraft & { draftId: string }) {
+function send(draft: ComposeDraft & { draftId: string }, followupDays: number | null = null) {
   const seconds = getSettings().undoSendSeconds
   const recipient = draft.to[0] ?? draft.cc[0] ?? draft.bcc[0]
   set({ compose: null, flight: { to: recipient ? shortName(recipient) : '' } })
@@ -805,8 +1005,10 @@ function send(draft: ComposeDraft & { draftId: string }) {
     stopWatching()
     dropSchedule(draft.draftId)
     api.sendDraft(draft.draftId).then(
-      () => {
-        if (seconds > 0) toast('המכתב נשלח')
+      (sent) => {
+        if (seconds > 0) toast(followupDays ? 'המכתב נשלח, ונרשם' : 'המכתב נשלח')
+        // Registered: from now the server waits for an answer to this very letter.
+        if (followupDays && sent?.id) void register(sent.threadId, sent.id, followupDays, false)
         afterDraftChange(draft.threadId)
         void load({ quiet: true })
       },
@@ -835,7 +1037,7 @@ function send(draft: ComposeDraft & { draftId: string }) {
 
   if (seconds === 0) {
     deliver()
-    toast('המכתב נשלח')
+    toast(followupDays ? 'המכתב נשלח, ונרשם' : 'המכתב נשלח')
     return
   }
   document.addEventListener('visibilitychange', onHide)
@@ -939,10 +1141,10 @@ function dropSchedule(draftId: string) {
 }
 
 /** Leave a saved draft with the server, to be sent at `when` even if every device is off. */
-async function schedule(draft: ComposeDraft & { draftId: string }, when: Date) {
+async function schedule(draft: ComposeDraft & { draftId: string }, when: Date, followupDays: number | null = null) {
   set({ compose: null })
   try {
-    const row = await postman.scheduleCreate(draft.draftId, when)
+    const row = await postman.scheduleCreate(draft.draftId, when, followupDays)
     const to = [...draft.to, ...draft.cc, ...draft.bcc]
     set({
       scheduled: byTime([...state.scheduled.filter((item) => item.draftId !== draft.draftId), { ...row, to, subject: draft.subject }]),
@@ -1095,13 +1297,18 @@ function start() {
   void harvestRecipients()
   void refreshServer()
   clearNotifications()
-  const stopLaunch = onLaunch(handleLaunch, () => void load({ quiet: true }))
+  // New mail can settle a held or a registered letter, so the server is asked again too.
+  const onMail = () => {
+    void load({ quiet: true })
+    if (state.reminders.length) void refreshServer()
+  }
+  const stopLaunch = onLaunch(handleLaunch, onMail)
 
   const poll = setInterval(() => {
     if (!navigator.onLine || document.hidden) return
     void load({ quiet: true })
-    // A waiting letter may have left in the meantime.
-    if (state.scheduled.length) void refreshServer()
+    // A waiting letter may have left in the meantime, and a held one may have come back.
+    if (state.scheduled.length || state.reminders.length) void refreshServer()
   }, POLL_MS)
   const onVisible = () => {
     if (document.hidden) return
@@ -1116,7 +1323,7 @@ function start() {
     void load({ quiet: true })
   }
   const onOffline = () => set({ online: false })
-  const onDemoMail = () => void load({ quiet: true })
+  const onDemoMail = onMail
   document.addEventListener('visibilitychange', onVisible)
   window.addEventListener('online', onOnline)
   window.addEventListener('offline', onOffline)
@@ -1234,6 +1441,14 @@ export const mailbox = {
   reschedule,
   unschedule,
   openScheduled,
+  hold,
+  rehold,
+  bringBack,
+  register,
+  unregister,
+  setMark,
+  removeMark,
+  setHours,
   addRule,
   removeRule,
   forgetEverything,

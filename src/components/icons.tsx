@@ -20,6 +20,28 @@ export const EditIcon = () => (
   </Icon>
 )
 
+/** Held mail: an hourglass. */
+export const HoldIcon = () => (
+  <Icon>
+    <path d="M7 3h10M7 21h10M8 3v3a4 4 0 0 0 8 0V3M8 21v-3a4 4 0 0 1 8 0v3" />
+  </Icon>
+)
+
+/** Registered mail: the "R" of the registered label. */
+export const RegisteredIcon = () => (
+  <Icon>
+    <rect x="4" y="5" width="16" height="14" rx="1.5" />
+    <path d="M10 15.5v-7h2.5a2.1 2.1 0 0 1 0 4.2H10M12.3 12.7l2.2 2.8" />
+  </Icon>
+)
+
+/** An express sender. */
+export const ExpressIcon = () => (
+  <Icon>
+    <path d="M13 3 5 13h6l-1 8 8-10h-6z" />
+  </Icon>
+)
+
 export const ClockIcon = () => (
   <Icon>
     <circle cx="12" cy="12" r="9" />

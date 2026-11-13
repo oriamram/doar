@@ -151,7 +151,7 @@ try {
   await pc.click('[aria-label="ביטול הבחירה"]')
 
   // A PDF opens to read.
-  await pc.clickText('הצעת מחיר לשיפוץ המטבח', '.thread-row .row-open')
+  await pc.clickText('הצעת מחיר לשיפוץ המטבח', '.thread-row .subject')
   await pc.waitFor('.file-slip')
   await pc.click('.file-slip')
   if (await pc.evaluate<boolean>('navigator.pdfViewerEnabled === true')) {
@@ -183,10 +183,97 @@ try {
   check('a label is deleted', (await toast(pc)).includes('התווית נמחקה'), await toast(pc))
   await pc.key('Escape')
 
+  // Held mail: a letter leaves the inbox, waits, and stands first when the server brings it back.
+  const navNames = () => pc.texts('.nav-item .nav-name')
+  await pc.clickText('אישור פגישה ביום שלישי', '.thread-row .subject')
+  await pc.waitFor('.letter')
+  await pc.click('.reader-bar [aria-label="להחזיר אליי במועד אחר"]')
+  await pc.waitFor('.presets')
+  await shot(pc, 'pc-hold')
+  await pc.clickText('מחר בבוקר', '.presets button')
+  await pc.waitFor(`[...document.querySelectorAll('.nav-item .nav-name')].some((el) => el.textContent === 'שמורים')`)
+  check('a held letter leaves the inbox and says when it returns', (await toast(pc)).includes('יחזור מחר'), await toast(pc))
+  await pc.clickText('שמורים', '.nav-item')
+  await pc.waitFor('.list[aria-label="שמורים"] .row-slip')
+  check('it waits in "held" with its time', (await pc.text('.row-slip')).includes('חוזר מחר'), await pc.text('.row-slip'))
+  const heldId = await pc.evaluate<string>(`window.__doarDemo.reminders.find((row) => row.kind === 'hold').thread_id`)
+  await pc.evaluate(`window.__doarDemo.due(${JSON.stringify(heldId)})`)
+  await pc.clickText('דואר נכנס', '.nav-item')
+  await pc.waitFor('.list[aria-label="דואר נכנס"] .row-slip[data-returned]', 12_000)
+  check(
+    'when its time comes it stands first in the inbox',
+    (await pc.text('.day-stamp')) === 'חזרו אליך' && (await pc.text('.thread-row .subject')) === 'אישור פגישה ביום שלישי',
+    `${await pc.text('.day-stamp')}: ${await pc.text('.thread-row .subject')}`,
+  )
+  check('"held" is gone from the menu once nothing waits there', !(await navNames()).includes('שמורים'), (await navNames()).join(', '))
+
+  // Registered mail: a letter nobody answers comes back saying so.
+  await pc.key('c')
+  await pc.waitFor('.compose')
+  await pc.click('.recipient-input')
+  await pc.type('michal@quiet.example')
+  await pc.key('Enter')
+  await pc.click('.field-input')
+  await pc.type('הצעה לפגישה')
+  await pc.click('.editor')
+  await pc.type('היי מיכל, מתי נוח לך להיפגש?')
+  await pc.click('.registered-btn')
+  await pc.waitFor('.presets')
+  await pc.clickText('בעוד 3 ימים', '.presets button')
+  await pc.waitFor('.registered-note')
+  await shot(pc, 'pc-registered')
+  await pc.click('.send-stamp')
+  await pc.waitFor(`[...document.querySelectorAll('.nav-item .nav-name')].some((el) => el.textContent === 'ממתינים לתשובה')`, 10_000)
+  check('a registered letter is watched for an answer', true)
+  const sentId = await pc.evaluate<string>(`window.__doarDemo.reminders.find((row) => row.kind === 'reply' && row.status === 'waiting').thread_id`)
+  await pc.evaluate(`window.__doarDemo.due(${JSON.stringify(sentId)})`)
+  await pc.waitFor('.list[aria-label="דואר נכנס"] .row-slip[data-returned] .reg-mark', 12_000)
+  check('with no answer it comes back and says so', (await pc.text('.row-slip[data-returned]')).includes('עדיין אין תשובה'), await pc.text('.row-slip[data-returned]'))
+  await pc.clickText('הצעה לפגישה', '.thread-row .subject')
+  await pc.waitFor('.thread-slip[data-returned]')
+  await shot(pc, 'pc-no-answer')
+  await pc.clickText('לוותר', '.thread-slip button')
+  await pc.waitFor(`!document.querySelector('.thread-slip')`)
+  check('giving up clears the note', (await pc.evaluate<number>(`window.__doarDemo.reminders.filter((row) => row.kind === 'reply').length`)) === 0)
+
+  // A registered letter that is answered: the registration comes off by itself.
+  await pc.key('c')
+  await pc.waitFor('.compose')
+  await pc.click('.recipient-input')
+  await pc.type('dana@levi.example')
+  await pc.key('Enter')
+  await pc.click('.field-input')
+  await pc.type('שאלה קצרה')
+  await pc.click('.editor')
+  await pc.type('מתי נפגשים?')
+  await pc.click('.registered-btn')
+  await pc.clickText('מחר', '.presets button')
+  await pc.click('.send-stamp')
+  await pc.waitFor(`window.__doarDemo.reminders.some((row) => row.kind === 'reply' && row.status === 'answered')`, 12_000)
+  await pc.waitFor(`![...document.querySelectorAll('.nav-item .nav-name')].some((el) => el.textContent === 'ממתינים לתשובה')`, 12_000)
+  check('an answer takes the registration off by itself', true)
+
+  // An express sender.
+  await pc.clickText('תמונות מהשבת', '.thread-row .subject')
+  await pc.waitFor('.letter')
+  await pc.click('[aria-label="עוד פעולות"]')
+  await pc.clickText('אקספרס', '.menu-item')
+  await pc.waitFor('.thread-row .express-mark')
+  check('a sender marked express shows it in the list', (await pc.evaluate<string>(`window.__doarDemo.marks[0].mark + ' ' + window.__doarDemo.marks[0].match`)) === 'express ruth.mizrahi@family.example')
+
   // Settings: shared settings reach the server, and a fault report can be sent.
   await pc.clickText('הגדרות', '.nav-item')
   await pc.waitFor('.status-list')
   check('the system status shows the version', /\d{4}-\d\d-\d\d \d\d:\d\d/.test(await pc.text('.status-list dd')), await pc.text('.status-list dd'))
+  // Opening hours.
+  await pc.clickText('שעות פתיחה', '.check')
+  await pc.waitFor('window.__doarDemo.hours !== null', 6000)
+  await pc.clickText('סגור בשבת', '.check')
+  await pc.waitFor('window.__doarDemo.hours && window.__doarDemo.hours.shabbat === true', 6000)
+  const hours = await pc.evaluate<{ from: string; to: string; days: number[]; tz: string }>('window.__doarDemo.hours')
+  check('opening hours are saved with the time zone', hours.from === '07:00' && hours.to === '22:00' && hours.days.length === 7 && hours.tz.includes('/'), JSON.stringify(hours))
+  await shot(pc, 'pc-hours')
+
   await pc.clickText('10 שניות', '.segments button')
   await pc.waitFor('window.__doarDemo.prefs && window.__doarDemo.prefs.undoSendSeconds === 10', 6000)
   check('a changed setting is saved for all devices', true)

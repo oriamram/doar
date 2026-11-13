@@ -2,10 +2,11 @@ import { memo, useRef, type MouseEvent, type PointerEvent } from 'react'
 import { shortName } from '../lib/addresses'
 import { formatListDate } from '../lib/format'
 import { mailbox } from '../lib/mailbox'
+import type { Reminder } from '../lib/postman'
 import { isFolder, type View } from '../lib/views'
 import type { Label, Thread } from '../types'
-import { ArchiveIcon, CheckIcon, MailIcon, MailOpenIcon, RestoreIcon, TrashIcon } from './icons'
-import { GoldStar, LabelTape, Paperclip, SenderStamp } from './Postal'
+import { ArchiveIcon, CheckIcon, HoldIcon, MailIcon, MailOpenIcon, RestoreIcon, TrashIcon } from './icons'
+import { GoldStar, LabelTape, Paperclip, ReminderSlip, SenderStamp } from './Postal'
 import { SwipeRow, type SwipeAction } from './SwipeRow'
 
 type Props = {
@@ -17,6 +18,12 @@ type Props = {
   selecting: boolean
   current: boolean
   arrived: boolean
+  /** Doar's server is keeping time for this letter: held, registered, or just back. */
+  reminder?: Reminder
+  /** Its sender is marked "express". */
+  express?: boolean
+  /** Ask when to bring these letters back (opens the held-mail form). */
+  onHold: (ids: string[]) => void
 }
 
 /** What swiping this letter does, depending on where it is. */
@@ -28,7 +35,8 @@ function swipes(thread: Thread, view: View): { left?: SwipeAction; right?: Swipe
   }
   if (isFolder(view, 'trash')) return { left: { label: 'שוחזר', run: () => mailbox.untrash(ids) } }
   if (isFolder(view, 'spam')) return { left: { label: 'לא ספאם', run: () => mailbox.notSpam(ids) } }
-  if (isFolder(view, 'drafts')) return {}
+  if (isFolder(view, 'drafts') || isFolder(view, 'waiting')) return {}
+  if (isFolder(view, 'held')) return { left: { label: 'חזר לדואר הנכנס', run: () => void mailbox.bringBack(thread.id) } }
   if (isFolder(view, 'archive')) return { left: { label: 'לדואר הנכנס', run: () => mailbox.moveToInbox(ids) }, right: read }
   if (thread.labelIds.includes('INBOX')) return { left: { label: 'תויק', run: () => mailbox.archive(ids) }, right: read }
   return { right: read }
@@ -73,7 +81,7 @@ function useHold(onHold: () => void) {
   }
 }
 
-export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selected, selecting, current, arrived }: Props) {
+export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selected, selecting, current, arrived, reminder, express, onHold }: Props) {
   const hold = useHold(() => mailbox.toggleSelect(thread.id))
   const ids = [thread.id]
   const person = shortName(thread.from)
@@ -119,6 +127,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
             <span className="sender ellipsis" dir="auto">
               {name}
             </span>
+            {express && <span className="express-mark">אקספרס</span>}
             {thread.messageCount > 1 && (
               <span className="msg-count" title={`${thread.messageCount} הודעות בשיחה`}>
                 {thread.messageCount}
@@ -147,6 +156,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
             ))}
             {tapes.length > 2 && <span className="tape-more">+{tapes.length - 2}</span>}
           </span>
+          {reminder && <ReminderSlip reminder={reminder} />}
         </button>
 
         {thread.hasAttachment && <Paperclip />}
@@ -167,6 +177,11 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
               {thread.labelIds.includes('INBOX') && (
                 <button type="button" title="תיוק" aria-label="תיוק" onClick={() => mailbox.archive(ids)}>
                   <ArchiveIcon />
+                </button>
+              )}
+              {thread.labelIds.includes('INBOX') && (
+                <button type="button" title="להחזיר אליי במועד אחר" aria-label="להחזיר אליי במועד אחר" onClick={() => onHold(ids)}>
+                  <HoldIcon />
                 </button>
               )}
               <button type="button" title="מחיקה" aria-label="מחיקה" onClick={() => mailbox.trash(ids)}>

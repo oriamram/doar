@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { formatAgo, formatWhen, schedulePresets, toFieldTime } from '../lib/format'
+import { formatAgo, formatDay, formatWhen, holdPresets, schedulePresets, toFieldTime } from '../lib/format'
 import { promptInstall, useInstall } from '../lib/install'
 import { useBackLayer } from '../lib/layers'
 import { mailbox, useMailbox } from '../lib/mailbox'
-import type { NotifyScope } from '../lib/postman'
+import type { Hours, NotifyScope } from '../lib/postman'
 import { disablePush, enablePush, setPushScope, testPush, usePush } from '../lib/push'
 import { APP_VERSION, reportNow } from '../lib/report'
 import { updateSettings, useSettings, type Settings } from '../lib/settings'
@@ -167,6 +167,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               </div>
               <span className="setting-note">„בלי פרסומות” משאיר גם עדכונים, כמו קבלות וקודי אימות.</span>
             </div>
+            <HoursSetting />
             <div className="setting">
               <button className="pill-btn" onClick={() => void sendTest()}>
                 שליחת התראת ניסיון
@@ -415,8 +416,10 @@ type RulesProps = {
 const NEW_LABEL = '+new'
 
 /** Automatic labels: mail from a sender on the list gets its label by itself. */
+const MARK_NAMES = { express: 'אקספרס', refused: 'הוחזר לשולח' }
+
 export function RulesSheet({ from: startFrom = '', labelId: startLabel = '', onClose }: RulesProps) {
-  const { rules, labels } = useMailbox()
+  const { rules, labels, marks } = useMailbox()
   const [from, setFrom] = useState(startFrom)
   const [labelId, setLabelId] = useState(startLabel)
   const [newName, setNewName] = useState('')
@@ -463,6 +466,28 @@ export function RulesSheet({ from: startFrom = '', labelId: startLabel = '', onC
             )
           })}
         </ul>
+      )}
+      {marks.length > 0 && (
+        <>
+          <h3 className="sheet-subtitle">שולחים מסומנים</h3>
+          <ul className="rules">
+            {marks.map((mark) => (
+              <li key={mark.id}>
+                <span className="rule-from ellipsis" dir="ltr">
+                  {mark.match}
+                </span>
+                <span className="mark-name" data-mark={mark.mark}>
+                  {MARK_NAMES[mark.mark]}
+                </span>
+                <button type="button" className="icon-btn" onClick={() => void mailbox.removeMark(mark.id)} aria-label={`הסרת הסימון של ${mark.match}`} title="הסרת הסימון">
+                  <CloseIcon />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="setting-note">„אקספרס” מתריע תמיד, גם מחוץ לשעות הפתיחה. דואר ממי ש„הוחזר לשולח” הולך ישר לאשפה.</p>
+          <h3 className="sheet-subtitle">כלל חדש</h3>
+        </>
       )}
       <form className="rule-new" onSubmit={add}>
         <label className="setting">
@@ -514,6 +539,7 @@ const SHORTCUTS: { keys: string[]; action: string }[] = [
   { keys: ['a'], action: 'השב לכולם' },
   { keys: ['f'], action: 'העבר' },
   { keys: ['e'], action: 'תיוק' },
+  { keys: ['b'], action: 'להחזיר במועד אחר (דואר שמור)' },
   { keys: ['#'], action: 'מחיקה' },
   { keys: ['s'], action: 'כוכב' },
   { keys: ['x'], action: 'בחירת המכתב' },
@@ -531,18 +557,33 @@ type ScheduleProps = {
   current?: string
   onPick: (when: Date) => void
   onClose: () => void
+  /** The same form also sets when a held letter comes back; these tell it which it is. */
+  title?: string
+  form?: string
+  presetsFor?: (now: Date) => { label: string; when: Date }[]
+  submit?: string
+  note?: string
 }
 
-/** Choose when a letter goes out: a ready-made time, or any date and hour. */
-export function ScheduleSheet({ current, onPick, onClose }: ScheduleProps) {
+/** Choose a time: a ready-made one, or any date and hour. By default, when a letter goes out. */
+export function ScheduleSheet({
+  current,
+  onPick,
+  onClose,
+  title = 'שליחה מאוחר יותר',
+  form = 'טופס 12 · מועד המשלוח',
+  presetsFor = schedulePresets,
+  submit = 'קביעת המועד',
+  note = 'המכתב יוצא מהשרת של דואר במועד שקבעתם, גם אם הטלפון והמחשב כבויים. עד אז הוא מחכה ב„מתוזמנים”, ואפשר לשנות או לבטל.',
+}: ScheduleProps) {
   const [now] = useState(() => new Date())
-  const presets = schedulePresets(now)
+  const presets = presetsFor(now)
   const [custom, setCustom] = useState(() => toFieldTime(current ? new Date(current) : presets.at(-1)!.when))
   const chosen = new Date(custom)
   const valid = !Number.isNaN(chosen.getTime()) && chosen.getTime() > now.getTime() + 60_000
 
   return (
-    <Sheet title="שליחה מאוחר יותר" form="טופס 12 · מועד המשלוח" onClose={onClose}>
+    <Sheet title={title} form={form} onClose={onClose}>
       <ul className="presets">
         {presets.map((preset) => (
           <li key={preset.label}>
@@ -565,13 +606,118 @@ export function ScheduleSheet({ current, onPick, onClose }: ScheduleProps) {
           <input type="datetime-local" value={custom} min={toFieldTime(now)} onChange={(e) => setCustom(e.target.value)} />
         </label>
         <button type="submit" className="pill-btn" disabled={!valid}>
-          קביעת המועד
+          {submit}
         </button>
       </form>
+      <p className="setting-note">{note}</p>
+    </Sheet>
+  )
+}
+
+/** Held mail: choose when a letter comes back to the inbox. */
+export function HoldSheet({ current, onPick, onClose }: Pick<ScheduleProps, 'current' | 'onPick' | 'onClose'>) {
+  return (
+    <ScheduleSheet
+      current={current}
+      onPick={onPick}
+      onClose={onClose}
+      title="דואר שמור"
+      form="טופס 14 · החזקת דבר דואר"
+      presetsFor={holdPresets}
+      submit="להחזיק עד אז"
+      note="המכתב יוצא מהדואר הנכנס ומחכה ב„שמורים”. במועד שקבעתם הוא חוזר לראש התיבה, עם התראה. מכתב חדש באותה שיחה מחזיר אותה מיד."
+    />
+  )
+}
+
+const WAITS = [
+  { days: 1, label: 'להזכיר לי מחר' },
+  { days: 3, label: 'להזכיר לי בעוד 3 ימים' },
+  { days: 7, label: 'להזכיר לי בעוד שבוע' },
+]
+
+type RegisterProps = {
+  /** How many days are set now, when changing it. */
+  current?: number | null
+  /** Called with the days to wait, or null for "not registered". */
+  onPick: (days: number | null) => void
+  onClose: () => void
+}
+
+/** Registered mail: choose how long to wait for an answer before the letter comes back. */
+export function RegisterSheet({ current, onPick, onClose }: RegisterProps) {
+  const [now] = useState(() => Date.now())
+  return (
+    <Sheet title="דואר רשום" form="טופס 15 · רישום דבר דואר" onClose={onClose}>
+      <ul className="presets">
+        {WAITS.map((wait) => (
+          <li key={wait.days}>
+            <button type="button" aria-pressed={current === wait.days} onClick={() => onPick(wait.days)}>
+              <span>{wait.label}</span>
+              <span className="preset-time">{formatDay(new Date(now + wait.days * 86_400_000))}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {current ? (
+        <button type="button" className="link-btn" onClick={() => onPick(null)}>
+          בלי רישום
+        </button>
+      ) : null}
       <p className="setting-note">
-        המכתב יוצא מהשרת של דואר במועד שקבעתם, גם אם הטלפון והמחשב כבויים. עד אז הוא מחכה ב„מתוזמנים”, ואפשר לשנות או לבטל.
+        מכתב רשום נמצא במעקב. אם אף אחד לא עונה עליו עד המועד, הוא חוזר לדואר הנכנס עם התראה. ענו לך? הרישום יורד לבד.
       </p>
     </Sheet>
+  )
+}
+
+const DAY_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש']
+const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת']
+
+/** Opening hours: when notifications may arrive. Outside them, the server holds them and sends one summary at opening time. */
+function HoursSetting() {
+  const { hours } = useMailbox()
+  const value: Hours = hours ?? {
+    from: '07:00',
+    to: '22:00',
+    days: [0, 1, 2, 3, 4, 5, 6],
+    shabbat: false,
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  }
+  const change = (patch: Partial<Hours>) => void mailbox.setHours({ ...value, ...patch, tz: Intl.DateTimeFormat().resolvedOptions().timeZone })
+  const toggleDay = (day: number) => change({ days: value.days.includes(day) ? value.days.filter((other) => other !== day) : [...value.days, day].sort() })
+
+  return (
+    <>
+      <Check
+        checked={hours !== null}
+        onChange={(on) => void mailbox.setHours(on ? value : null)}
+        title="שעות פתיחה"
+        note="מחוץ לשעות הפתיחה אין התראות, ובפתיחה מגיע סיכום אחד. קודי אימות, ושולחים שסימנת „אקספרס”, מתריעים תמיד."
+      />
+      {hours !== null && (
+        <div className="hours">
+          <div className="hours-clocks">
+            <label>
+              <span>פתוח מ־</span>
+              <input type="time" value={value.from} onChange={(e) => e.target.value && change({ from: e.target.value })} />
+            </label>
+            <label>
+              <span>עד</span>
+              <input type="time" value={value.to} onChange={(e) => e.target.value && change({ to: e.target.value })} />
+            </label>
+          </div>
+          <div className="days" role="group" aria-label="ימי פתיחה">
+            {DAY_LETTERS.map((letter, day) => (
+              <button key={day} type="button" aria-pressed={value.days.includes(day)} aria-label={`יום ${DAY_NAMES[day]}`} title={`יום ${DAY_NAMES[day]}`} onClick={() => toggleDay(day)}>
+                {letter}
+              </button>
+            ))}
+          </div>
+          <Check checked={value.shabbat} onChange={(shabbat) => change({ shabbat })} title="סגור בשבת" note="מכניסת השבת ביום שישי ועד צאתה." />
+        </div>
+      )}
+    </>
   )
 }
 
@@ -613,8 +759,20 @@ const GUIDE: { title: string; text: string }[] = [
     text: 'בכתיבת מכתב, השעון שליד „שליחה” קובע לו מועד. המכתב יוצא לבד, גם כשהמכשירים כבויים, ועד אז מחכה ב„מתוזמנים”.',
   },
   {
+    title: 'דואר שמור',
+    text: 'אין זמן למכתב עכשיו? שעון החול שעליו מוציא אותו מהתיבה, ומחזיר אותו לראשה במועד שתבחרו, עם התראה. עד אז הוא מחכה ב„שמורים”.',
+  },
+  {
+    title: 'דואר רשום',
+    text: 'בכתיבת מכתב, ה־R שליד „שליחה” רושם אותו. אם אף אחד לא עונה עד המועד, המכתב חוזר אליכם עם „עדיין אין תשובה”. ענו? הרישום יורד לבד.',
+  },
+  {
     title: 'התראות',
-    text: 'מפעילים בהגדרות, בכל מכשיר בנפרד. בטלפון: מתקינים את דואר דרך Chrome. במחשב: דרך Edge, שמתריע גם כשהוא סגור.',
+    text: 'מפעילים בהגדרות, בכל מכשיר בנפרד. בטלפון: מתקינים את דואר דרך Chrome. במחשב: דרך Edge, שמתריע גם כשהוא סגור. על ההתראה עצמה יש כפתורים: „לתיוק” ו„נקרא”, בלי לפתוח את דואר.',
+  },
+  {
+    title: 'שעות פתיחה ואקספרס',
+    text: 'בהגדרות קובעים מתי מותר להתריע. מחוץ לשעות האלה מגיע בפתיחה סיכום אחד. קודי אימות מתריעים תמיד, וגם שולח שסימנתם „אקספרס” (במכתב פתוח: שלוש הנקודות).',
   },
   {
     title: 'בדיקת דואר',

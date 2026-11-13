@@ -619,6 +619,18 @@
   opacity: 0.5;
 }
 
+/* A registered letter: the R is inked red. */
+.registered-btn[aria-pressed='true'] {
+  border-style: solid;
+  border-color: var(--ink-red);
+  color: var(--ink-red);
+}
+
+.scheduled-note.registered-note {
+  border-inline-start-color: var(--ink-red);
+  background: rgba(166, 58, 38, 0.07);
+}
+
 /* This letter already has a time. */
 .scheduled-note {
   display: flex;

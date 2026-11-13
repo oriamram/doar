@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react'
-import { formatFullDate, postmark } from '../lib/format'
+import { formatDay, formatFullDate, formatWhen, postmark } from '../lib/format'
+import type { Reminder } from '../lib/postman'
 import { hash, stampColor, stampLetter } from '../lib/stamps'
 import { labelLeaf } from '../lib/views'
 import type { Contact, Label } from '../types'
+import { HoldIcon } from './icons'
 
 type StampProps = {
   contact: Contact
@@ -77,6 +79,34 @@ function brightness(hex: string): number {
 function tapeStyle(label: Label): CSSProperties {
   const tape = label.color && /^#[0-9a-f]{6}$/i.test(label.color) ? label.color : TAPES[hash(label.id) % TAPES.length]!
   return { '--tape': tape, '--tape-ink': brightness(tape) > 0.4 ? '#1f2a3a' : '#fffdf6' } as CSSProperties
+}
+
+/**
+ * The slip on a letter that Doar's server is keeping time for: when a held letter
+ * comes back, how long a registered letter waits for its answer, or that it came back.
+ */
+export function ReminderSlip({ reminder }: { reminder: Reminder }) {
+  const back = reminder.status === 'returned'
+  const text =
+    reminder.kind === 'hold'
+      ? back
+        ? 'חזר מהדואר השמור'
+        : `חוזר ${formatWhen(reminder.dueAt)}`
+      : back
+        ? 'עדיין אין תשובה'
+        : `ממתין לתשובה עד ${formatDay(reminder.dueAt)}`
+  return (
+    <span className="row-slip" data-returned={back || undefined}>
+      {reminder.kind === 'reply' ? (
+        <span className="reg-mark" aria-hidden="true">
+          R
+        </span>
+      ) : (
+        <HoldIcon />
+      )}
+      {text}
+    </span>
+  )
 }
 
 /** One of your labels, as a strip of embossing-machine tape. */

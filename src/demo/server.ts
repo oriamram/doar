@@ -516,7 +516,14 @@ const server = {
   timers: new Map<string, ReturnType<typeof setTimeout>>(),
 }
 let nextRow = 1
-;(window as Window & { __doarDemo?: unknown }).__doarDemo = server
+;(window as Window & { __doarDemo?: unknown }).__doarDemo = Object.assign(server, {
+  /** For the screen checks: make this conversation's waiting reminder come due right now. */
+  due: (threadId: string) => {
+    const row = server.reminders.find((item) => item.thread_id === threadId && item.status === 'waiting')
+    if (row) remind(row)
+    return !!row
+  },
+})
 
 const stamp = () => new Date().toISOString()
 const idText = (value: unknown): string | null => (typeof value === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(value) ? value : null)
@@ -612,10 +619,10 @@ export async function demoPostman(body: Record<string, any>): Promise<Answer> {
       const recently = Date.now() - 2 * DAY
       return ok({
         scope: server.scope,
-        endpoints: [],
+        endpoints: ['demo-device'],
         scheduled: server.scheduled,
         rules: server.rules,
-        devices: [],
+        devices: [{ device: 'מכשיר להדגמה', last_ok_at: stamp() }],
         looked_at: stamp(),
         hours: server.hours,
         prefs: server.prefs,
@@ -702,6 +709,9 @@ export async function demoPostman(body: Record<string, any>): Promise<Answer> {
     case 'push-scope':
       server.scope = String(body.scope)
       return ok()
+    case 'push-test':
+      // No real device stands behind the demo.
+      return ok({ results: [] })
     case 'schedule-create': {
       const sendAt = validTime(body.send_at)
       if (!sendAt) return no('bad_time')

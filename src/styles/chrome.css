@@ -853,6 +853,78 @@
   border-color: var(--ink-red);
 }
 
+/* Opening hours: two clocks, the days of the week, and Shabbat. */
+.hours {
+  display: grid;
+  gap: 10px;
+  padding: 2px 0 8px;
+  padding-inline-start: 34px;
+}
+
+.hours-clocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.hours-clocks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.hours-clocks input {
+  min-height: 42px;
+  padding: 0 8px;
+  border: 1.5px solid var(--ink-rule);
+  border-radius: 2px;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 16px;
+}
+
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.days button {
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid var(--ink-rule);
+  border-radius: 50%;
+  font-weight: 800;
+}
+
+.days button[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--sheet);
+}
+
+.sheet-subtitle {
+  margin: 18px 0 4px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* What a sender is marked as, in the sorting form. */
+.mark-name {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 2px;
+  background: var(--sheet-aged);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mark-name[data-mark='express'] {
+  background: var(--ink-red);
+  color: var(--cream);
+}
+
 /* Managing labels: a row per label, and an editor that opens in its place. */
 .label-manage {
   display: flex;

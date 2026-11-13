@@ -126,6 +126,71 @@ try {
   check('a failed scheduled letter leads to the scheduled list', notes.find((note) => note.tag === 'doar-send-failed')?.url === '/?view=scheduled')
   await evaluate(`navigator.serviceWorker.ready.then((r) => r.getNotifications()).then((list) => list.forEach((n) => n.close()))`)
 
+  // ---- 1b. Buttons on a notification: pressing one hands the server's ticket back, and Doar stays closed.
+  await page.send('Page.navigate', { url: 'about:blank' })
+  await sleep(800)
+  await deliver({
+    type: 'mail',
+    threadId: 't1',
+    title: 'דנה כהן',
+    body: 'פגישה מחר',
+    ticket: 'ticket-123',
+    act: `${SITE}/__ticket`,
+    actions: [
+      { action: 'archive', title: 'לתיוק' },
+      { action: 'read', title: 'נקרא' },
+      { action: 'third', title: 'אחד יותר מדי' },
+    ],
+  })
+  await deliver({ type: 'returned', threadId: 't2', title: 'חזר מהדואר השמור', body: 'דנה כהן · פגישה' })
+  await sleep(1500)
+  await page.send('Page.navigate', { url: SITE })
+  await sleep(2500)
+  const withButtons = (await evaluate(
+    `navigator.serviceWorker.ready.then((r) => r.getNotifications()).then((list) => list.map((n) => ({ tag: n.tag, url: n.data && n.data.url, actions: (n.actions || []).map((a) => a.action + ':' + a.title) })))`,
+  )) as { tag: string; url: string; actions: string[] }[]
+  const mailNote = withButtons.find((note) => note.tag === 'doar-thread-t1')
+  check('a new-mail notification carries two buttons', JSON.stringify(mailNote?.actions) === JSON.stringify(['archive:לתיוק', 'read:נקרא']), JSON.stringify(mailNote))
+  const backNote = withButtons.find((note) => note.tag === 'doar-thread-t2')
+  check('a letter that came back opens that letter, and has no buttons without a ticket', backNote?.url === '/?thread=t2' && backNote.actions.length === 0, JSON.stringify(backNote))
+
+  // Press "file" inside the service worker itself, with its network replaced by a recorder.
+  const workers = (await fetch(`http://127.0.0.1:${PORT}/json/list`).then((r) => r.json())) as { type: string; url: string; webSocketDebuggerUrl: string }[]
+  const workerTarget = workers.find((target) => target.type === 'service_worker' && target.url.endsWith('/sw.js'))
+  if (!workerTarget) check('the service worker can be reached for the button press', false)
+  else {
+    const worker = connect(workerTarget.webSocketDebuggerUrl)
+    const pressed = await worker.send('Runtime.evaluate', {
+      awaitPromise: true,
+      returnByValue: true,
+      expression: `(async () => {
+        const note = (await self.registration.getNotifications()).find((n) => n.tag === 'doar-thread-t1')
+        const calls = []
+        const real = self.fetch
+        self.fetch = (url, init) => {
+          calls.push({ url: String(url), method: init && init.method, body: init && init.body })
+          return Promise.resolve(new Response('{"ok":true}', { status: 200 }))
+        }
+        const waits = []
+        const event = new NotificationEvent('notificationclick', { notification: note, action: 'archive' })
+        event.waitUntil = (promise) => waits.push(promise)
+        self.dispatchEvent(event)
+        await Promise.all(waits)
+        self.fetch = real
+        return calls
+      })()`,
+    })
+    const calls = (pressed.result?.value ?? []) as { url: string; method: string; body: string }[]
+    const sent = calls.length === 1 ? (JSON.parse(calls[0]!.body) as { action: string; ticket: string; do: string }) : null
+    check(
+      'pressing "file" hands the ticket back to the server',
+      !!sent && calls[0]!.url === `${SITE}/__ticket` && calls[0]!.method === 'POST' && sent.action === 'ticket' && sent.ticket === 'ticket-123' && sent.do === 'archive',
+      JSON.stringify(calls).slice(0, 200),
+    )
+    worker.close()
+  }
+  await evaluate(`navigator.serviceWorker.ready.then((r) => r.getNotifications()).then((list) => list.forEach((n) => n.close()))`)
+
   // ---- 2. Sharing into Doar: the worker catches the shared form and puts it aside for the app.
   const shared = (await evaluate(`(async () => {
     const form = new FormData()

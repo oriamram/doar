@@ -69,6 +69,60 @@
   line-height: 20px;
 }
 
+/* The slip at the head of an open letter: held until when, registered until when, or just back. */
+.thread-slip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: -8px 4px 20px;
+  padding: 9px 12px;
+  background: var(--sheet);
+  color: var(--ink);
+  border-inline-start: 4px solid var(--ink-blue);
+  border-radius: 2px;
+  box-shadow: var(--edge-fresh), var(--shadow-rest);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.thread-slip[data-returned] {
+  border-inline-start-color: var(--ink-red);
+}
+
+.thread-slip > svg,
+.thread-slip > .reg-mark {
+  flex: none;
+  color: var(--ink-blue);
+}
+
+.thread-slip[data-returned] > svg,
+.thread-slip[data-returned] > .reg-mark {
+  color: var(--ink-red);
+}
+
+.thread-slip > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.thread-slip > span:not(.reg-mark) {
+  flex: 1 1 11em;
+}
+
+.thread-slip button {
+  min-height: 34px;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.thread-slip button:hover {
+  color: var(--ink);
+}
+
 .thread-wait {
   margin: 0 4px;
 }

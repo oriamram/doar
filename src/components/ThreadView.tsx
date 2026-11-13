@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { matches } from '../../supabase/functions/postman/rules.ts'
 import { sameEmail, shortName } from '../lib/addresses'
 import { realAttachments } from '../lib/compose'
 import { copyText } from '../lib/clipboard'
-import { formatFullDate, formatLetterDate, formatListDate } from '../lib/format'
+import { countDays, formatDay, formatFullDate, formatLetterDate, formatListDate, formatWhen } from '../lib/format'
 import { loadMessages, peekMessages, sendRaw } from '../lib/gmail'
 import { mailbox, useMailbox } from '../lib/mailbox'
 import { buildMime } from '../lib/mime'
@@ -14,10 +15,13 @@ import {
   ArchiveIcon,
   BackIcon,
   CopyIcon,
+  ExpressIcon,
   ForwardIcon,
+  HoldIcon,
   InboxIcon,
   MailIcon,
   MoreIcon,
+  RegisteredIcon,
   ReplyAllIcon,
   ReplyIcon,
   RestoreIcon,
@@ -58,6 +62,10 @@ type Props = {
   thread: Thread
   onBack: () => void
   onLabels: () => void
+  /** Ask when to bring this letter back; `current` is the time it is held until, when changing it. */
+  onHold: (current?: string) => void
+  /** Ask how long to wait for an answer to this sent letter. */
+  onRegister: (messageId: string) => void
 }
 
 /** Ask a mailing list to stop writing: by email when it accepts that, otherwise on its web page. */
@@ -88,8 +96,8 @@ async function unsubscribe(message: Message, me: Contact) {
   }
 }
 
-export function ThreadView({ thread, onBack, onLabels }: Props) {
-  const { labels, openRevision, me } = useMailbox()
+export function ThreadView({ thread, onBack, onLabels, onHold, onRegister }: Props) {
+  const { labels, openRevision, me, reminders, marks } = useMailbox()
   const { id, historyId } = thread
   const [messages, setMessages] = useState<Message[] | null>(() => peekMessages(thread))
   const [error, setError] = useState<string | null>(null)
@@ -120,6 +128,15 @@ export function ThreadView({ thread, onBack, onLabels }: Props) {
   const inSpam = thread.labelIds.includes('SPAM')
   const inInbox = thread.labelIds.includes('INBOX')
   const tapes = labels.filter((label) => thread.labelIds.includes(label.id))
+
+  const mine = (message: Message) => sameEmail(message.from.email, me.email)
+  const lastMine = letters.findLast(mine)
+  const other = letters.findLast((message) => !mine(message))?.from
+  // What Doar's server is keeping time for in this conversation.
+  const held = reminders.find((reminder) => reminder.threadId === id && reminder.kind === 'hold' && reminder.status !== 'returned')
+  const awaited = reminders.find((reminder) => reminder.threadId === id && reminder.kind === 'reply' && reminder.status !== 'returned')
+  const cameBack = reminders.find((reminder) => reminder.threadId === id && reminder.status === 'returned')
+  const express = !!other && marks.some((mark) => mark.mark === 'express' && matches(mark.match, other.email.toLowerCase()))
 
   // Like Gmail: the latest message and anything unread start open, older ones folded.
   const startsOpen = (message: Message) => message.id === last?.id || message.labelIds.includes('UNREAD')
@@ -161,6 +178,11 @@ export function ThreadView({ thread, onBack, onLabels }: Props) {
             <StarIcon filled={thread.starred} />
           </button>
         )}
+        {inInbox && (
+          <button className="icon-btn" aria-label="להחזיר אליי במועד אחר" title="להחזיר אליי במועד אחר (b)" onClick={() => onHold()}>
+            <HoldIcon />
+          </button>
+        )}
         {!inTrash && (
           <button className="icon-btn" aria-label="מחיקה" title="מחיקה" onClick={() => mailbox.trash(ids)}>
             <TrashIcon />
@@ -189,6 +211,26 @@ export function ThreadView({ thread, onBack, onLabels }: Props) {
                   <TagIcon />
                   תוויות
                 </button>
+                {lastMine && !awaited && !inTrash && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => onRegister(lastMine.id))}>
+                    <RegisteredIcon />
+                    לרשום: להזכיר אם לא יענו
+                  </button>
+                )}
+                {other && !inTrash && !inSpam && (
+                  <button
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={pick(() =>
+                      void mailbox.setMark(other.email, 'express', !express).then((saved) => {
+                        if (saved) toast(express ? 'האקספרס הוסר.' : `מעכשיו מכתב מ־${shortName(other)} יתריע תמיד, גם מחוץ לשעות הפתיחה.`)
+                      }),
+                    )}
+                  >
+                    <ExpressIcon />
+                    {express ? 'להסיר אקספרס מהשולח' : 'אקספרס: להתריע תמיד על השולח'}
+                  </button>
+                )}
                 {!inSpam && !inTrash && (
                   <button role="menuitem" className="menu-item" onClick={pick(() => mailbox.spam(ids))}>
                     <SpamIcon />
@@ -230,6 +272,39 @@ export function ThreadView({ thread, onBack, onLabels }: Props) {
           {tapes.map((label) => (
             <LabelTape key={label.id} label={label} />
           ))}
+        </div>
+      )}
+
+      {held && (
+        <div className="thread-slip">
+          <HoldIcon />
+          <span>שמור עד {formatWhen(held.dueAt)}</span>
+          <button onClick={() => onHold(held.dueAt)}>שינוי</button>
+          <button onClick={() => void mailbox.bringBack(id)}>להחזיר עכשיו</button>
+        </div>
+      )}
+      {awaited && (
+        <div className="thread-slip">
+          <span className="reg-mark" aria-hidden="true">
+            R
+          </span>
+          <span>רשום. אם לא יענו עד {formatDay(awaited.dueAt)}, המכתב יחזור אליך.</span>
+          <button onClick={() => void mailbox.unregister(id)}>ביטול הרישום</button>
+        </div>
+      )}
+      {cameBack && (
+        <div className="thread-slip" data-returned>
+          {cameBack.kind === 'reply' ? (
+            <span className="reg-mark" aria-hidden="true">
+              R
+            </span>
+          ) : (
+            <HoldIcon />
+          )}
+          <span>{cameBack.kind === 'reply' ? `עדיין אין תשובה${cameBack.days ? `, אחרי ${countDays(cameBack.days)}` : ''}` : 'חזר מהדואר השמור'}</span>
+          {cameBack.kind === 'reply' && lastMine && <button onClick={() => mailbox.reply(lastMine, 'reply')}>לכתוב תזכורת</button>}
+          {cameBack.kind === 'reply' && lastMine && <button onClick={() => onRegister(lastMine.id)}>להזכיר שוב</button>}
+          {cameBack.kind === 'reply' && <button onClick={() => void mailbox.unregister(id)}>לוותר</button>}
         </div>
       )}
 

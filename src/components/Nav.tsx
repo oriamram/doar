@@ -11,12 +11,14 @@ import {
   DraftIcon,
   EditIcon,
   HelpIcon,
+  HoldIcon,
   InboxIcon,
   InstallIcon,
   KeyboardIcon,
   LogoutIcon,
   NibIcon,
   PlusIcon,
+  RegisteredIcon,
   SendIcon,
   SettingsIcon,
   SpamIcon,
@@ -44,6 +46,8 @@ const FOLDERS: Folder[] = [
   { id: 'inbox', icon: <InboxIcon /> },
   { id: 'starred', icon: <StarIcon /> },
   { id: 'scheduled', icon: <ClockIcon /> },
+  { id: 'held', icon: <HoldIcon /> },
+  { id: 'waiting', icon: <RegisteredIcon /> },
   { id: 'sent', icon: <SendIcon /> },
   { id: 'all', icon: <AllMailIcon /> },
 ]
@@ -68,7 +72,10 @@ function savedMore(): boolean {
 
 /** Folders and labels: a sidebar on wide screens, a drawer on phones. */
 export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, onManageLabels }: Props) {
-  const { view, unread, draftCount, labels, me, scheduled, rules } = useMailbox()
+  const { view, unread, draftCount, labels, me, scheduled, rules, reminders } = useMailbox()
+  const keeping = (kind: 'hold' | 'reply') => reminders.filter((reminder) => reminder.kind === kind && reminder.status !== 'returned').length
+  // Folders that exist only while something is in them.
+  const kept: Partial<Record<FolderId, number>> = { scheduled: scheduled.length, held: keeping('hold'), waiting: keeping('reply') }
   const install = useInstall()
   const [adding, setAdding] = useState(false)
   const [labelName, setLabelName] = useState('')
@@ -111,9 +118,7 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
         ? unread
         : folder.id === 'drafts'
           ? Math.max(0, draftCount - scheduled.length)
-          : folder.id === 'scheduled'
-            ? scheduled.length
-            : 0
+          : (kept[folder.id] ?? 0)
     return (
       <button key={folder.id} className="nav-item" aria-current={active ? 'page' : undefined} onClick={() => go({ kind: 'folder', id: folder.id })}>
         {folder.icon}
@@ -144,10 +149,7 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
         </button>
 
         <nav aria-label="תיקיות">
-          {FOLDERS.map((folder) =>
-            // The scheduled folder appears only while something waits in it.
-            folder.id !== 'scheduled' || scheduled.length > 0 || current === 'scheduled' ? folderButton(folder) : null,
-          )}
+          {FOLDERS.map((folder) => (!(folder.id in kept) || kept[folder.id]! > 0 || current === folder.id ? folderButton(folder) : null))}
           <button className="nav-item nav-more" aria-expanded={showMore} onClick={toggleMore}>
             <ChevronIcon />
             <span className="nav-name">עוד</span>

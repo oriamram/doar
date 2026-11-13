@@ -1,9 +1,11 @@
 import { motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { matches } from '../../supabase/functions/postman/rules.ts'
 import { shortName } from '../lib/addresses'
 import { newDraft } from '../lib/compose'
 import { countLetters, dayGroup } from '../lib/format'
 import { mailbox, useMailbox, type Bundle } from '../lib/mailbox'
+import type { Reminder } from '../lib/postman'
 import { recentSearches, rememberSearch } from '../lib/searches'
 import { useSettings } from '../lib/settings'
 import { usePullToRefresh } from '../lib/usePullToRefresh'
@@ -12,6 +14,7 @@ import type { Thread } from '../types'
 import {
   ArchiveIcon,
   CloseIcon,
+  HoldIcon,
   MailIcon,
   MailOpenIcon,
   MenuIcon,
@@ -35,20 +38,27 @@ type Props = {
   onMenu: () => void
   onAccount: () => void
   onLabels: (ids: string[]) => void
+  /** Ask when to bring these letters back (the held-mail form). */
+  onHold: (ids: string[]) => void
 }
 
 type Item = { kind: 'day'; label: string } | { kind: 'thread'; thread: Thread } | { kind: 'bundle'; bundle: Bundle }
 
-/** The list in reading order: letters and bundles by date, under day headings. */
-function buildItems(threads: Thread[], bundles: Bundle[]): Item[] {
+/**
+ * The list in reading order: letters and bundles by date, under day headings. Letters
+ * that Doar's server just brought back (`back`) come first, under a heading of their own.
+ */
+function buildItems(threads: Thread[], bundles: Bundle[], back: ReadonlySet<string>): Item[] {
+  const returned = threads.filter((thread) => back.has(thread.id))
   const rows: { date: string; item: Item }[] = [
-    ...threads.map((thread) => ({ date: thread.date, item: { kind: 'thread', thread } as Item })),
+    ...threads.filter((thread) => !back.has(thread.id)).map((thread) => ({ date: thread.date, item: { kind: 'thread', thread } as Item })),
     ...bundles.map((bundle) => ({ date: bundle.threads[0]!.date, item: { kind: 'bundle', bundle } as Item })),
   ]
   if (bundles.length) rows.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
   const now = new Date()
   const items: Item[] = []
+  if (returned.length) items.push({ kind: 'day', label: 'חזרו אליך' }, ...returned.map((thread) => ({ kind: 'thread', thread }) as Item))
   let heading = ''
   for (const row of rows) {
     const label = dayGroup(row.date, now)
@@ -76,6 +86,10 @@ function emptyText(view: View): string {
       return 'אין טיוטות. מכתב שתתחילו לכתוב יישמר כאן.'
     case 'scheduled':
       return 'אין מכתבים שמחכים למועד. בכתיבת מכתב, השעון שליד „שליחה” קובע לו מועד.'
+    case 'held':
+      return 'אין מכתבים שמורים. שעון החול שעל מכתב מחזיק אותו עד מועד שתבחרו, ואז מחזיר אותו לכאן.'
+    case 'waiting':
+      return 'אין מכתבים רשומים שמחכים לתשובה. בכתיבת מכתב, ה־R שליד „שליחה” רושם אותו.'
     case 'sent':
       return 'עוד לא שלחתם מכתבים.'
     case 'archive':
@@ -131,9 +145,17 @@ function BundleRow({ bundle }: { bundle: Bundle }) {
   )
 }
 
-export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels }: Props) {
-  const { view, threads, bundles, loading, loadingMore, nextPageToken, error, unread, labels, open, selection, arrived, me, online, scheduled, server, rules, marks } =
+export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels, onHold }: Props) {
+  const { view, threads, bundles, loading, loadingMore, nextPageToken, error, unread, labels, open, selection, arrived, me, online, scheduled, server, rules, marks, reminders } =
     useMailbox()
+  // What Doar's server is keeping time for, by conversation. A letter that just came back says so first.
+  const reminderOf = useMemo(() => {
+    const byThread = new Map<string, Reminder>()
+    for (const reminder of reminders) if (!byThread.has(reminder.threadId) || reminder.status === 'returned') byThread.set(reminder.threadId, reminder)
+    return byThread
+  }, [reminders])
+  const express = useMemo(() => marks.filter((mark) => mark.mark === 'express').map((mark) => mark.match), [marks])
+  const isExpress = (thread: Thread) => !thread.outgoing && express.some((match) => matches(match, thread.from.email.toLowerCase()))
   // The server looks once a minute while it has something to do for this account; ten minutes of silence means it is stuck.
   const serverBusy = !!server && (server.devices.length > 0 || rules.length > 0 || marks.length > 0)
   const serverQuietFor = server?.reachable && server.lookedAt ? Math.floor((server.askedAt - Date.parse(server.lookedAt)) / 60_000) : 0
@@ -148,9 +170,13 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
 
   const inInbox = isFolder(view, 'inbox')
   const showFilters = (inInbox || isFolder(view, 'unread') || isFolder(view, 'all')) && !searching && selection.size === 0
+  const back = useMemo(
+    () => new Set(inInbox ? reminders.filter((reminder) => reminder.status === 'returned').map((reminder) => reminder.threadId) : []),
+    [reminders, inInbox],
+  )
   const items = useMemo(
-    () => buildItems(threads ?? [], inInbox && settings.bundles ? bundles : []),
-    [threads, bundles, inInbox, settings.bundles],
+    () => buildItems(threads ?? [], inInbox && settings.bundles ? bundles : [], back),
+    [threads, bundles, inInbox, settings.bundles, back],
   )
 
   // Reaching the end of the list fetches the next page.
@@ -229,6 +255,11 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
                 <button className="icon-btn" onClick={() => onLabels(selected)} aria-label="תוויות" title="תוויות">
                   <TagIcon />
                 </button>
+                {selectedThreads.some((thread) => thread.labelIds.includes('INBOX')) && (
+                  <button className="icon-btn" onClick={() => onHold(selected)} aria-label="להחזיר אליי במועד אחר" title="להחזיר אליי במועד אחר">
+                    <HoldIcon />
+                  </button>
+                )}
                 <button className="icon-btn" onClick={() => mailbox.trash(selected)} aria-label="מחיקה" title="מחיקה">
                   <TrashIcon />
                 </button>
@@ -383,6 +414,9 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
                 selecting={selection.size > 0}
                 current={open?.id === item.thread.id}
                 arrived={arrived.has(item.thread.id)}
+                reminder={reminderOf.get(item.thread.id)}
+                express={isExpress(item.thread)}
+                onHold={onHold}
               />
             </li>
           ),

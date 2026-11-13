@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { newDraft } from '../lib/compose'
 import { peekMessages } from '../lib/gmail'
 import { hasOpenLayers, useBackLayer } from '../lib/layers'
@@ -11,7 +11,7 @@ import { Loader } from './Loader'
 import { Nav } from './Nav'
 import { Logo } from './Postal'
 import { SendFlight } from './SendFlight'
-import { GuideSheet, LabelSheet, RulesSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
+import { GuideSheet, HoldSheet, LabelSheet, RegisterSheet, RulesSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
 import { ThreadList } from './ThreadList'
 import { ThreadView } from './ThreadView'
 import { Toasts } from './Toasts'
@@ -22,6 +22,8 @@ type Sheet =
   | { kind: 'guide' }
   | { kind: 'labels'; ids: string[] }
   | { kind: 'manage-labels' }
+  | { kind: 'hold'; ids: string[]; current?: string }
+  | { kind: 'register'; threadId: string; messageId: string }
   | { kind: 'rules'; from?: string; labelId?: string }
   | null
 
@@ -34,6 +36,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
   const [drawer, setDrawer] = useState(false)
   const [searching, setSearching] = useState(false)
   const [sheet, setSheet] = useState<Sheet>(null)
+  const holdLetters = useCallback((ids: string[]) => setSheet({ kind: 'hold', ids }), [])
 
   useEffect(() => {
     mailbox.start()
@@ -108,6 +111,9 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         case 'e':
           if (targets.length) mailbox.archive(targets)
           break
+        case 'b':
+          if (targets.length) setSheet({ kind: 'hold', ids: targets })
+          break
         case '#':
         case 'Delete':
           if (targets.length) mailbox.trash(targets)
@@ -164,6 +170,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         onMenu={() => setDrawer(true)}
         onAccount={() => setSheet({ kind: 'settings' })}
         onLabels={(ids) => setSheet({ kind: 'labels', ids })}
+        onHold={holdLetters}
       />
 
       <main className="reader">
@@ -173,6 +180,8 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
             thread={state.open}
             onBack={mailbox.close}
             onLabels={() => setSheet({ kind: 'labels', ids: [state.open!.id] })}
+            onHold={(current) => setSheet({ kind: 'hold', ids: [state.open!.id], current })}
+            onRegister={(messageId) => setSheet({ kind: 'register', threadId: state.open!.id, messageId })}
           />
         ) : (
           <div className="reader-empty">
@@ -194,6 +203,27 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         <LabelSheet ids={sheet.ids} onClose={() => setSheet(null)} onRules={(from, labelId) => setSheet({ kind: 'rules', from, labelId })} />
       )}
       {sheet?.kind === 'manage-labels' && <LabelsSheet onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'hold' && (
+        <HoldSheet
+          current={sheet.current}
+          onPick={(when) => {
+            // A letter that is already held just moves to the new time.
+            if (sheet.current) void mailbox.rehold(sheet.ids[0]!, when)
+            else mailbox.hold(sheet.ids, when)
+            setSheet(null)
+          }}
+          onClose={() => setSheet(null)}
+        />
+      )}
+      {sheet?.kind === 'register' && (
+        <RegisterSheet
+          onPick={(days) => {
+            if (days) void mailbox.register(sheet.threadId, sheet.messageId, days)
+            setSheet(null)
+          }}
+          onClose={() => setSheet(null)}
+        />
+      )}
       {sheet?.kind === 'rules' && <RulesSheet from={sheet.from} labelId={sheet.labelId} onClose={() => setSheet(null)} />}
       <Toasts />
     </div>

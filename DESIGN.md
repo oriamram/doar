@@ -27,6 +27,11 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | Automatic labels | The form "טופס 9 · הוראות מיון": a sender, and the tape label its mail gets by itself |
 | One-time suggestions (install, notifications) | A paper note with a blue edge at the top of the inbox |
 | Settings and other forms | Printed forms with a form number |
+| A held letter ("דואר שמור") | An hourglass; a blue slip on the letter says when it returns; the form "טופס 14 · החזקת דבר דואר"; the folder "שמורים" exists only while something is in it |
+| A registered letter ("דואר רשום") | The "R" of a registered label: beside Send when writing, on the letter while it waits, in red when it came back unanswered; the form "טופס 15 · רישום דבר דואר" |
+| A letter the server brought back | Stands first in the inbox under the heading "חזרו אליך", with a red slip |
+| An express sender | A small red express strip beside the name |
+| Opening hours for notifications | Two clocks, the week's days as round stamps, and "סגור בשבת" |
 | Managing labels | The form "טופס 5 · רישום תוויות": a row per label, and dots of tape color |
 | Earlier letters quoted under a reply | Folded behind a small paper tab ("···") at the foot of the letter |
 | "New letter" | A blue airmail label |
