@@ -229,6 +229,32 @@ const toLabel = (label: GmailLabel): Label => ({
 })
 
 /** The labels you made in Gmail, alphabetically. */
+/**
+ * Put a label on every message a search finds. Used when a new automatic rule should
+ * also cover the mail that already arrived. Resolves to how many messages were labeled
+ * and which conversations they belong to.
+ */
+export async function labelMatching(q: string, labelId: string, max = 1000): Promise<{ messages: number; threadIds: string[] }> {
+  const found: { id: string; threadId: string }[] = []
+  let pageToken: string | undefined
+  do {
+    const params = new URLSearchParams({ q, maxResults: '500' })
+    if (pageToken) params.set('pageToken', pageToken)
+    const page = await gmail<{ messages?: { id: string; threadId: string }[]; nextPageToken?: string }>(`/messages?${params}`)
+    found.push(...(page.messages ?? []))
+    pageToken = page.nextPageToken
+  } while (pageToken && found.length < max)
+
+  const picked = found.slice(0, max)
+  if (picked.length) {
+    await gmail('/messages/batchModify', {
+      method: 'POST',
+      body: JSON.stringify({ ids: picked.map((message) => message.id), addLabelIds: [labelId] }),
+    })
+  }
+  return { messages: picked.length, threadIds: [...new Set(picked.map((message) => message.threadId))] }
+}
+
 export async function listLabels(): Promise<Label[]> {
   const result = await gmail<{ labels?: GmailLabel[] }>('/labels')
   return (result.labels ?? [])

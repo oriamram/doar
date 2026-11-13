@@ -20,6 +20,7 @@ import {
   SettingsIcon,
   SpamIcon,
   StarIcon,
+  TagIcon,
   TrashIcon,
 } from './icons'
 import { Logo, TapeSwatch } from './Postal'
@@ -31,6 +32,7 @@ type Props = {
   onSettings: () => void
   onShortcuts: () => void
   onGuide: () => void
+  onRules: () => void
 }
 
 type Folder = { id: FolderId; icon: ReactNode }
@@ -63,8 +65,8 @@ function savedMore(): boolean {
 }
 
 /** Folders and labels: a sidebar on wide screens, a drawer on phones. */
-export function Nav({ open, onClose, onSettings, onShortcuts, onGuide }: Props) {
-  const { view, unread, draftCount, labels, me, scheduled } = useMailbox()
+export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules }: Props) {
+  const { view, unread, draftCount, labels, me, scheduled, rules } = useMailbox()
   const install = useInstall()
   const [adding, setAdding] = useState(false)
   const [labelName, setLabelName] = useState('')
@@ -175,6 +177,17 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide }: Props) 
             </button>
           ))}
           {labels.length === 0 && !adding && <p className="nav-empty">עוד אין תוויות.</p>}
+          <button
+            className="nav-item nav-rules"
+            onClick={() => {
+              onRules()
+              onClose()
+            }}
+          >
+            <TagIcon />
+            <span className="nav-name">תיוג אוטומטי</span>
+            {rules.length > 0 && <span className="count">{rules.length}</span>}
+          </button>
         </nav>
 
         <div className="account">

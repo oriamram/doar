@@ -21,7 +21,10 @@ export type ScheduledSend = {
   error: string | null
 }
 
-export type ServerStatus = { scope: NotifyScope; endpoints: string[]; scheduled: ScheduledSend[] }
+/** Mail from `match` (a full address, or a whole site written "@site") gets the label by itself. */
+export type LabelRule = { id: string; match: string; labelId: string }
+
+export type ServerStatus = { scope: NotifyScope; endpoints: string[]; scheduled: ScheduledSend[]; rules: LabelRule[] }
 
 type Row = { id: string; draft_id: string; thread_id: string | null; message_id: string | null; send_at: string; status: ScheduledSend['status']; error: string | null }
 
@@ -34,6 +37,10 @@ const fromRow = (row: Row): ScheduledSend => ({
   status: row.status,
   error: row.error,
 })
+
+type RuleRow = { id: string; match: string; label_id: string }
+
+const fromRule = (row: RuleRow): LabelRule => ({ id: row.id, match: row.match, labelId: row.label_id })
 
 /** The server said no; `code` says why ("too_late", "draft_missing", "reauth"…). */
 export class PostmanError extends Error {
@@ -57,8 +64,13 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
 }
 
 export async function serverStatus(): Promise<ServerStatus> {
-  const status = await call<{ scope: NotifyScope; endpoints: string[]; scheduled: Row[] }>({ action: 'status' })
-  return { scope: status.scope, endpoints: status.endpoints, scheduled: status.scheduled.map(fromRow) }
+  const status = await call<{ scope: NotifyScope; endpoints: string[]; scheduled: Row[]; rules?: RuleRow[] }>({ action: 'status' })
+  return {
+    scope: status.scope,
+    endpoints: status.endpoints,
+    scheduled: status.scheduled.map(fromRow),
+    rules: (status.rules ?? []).map(fromRule),
+  }
 }
 
 export const pushKey = () => call<{ publicKey: string }>({ action: 'push-key' }).then((answer) => answer.publicKey)
@@ -80,3 +92,9 @@ export const scheduleUpdate = (id: string, sendAt: Date) =>
   call<{ scheduled: Row }>({ action: 'schedule-update', id, send_at: sendAt.toISOString() }).then((answer) => fromRow(answer.scheduled))
 
 export const scheduleCancel = (id: string) => call<{ ok: true }>({ action: 'schedule-cancel', id })
+
+/** `from` is whatever the person typed; the server tidies it into an address or a site, or refuses it. */
+export const ruleCreate = (from: string, labelId: string) =>
+  call<{ rule: RuleRow }>({ action: 'rule-create', match: from, label_id: labelId }).then((answer) => fromRule(answer.rule))
+
+export const ruleDelete = (id: string) => call<{ ok: true }>({ action: 'rule-delete', id })

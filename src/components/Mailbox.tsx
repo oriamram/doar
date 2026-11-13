@@ -10,12 +10,18 @@ import { Loader } from './Loader'
 import { Nav } from './Nav'
 import { Logo } from './Postal'
 import { SendFlight } from './SendFlight'
-import { GuideSheet, LabelSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
+import { GuideSheet, LabelSheet, RulesSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
 import { ThreadList } from './ThreadList'
 import { ThreadView } from './ThreadView'
 import { Toasts } from './Toasts'
 
-type Sheet = { kind: 'settings' } | { kind: 'shortcuts' } | { kind: 'guide' } | { kind: 'labels'; ids: string[] } | null
+type Sheet =
+  | { kind: 'settings' }
+  | { kind: 'shortcuts' }
+  | { kind: 'guide' }
+  | { kind: 'labels'; ids: string[] }
+  | { kind: 'rules'; from?: string; labelId?: string }
+  | null
 
 const GO_TO: Record<string, FolderId> = { i: 'inbox', s: 'starred', t: 'sent', d: 'drafts', a: 'all' }
 
@@ -145,6 +151,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         onSettings={() => setSheet({ kind: 'settings' })}
         onShortcuts={() => setSheet({ kind: 'shortcuts' })}
         onGuide={() => setSheet({ kind: 'guide' })}
+        onRules={() => setSheet({ kind: 'rules' })}
       />
 
       <ThreadList
@@ -179,7 +186,10 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       {sheet?.kind === 'settings' && <SettingsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'shortcuts' && <ShortcutsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'guide' && <GuideSheet onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'labels' && <LabelSheet ids={sheet.ids} onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'labels' && (
+        <LabelSheet ids={sheet.ids} onClose={() => setSheet(null)} onRules={(from, labelId) => setSheet({ kind: 'rules', from, labelId })} />
+      )}
+      {sheet?.kind === 'rules' && <RulesSheet from={sheet.from} labelId={sheet.labelId} onClose={() => setSheet(null)} />}
       <Toasts />
     </div>
   )

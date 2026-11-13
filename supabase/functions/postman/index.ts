@@ -5,9 +5,11 @@
 //   New-mail alerts     looks at each subscribed mailbox once a minute and sends a
 //                       notification (sender, subject, first words) to the person's
 //                       browsers. Nothing it reads is stored.
+//   Automatic labels    on the same look, a new letter from a sender the person listed
+//                       gets the Gmail label they chose for that sender.
 //
 // Called by the app, with the person's Supabase session:
-//   POST { action: "status" }                               { scope, endpoints, scheduled }
+//   POST { action: "status" }                               { scope, endpoints, scheduled, rules }
 //   POST { action: "push-key" }                             { publicKey }
 //   POST { action: "push-subscribe", endpoint, p256dh, auth, device }
 //   POST { action: "push-unsubscribe", endpoint }
@@ -16,6 +18,8 @@
 //   POST { action: "schedule-create", draft_id, send_at }   { scheduled }
 //   POST { action: "schedule-update", id, send_at }         { scheduled }
 //   POST { action: "schedule-cancel", id }                  { ok }
+//   POST { action: "rule-create", match, label_id }         { rule }   match: an address or a domain
+//   POST { action: "rule-delete", id }                      { ok }
 //
 // Called by the database's timer every minute (header x-cron-secret, see the migration):
 //   POST { action: "tick" }
@@ -24,6 +28,7 @@
 // Deployed with verify_jwt off because it checks the caller itself.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { labelsFor, normalizeMatch, type Rule } from './rules.ts'
 import { createVapidKeys, sendPush, type PushResult, type VapidKeys } from './webpush.ts'
 
 const corsHeaders = {
@@ -222,20 +227,27 @@ const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0
 
 type MessageRef = { id: string; threadId: string; labelIds?: string[] }
 
+/** Mail carrying one of these is not mail that just arrived for the person. */
+const NOT_INCOMING = ['SENT', 'DRAFT', 'SPAM', 'TRASH']
+
+const incoming = (labels: string[]) => labels.includes('INBOX') && !labels.some((label) => NOT_INCOMING.includes(label))
+
 /** Is this a letter the person asked to hear about? */
 function wanted(labels: string[], scope: string): boolean {
-  if (!labels.includes('INBOX') || !labels.includes('UNREAD')) return false
-  if (labels.some((label) => label === 'SENT' || label === 'DRAFT' || label === 'SPAM' || label === 'TRASH')) return false
+  if (!incoming(labels) || !labels.includes('UNREAD')) return false
   const noise = labels.some((label) => label === 'CATEGORY_PROMOTIONS' || label === 'CATEGORY_SOCIAL' || label === 'CATEGORY_FORUMS')
   if (scope === 'all') return true
   if (scope === 'primary') return !noise && !labels.includes('CATEGORY_UPDATES')
   return !noise
 }
 
-type Report = { sent: number; failed: number; retried: number; checked: number; notified: number; errors: string[] }
+type Report = { sent: number; failed: number; retried: number; checked: number; labeled: number; notified: number; errors: string[] }
 
-/** Look for mail that arrived since the last look, and tell the person's browsers about it. */
-async function checkMail(userId: string, report: Report) {
+/**
+ * Look for mail that arrived since the last look: put the person's automatic labels on
+ * it, and (when `notify`) tell their browsers about it.
+ */
+async function checkMail(userId: string, notify: boolean, report: Report) {
   await admin.from('mail_watch').upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true })
   // Take the mailbox for two minutes, so an overlapping timer skips it instead of notifying twice.
   const { data: watch } = await admin
@@ -273,6 +285,9 @@ async function checkMail(userId: string, report: Report) {
     }
     report.checked++
 
+    const { data: ruleRows } = await admin.from('label_rules').select('id, match, label_id').eq('user_id', userId)
+    const rules = (ruleRows ?? []) as Rule[]
+
     const bookmark = async () => {
       const profile = await gmail(token, '/profile')
       return profile.status === 200 ? String(profile.body.historyId) : null
@@ -299,15 +314,50 @@ async function checkMail(userId: string, report: Report) {
     }
     if (history.status !== 200) throw new Error(`Gmail history ${history.status}`)
 
-    // The latest new message of each conversation.
+    // Every new message in the inbox, and the latest one of each conversation worth a notification.
+    const arrived = new Map<string, MessageRef>()
     const latest = new Map<string, MessageRef>()
     for (const entry of history.body.history ?? []) {
       for (const added of entry.messagesAdded ?? []) {
         const message = added.message as MessageRef
-        if (wanted(message.labelIds ?? [], watch.scope)) latest.set(message.threadId, message)
+        if (incoming(message.labelIds ?? [])) arrived.set(message.id, message)
+        if (notify && wanted(message.labelIds ?? [], watch.scope)) latest.set(message.threadId, message)
       }
     }
     const next = { history_id: String(history.body.historyId ?? watch.history_id), needs_reauth: false }
+
+    // Sender and subject of a message, asked of Gmail once however many times they are needed.
+    // deno-lint-ignore no-explicit-any
+    const asked = new Map<string, Promise<{ status: number; body: any }>>()
+    const read = (id: string) => {
+      let answer = asked.get(id)
+      if (!answer) {
+        answer = gmail(
+          token,
+          `/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&fields=id,threadId,labelIds,snippet,payload/headers`,
+        )
+        asked.set(id, answer)
+      }
+      return answer
+    }
+    // deno-lint-ignore no-explicit-any
+    const header = (body: any, name: string): string =>
+      (body.payload?.headers ?? []).find((h: { name: string }) => h.name.toLowerCase() === name)?.value ?? ''
+
+    // Automatic labels first, so a letter already wears its label when its notification arrives.
+    if (rules.length) {
+      for (const ref of [...arrived.values()].slice(-60)) {
+        const message = await read(ref.id)
+        if (message.status !== 200) continue
+        const has: string[] = message.body.labelIds ?? []
+        const add = labelsFor(rules, header(message.body, 'from')).filter((label) => !has.includes(label))
+        if (add.length === 0) continue
+        const changed = await gmail(token, `/messages/${ref.id}/modify`, { method: 'POST', body: JSON.stringify({ addLabelIds: add }) })
+        if (changed.status === 200) report.labeled++
+        else console.warn('label not applied', changed.status, changed.body?.error?.message)
+      }
+    }
+
     if (latest.size === 0) {
       await done(next)
       return
@@ -316,17 +366,12 @@ async function checkMail(userId: string, report: Report) {
     // Read sender and subject; skip anything read or filed in the meantime.
     const letters: { threadId: string; from: string; subject: string; preview: string }[] = []
     for (const ref of [...latest.values()].slice(-8)) {
-      const message = await gmail(
-        token,
-        `/messages/${ref.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&fields=id,threadId,labelIds,snippet,payload/headers`,
-      )
+      const message = await read(ref.id)
       if (message.status !== 200 || !wanted(message.body.labelIds ?? [], watch.scope)) continue
-      const header = (name: string) =>
-        (message.body.payload?.headers ?? []).find((h: { name: string }) => h.name.toLowerCase() === name)?.value ?? ''
       letters.push({
         threadId: message.body.threadId,
-        from: senderName(header('from')),
-        subject: plain(decodeWords(header('subject'))) || '(בלי נושא)',
+        from: senderName(header(message.body, 'from')),
+        subject: plain(decodeWords(header(message.body, 'subject'))) || '(בלי נושא)',
         preview: plain(message.body.snippet ?? ''),
       })
     }
@@ -433,7 +478,7 @@ async function deliver(row: Scheduled, report: Report) {
 }
 
 async function tick(): Promise<Report> {
-  const report: Report = { sent: 0, failed: 0, retried: 0, checked: 0, notified: 0, errors: [] }
+  const report: Report = { sent: 0, failed: 0, retried: 0, checked: 0, labeled: 0, notified: 0, errors: [] }
 
   // A send that started long ago and never reported back: its outcome is unknown, so it is not repeated.
   const { data: lost } = await admin
@@ -451,9 +496,14 @@ async function tick(): Promise<Report> {
   if (error) report.errors.push(`claim: ${error.message}`)
   for (const row of (due ?? []) as Scheduled[]) await deliver(row, report)
 
-  const { data: subscribers } = await admin.from('push_subscriptions').select('user_id')
-  const users = [...new Set((subscribers ?? []).map((row) => row.user_id as string))]
-  await Promise.all(users.map((userId) => checkMail(userId, report)))
+  // Everyone who wants notifications, and everyone who has automatic labels.
+  const [{ data: subscribers }, { data: ruleOwners }] = await Promise.all([
+    admin.from('push_subscriptions').select('user_id'),
+    admin.from('label_rules').select('user_id'),
+  ])
+  const notified = new Set((subscribers ?? []).map((row) => row.user_id as string))
+  const users = new Set([...notified, ...(ruleOwners ?? []).map((row) => row.user_id as string)])
+  await Promise.all([...users].map((userId) => checkMail(userId, notified.has(userId), report)))
   return report
 }
 
@@ -481,15 +531,17 @@ async function listScheduled(userId: string) {
 async function fromApp(userId: string, body: any): Promise<Response> {
   switch (body.action) {
     case 'status': {
-      const [{ data: watch }, { data: subscriptions }, scheduled] = await Promise.all([
+      const [{ data: watch }, { data: subscriptions }, scheduled, { data: rules }] = await Promise.all([
         admin.from('mail_watch').select('scope').eq('user_id', userId).maybeSingle(),
         admin.from('push_subscriptions').select('endpoint').eq('user_id', userId),
         listScheduled(userId),
+        admin.from('label_rules').select('id, match, label_id').eq('user_id', userId).order('created_at'),
       ])
       return json({
         scope: watch?.scope ?? 'important',
         endpoints: (subscriptions ?? []).map((row) => row.endpoint),
         scheduled,
+        rules: rules ?? [],
       })
     }
 
@@ -617,6 +669,40 @@ async function fromApp(userId: string, body: any): Promise<Response> {
         .maybeSingle()
       return data ? json({ ok: true }) : json({ error: 'too_late' }, 409)
     }
+
+    case 'rule-create': {
+      const match = normalizeMatch(String(body.match ?? ''))
+      if (!match) return json({ error: 'bad_match' }, 400)
+      if (typeof body.label_id !== 'string' || !body.label_id || body.label_id.length > 120) return json({ error: 'label_missing' }, 404)
+      // The label must be one of this person's own Gmail labels.
+      let label
+      try {
+        label = await gmail(await googleToken(userId), `/labels/${encodeURIComponent(body.label_id)}`)
+      } catch (error) {
+        if (error instanceof Reauth) return json({ error: 'reauth' }, 401)
+        throw error
+      }
+      if (label.status !== 200 || label.body.type !== 'user') return json({ error: 'label_missing' }, 404)
+      const { count } = await admin.from('label_rules').select('id', { count: 'exact', head: true }).eq('user_id', userId)
+      if ((count ?? 0) >= 200) return json({ error: 'too_many' }, 409)
+
+      // The same rule twice is one rule.
+      await admin
+        .from('label_rules')
+        .upsert({ user_id: userId, match, label_id: body.label_id }, { onConflict: 'user_id,match,label_id', ignoreDuplicates: true })
+      const { data } = await admin
+        .from('label_rules')
+        .select('id, match, label_id')
+        .eq('user_id', userId)
+        .eq('match', match)
+        .eq('label_id', body.label_id)
+        .maybeSingle()
+      return data ? json({ rule: data }) : json({ error: 'Could not save rule' }, 500)
+    }
+
+    case 'rule-delete':
+      await admin.from('label_rules').delete().eq('user_id', userId).eq('id', String(body.id ?? ''))
+      return json({ ok: true })
   }
   return json({ error: 'Unknown action' }, 400)
 }

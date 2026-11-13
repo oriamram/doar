@@ -24,6 +24,7 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | Undo notes | A receipt torn off at the top |
 | Sending later | A clock beside the Send stamp; the form "טופס 12 · מועד המשלוח" sets the time |
 | A letter waiting for its time | A slip with a blue edge and a clock, in its own folder ("מתוזמנים") |
+| Automatic labels | The form "טופס 9 · הוראות מיון": a sender, and the tape label its mail gets by itself |
 | One-time suggestions (install, notifications) | A paper note with a blue edge at the top of the inbox |
 | Settings and other forms | Printed forms with a form number |
 | "New letter" | A blue airmail label |

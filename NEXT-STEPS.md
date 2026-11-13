@@ -64,9 +64,10 @@ Today the "To" box suggests people from your mail. To use your contacts too:
 1. Open https://console.cloud.google.com/apis/library/people.googleapis.com and click **Enable**.
 2. Tell Claude. You'll sign in to Doar once more to approve the new permission.
 
-### 6. Gmail settings inside Doar (vacation auto-reply, filters, your Gmail signature)
+### 6. Gmail settings inside Doar (vacation auto-reply, your Gmail signature)
 
 Needs one more Google permission. Say "add Gmail settings"; you'll sign in once more.
+(Automatic labels are already built in and need no extra permission: menu, **תיוג אוטומטי**.)
 
 ### 7. AI features (summaries, suggested replies, smarter bundles)
 

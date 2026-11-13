@@ -970,3 +970,91 @@
   outline: 2px solid var(--ink-red);
   outline-offset: 1px;
 }
+
+/* ---------- Automatic labels ---------- */
+
+.nav-rules {
+  margin-top: 6px;
+  color: var(--text-soft);
+}
+
+.rules {
+  margin: 10px 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.rules li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  border-bottom: 1px dashed var(--ink-rule);
+}
+
+/* Addresses read left to right; keep them against the row's start. */
+.rule-from {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 14px;
+  text-align: right;
+}
+
+.rule-gone {
+  font-size: 13px;
+  color: var(--ink-red);
+}
+
+.rules .icon-btn {
+  width: 36px;
+  height: 36px;
+  color: var(--ink-muted);
+}
+
+.rule-new {
+  display: grid;
+  gap: 2px;
+}
+
+.rule-new input:not([type='checkbox']),
+.rule-new select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ink-rule);
+  border-radius: 3px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  /* The form is light paper in the night theme too. */
+  color-scheme: light;
+}
+
+.rule-new input[dir='ltr'] {
+  font-family: var(--mono);
+}
+
+.rule-new input:not([type='checkbox']):focus,
+.rule-new select:focus {
+  outline: 2px solid var(--ink-red);
+  outline-offset: 1px;
+}
+
+.rule-new .pill-btn {
+  justify-self: start;
+  margin-top: 8px;
+}
+
+/* In the label sheet: make this labeling a standing rule. */
+.rule-link {
+  display: block;
+  margin-top: 16px;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--ink-blue);
+}

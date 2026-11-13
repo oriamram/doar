@@ -69,6 +69,8 @@ export type MailboxState = {
   flight: { to: string } | null
   /** Letters waiting to be sent later, the soonest first. */
   scheduled: Scheduled[]
+  /** Automatic labels: which sender gets which label. */
+  rules: postman.LabelRule[]
   online: boolean
 }
 
@@ -98,6 +100,7 @@ function blank(me: Contact): MailboxState {
     composeKey: 0,
     flight: null,
     scheduled: [],
+    rules: [],
     online: navigator.onLine,
   }
 }
@@ -807,7 +810,7 @@ function watchSends() {
 async function refreshServer() {
   try {
     const status = await postman.serverStatus()
-    set({ scheduled: byTime(status.scheduled.map(describe)) })
+    set({ scheduled: byTime(status.scheduled.map(describe)), rules: status.rules })
     watchSends()
     void syncPush(status)
     // Fill in recipients and subjects from Gmail, for the letters we haven't seen yet.
@@ -909,6 +912,57 @@ async function openScheduled(id: string) {
   } catch {
     toast('הטיוטה הזאת כבר לא קיימת.', { tone: 'error' })
     void refreshServer()
+  }
+}
+
+// ---------- Automatic labels ----------
+
+function ruleProblem(error: unknown): string {
+  if (error instanceof api.GmailError) return error.message
+  const code = error instanceof postman.PostmanError ? error.code : ''
+  if (code === 'bad_match') return 'לא הבנו ממי. כתבו כתובת מייל מלאה, או שם אתר כמו bank.co.il.'
+  if (code === 'label_missing') return 'התווית הזאת כבר לא קיימת.'
+  if (code === 'too_many') return 'יש כבר יותר מדי כללים. הסירו כלל שאינו נחוץ.'
+  if (code === 'reauth') return 'צריך להתחבר מחדש כדי לשמור כללים.'
+  return 'אין קשר עם השרת של דואר כרגע. נסו שוב.'
+}
+
+/**
+ * From now on, mail from `from` (an address or a site) gets this label by itself:
+ * Doar's server puts it on within a minute of the letter arriving. With `existing`,
+ * the mail from that sender that is already here gets it now.
+ */
+async function addRule(from: string, labelId: string, existing: boolean): Promise<boolean> {
+  try {
+    const rule = await postman.ruleCreate(from, labelId)
+    set({ rules: [...state.rules.filter((other) => other.id !== rule.id), rule] })
+    if (!existing) {
+      toast('הכלל נשמר. מכתבים חדשים יתויגו לבד.')
+      return true
+    }
+    // A site is kept as "@site"; Gmail's search wants just the site.
+    const sender = rule.match.startsWith('@') ? rule.match.slice(1) : rule.match
+    const found = await api.labelMatching(`from:(${sender})`, labelId)
+    change(found.threadIds, (thread) => ({ ...thread, labelIds: withLabel(thread.labelIds, labelId) }))
+    viewCache.delete(`label:${labelId}`)
+    if (found.messages === 0) toast('הכלל נשמר. מכתבים חדשים יתויגו לבד.')
+    else toast(found.messages === 1 ? 'הכלל נשמר, ומכתב אחד שכבר הגיע תויג.' : `הכלל נשמר, ו־${found.messages} מכתבים שכבר הגיעו תויגו.`)
+    return true
+  } catch (error) {
+    toast(ruleProblem(error), { tone: 'error' })
+    return false
+  }
+}
+
+async function removeRule(id: string) {
+  const before = state.rules
+  set({ rules: before.filter((rule) => rule.id !== id) })
+  try {
+    await postman.ruleDelete(id)
+    toast('הכלל הוסר. תוויות שכבר הודבקו נשארות.')
+  } catch (error) {
+    set({ rules: before })
+    toast(ruleProblem(error), { tone: 'error' })
   }
 }
 
@@ -1045,6 +1099,8 @@ export const mailbox = {
   reschedule,
   unschedule,
   openScheduled,
+  addRule,
+  removeRule,
   endFlight: () => set({ flight: null }),
   signOut: leave,
 }

@@ -279,11 +279,21 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 }
 
 /** Put your labels on letters, or take them off. */
-export function LabelSheet({ ids, onClose }: { ids: string[]; onClose: () => void }) {
+type LabelSheetProps = {
+  ids: string[]
+  onClose: () => void
+  /** Open the automatic-label form for this sender, with this label already chosen. */
+  onRules: (from: string, labelId?: string) => void
+}
+
+export function LabelSheet({ ids, onClose, onRules }: LabelSheetProps) {
   const { labels, threads, open, bundles } = useMailbox()
   const [name, setName] = useState('')
   const everything: Thread[] = [...(threads ?? []), ...bundles.flatMap((bundle) => bundle.threads), ...(open ? [open] : [])]
   const chosen = ids.map((id) => everything.find((thread) => thread.id === id)).filter((thread) => thread !== undefined)
+  // One letter from someone else: its sender can get these labels every time.
+  const only = chosen.length === 1 && !chosen[0]!.outgoing ? chosen[0]! : null
+  const worn = only ? labels.filter((label) => only.labelIds.includes(label.id)) : []
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
@@ -321,6 +331,112 @@ export function LabelSheet({ ids, onClose }: { ids: string[]; onClose: () => voi
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="תווית חדשה" aria-label="שם התווית החדשה" dir="auto" />
         <button type="submit" className="pill-btn" disabled={!name.trim()}>
           יצירה וסימון
+        </button>
+      </form>
+      {only?.from.email && (
+        <button type="button" className="rule-link" onClick={() => onRules(only.from.email, worn.length === 1 ? worn[0]!.id : undefined)}>
+          לתייג כך תמיד מכתבים מ־<bdi dir="ltr">{only.from.email}</bdi>
+        </button>
+      )}
+    </Sheet>
+  )
+}
+
+type RulesProps = {
+  /** Start the form with this sender… */
+  from?: string
+  /** …and this label. */
+  labelId?: string
+  onClose: () => void
+}
+
+const NEW_LABEL = '+new'
+
+/** Automatic labels: mail from a sender on the list gets its label by itself. */
+export function RulesSheet({ from: startFrom = '', labelId: startLabel = '', onClose }: RulesProps) {
+  const { rules, labels } = useMailbox()
+  const [from, setFrom] = useState(startFrom)
+  const [labelId, setLabelId] = useState(startLabel)
+  const [newName, setNewName] = useState('')
+  const [existing, setExisting] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const ready = from.trim() !== '' && (labelId === NEW_LABEL ? newName.trim() !== '' : labelId !== '')
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault()
+    if (busy || !ready) return
+    setBusy(true)
+    let target = labelId
+    if (target === NEW_LABEL) {
+      const created = await mailbox.addLabel(newName)
+      if (!created) {
+        setBusy(false)
+        return
+      }
+      target = created.id
+      setLabelId(created.id)
+      setNewName('')
+    }
+    if (await mailbox.addRule(from, target, existing)) setFrom('')
+    setBusy(false)
+  }
+
+  return (
+    <Sheet title="תיוג אוטומטי" form="טופס 9 · הוראות מיון" onClose={onClose}>
+      <p className="setting-note">מכתב חדש משולח שברשימה מקבל את התווית שלו לבד, עד דקה אחרי שהגיע.</p>
+      {rules.length > 0 && (
+        <ul className="rules">
+          {rules.map((rule) => {
+            const label = labels.find((other) => other.id === rule.labelId)
+            return (
+              <li key={rule.id}>
+                <span className="rule-from ellipsis" dir="ltr">
+                  {rule.match}
+                </span>
+                {label ? <LabelTape label={label} /> : <span className="rule-gone">תווית שנמחקה</span>}
+                <button type="button" className="icon-btn" onClick={() => void mailbox.removeRule(rule.id)} aria-label={`הסרת הכלל של ${rule.match}`} title="הסרת הכלל">
+                  <CloseIcon />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <form className="rule-new" onSubmit={add}>
+        <label className="setting">
+          <span className="setting-title">ממי</span>
+          <input
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            placeholder="dana@example.com או bank.co.il"
+            dir="ltr"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <span className="setting-note">כתובת מלאה, או רק שם האתר שאחרי ה־@, כדי לתפוס את כל מי ששולח ממנו.</span>
+        </label>
+        <label className="setting">
+          <span className="setting-title">איזו תווית</span>
+          <select value={labelId} onChange={(e) => setLabelId(e.target.value)}>
+            <option value="" disabled>
+              בחירת תווית
+            </option>
+            {labels.map((label) => (
+              <option key={label.id} value={label.id}>
+                {label.name}
+              </option>
+            ))}
+            <option value={NEW_LABEL}>תווית חדשה…</option>
+          </select>
+        </label>
+        {labelId === NEW_LABEL && (
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="שם התווית החדשה" aria-label="שם התווית החדשה" dir="auto" />
+        )}
+        <Check checked={existing} onChange={setExisting} title="לתייג גם מכתבים שכבר הגיעו" />
+        <button type="submit" className="pill-btn" disabled={!ready || busy}>
+          {busy ? 'שומרים…' : 'הוספת הכלל'}
         </button>
       </form>
     </Sheet>
@@ -417,6 +533,10 @@ const GUIDE: { title: string; text: string }[] = [
   {
     title: 'תוויות',
     text: 'תווית היא מדבקה על מכתב, ואפשר לשים כמה. פותחים מכתב, לוחצים על שלוש הנקודות ובוחרים „תוויות”. כל תווית מופיעה בתפריט.',
+  },
+  {
+    title: 'תיוג אוטומטי',
+    text: 'בתפריט, מתחת לתוויות: בוחרים שולח ותווית, ומאז כל מכתב ממנו מקבל אותה לבד. אפשר גם מתוך מכתב: שלוש הנקודות, „תוויות”, ואז „לתייג כך תמיד”.',
   },
   {
     title: 'שליחה מאוחר יותר',
