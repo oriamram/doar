@@ -22,7 +22,8 @@ type Props = {
  */
 export function EmailBody({ message, flagged = false }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null)
-  const { remoteImages } = useSettings()
+  const { remoteImages, letterSize } = useSettings()
+  const textSize = letterSize === 'huge' ? 21 : letterSize === 'large' ? 18.5 : 16
   const [allowImages, setAllowImages] = useState(false)
   const body = useMemo(() => stripTrackers(message.bodyHtml), [message.bodyHtml])
   const blocked = !remoteImages && !allowImages && hasRemoteImages(body.html)
@@ -41,7 +42,7 @@ ${blocked ? `<meta http-equiv="Content-Security-Policy" content="img-src data: b
 <base target="_blank">
 <style>
   html { overflow: hidden; background: transparent; }
-  body { margin: 0; padding: 16px; font: 16px/1.6 system-ui, sans-serif; color: #1f2a3a; overflow-wrap: anywhere; }
+  body { margin: 0; padding: 16px; font: ${textSize}px/1.6 system-ui, sans-serif; color: #1f2a3a; overflow-wrap: anywhere; }
   img { max-width: 100%; height: auto; }
   table { max-width: 100%; }
   a { color: #8f2f1f; }

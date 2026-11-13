@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { matches } from '../../supabase/functions/postman/rules.ts'
 import { shortName } from '../lib/addresses'
 import { newDraft } from '../lib/compose'
@@ -7,6 +7,7 @@ import { countLetters, dayGroup } from '../lib/format'
 import { isFresh, threadShape, type Shape } from '../lib/kinds'
 import { mailbox, useMailbox, type Bundle } from '../lib/mailbox'
 import type { Reminder } from '../lib/postman'
+import { ritualQueue, ritualSize, type RitualItem } from '../lib/ritual'
 import { recentSearches, rememberSearch } from '../lib/searches'
 import { useSettings } from '../lib/settings'
 import { useNow } from '../lib/useNow'
@@ -24,6 +25,7 @@ import {
   RefreshIcon,
   RestoreIcon,
   SearchIcon,
+  StarIcon,
   TagIcon,
   TrashIcon,
 } from './icons'
@@ -35,6 +37,8 @@ import { Tips } from './Tips'
 import { SenderStamp, TwineBow } from './Postal'
 import { ThreadRow } from './ThreadRow'
 
+type RowMenu = { thread: Thread; x: number; y: number }
+
 type Props = {
   searching: boolean
   onSearching: (searching: boolean) => void
@@ -43,6 +47,8 @@ type Props = {
   onLabels: (ids: string[]) => void
   /** Ask when to bring these letters back (the held-mail form). */
   onHold: (ids: string[]) => void
+  /** Open the mail one letter at a time. */
+  onRitual: (queue: RitualItem[]) => void
 }
 
 type Item = { kind: 'day'; label: string } | { kind: 'thread'; thread: Thread } | { kind: 'bundle'; bundle: Bundle }
@@ -148,8 +154,8 @@ function BundleRow({ bundle }: { bundle: Bundle }) {
   )
 }
 
-export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels, onHold }: Props) {
-  const { view, threads, bundles, loading, loadingMore, nextPageToken, error, unread, labels, open, selection, arrived, me, online, scheduled, server, rules, marks, reminders } =
+export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels, onHold, onRitual }: Props) {
+  const { view, threads, bundles, loading, loadingMore, nextPageToken, error, unread, labels, open, selection, arrived, me, online, scheduled, server, rules, marks, reminders, notes } =
     useMailbox()
   // What Doar's server is keeping time for, by conversation. A letter that just came back says so first.
   const reminderOf = useMemo(() => {
@@ -167,6 +173,9 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
   const [searchText, setSearchText] = useState(view.kind === 'search' ? view.query : '')
   const [listElement, setListElement] = useState<HTMLElement | null>(null)
   const sentinel = useRef<HTMLLIElement>(null)
+  // The menu a right click opens on a letter (PC).
+  const [rowMenu, setRowMenu] = useState<RowMenu | null>(null)
+  const openRowMenu = useCallback((thread: Thread, x: number, y: number) => setRowMenu({ thread, x, y }), [])
 
   // Pull the list down from the top to check for new mail (touch screens).
   const { pull, phase: pullPhase } = usePullToRefresh(listElement, mailbox.reload)
@@ -189,6 +198,10 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
     return byThread
   }, [threads, bundles, settings.notKinds])
   const shapeOfThread = (thread: Thread): Shape => shapes.get(thread.id) ?? { kind: 'letter' }
+
+  // What the postman brought and nobody opened yet: with three or more, it can be opened one by one.
+  const brought = useMemo(() => (inInbox ? ritualQueue(threads ?? [], settings.bundles ? bundles : [], (thread) => shapes.get(thread.id) ?? { kind: 'letter' }) : []), [inInbox, threads, bundles, settings.bundles, shapes])
+  const broughtCount = ritualSize(brought)
 
   // On the counter, above everything: codes that are still good, and parcels on their way.
   const now = useNow()
@@ -417,8 +430,18 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
         <p className="notice">השרת של דואר לא בדק דואר כבר {serverQuietFor} דקות. התראות ותיוג אוטומטי עלולים להתעכב.</p>
       )}
       {inInbox && !searching && selection.size === 0 && <Tips />}
-      {inInbox && !searching && selection.size === 0 && (counter.codes.length > 0 || counter.parcels.length > 0) && (
+      {inInbox && !searching && selection.size === 0 && (counter.codes.length > 0 || counter.parcels.length > 0 || broughtCount >= 3) && (
         <div className="counter" aria-label="על הדלפק">
+          {broughtCount >= 3 && (
+            <button type="button" className="postman-strip" onClick={() => onRitual(brought)}>
+              <span className="postman-text">
+                <strong>הדוור הביא {broughtCount} מכתבים</strong>
+                <span>לפתוח אחד־אחד</span>
+              </span>
+              <span className="twine twine-down" aria-hidden="true" />
+              <TwineBow />
+            </button>
+          )}
           {counter.codes.map(({ thread, code }) => (
             <QueueTicket key={thread.id} thread={thread} code={code} now={now} />
           ))}
@@ -457,7 +480,9 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
                 reminder={reminderOf.get(item.thread.id)}
                 express={isExpress(item.thread)}
                 shape={shapeOfThread(item.thread)}
+                noted={item.thread.id in notes}
                 onHold={onHold}
+                onMenu={openRowMenu}
               />
             </li>
           ),
@@ -481,6 +506,61 @@ export function ThreadList({ searching, onSearching, onMenu, onAccount, onLabels
         )}
         {!nextPageToken && !!threads?.length && threads.length > 12 && <li className="more">{countLetters(threads.length)}. זה הכל.</li>}
       </motion.ul>
+
+      {rowMenu &&
+        (() => {
+          const { thread, x, y } = rowMenu
+          const ids = [thread.id]
+          const inbox = thread.labelIds.includes('INBOX')
+          const binned = thread.labelIds.includes('TRASH')
+          const pick = (action: () => void) => () => {
+            setRowMenu(null)
+            action()
+          }
+          return (
+            <>
+              <button className="menu-backdrop" aria-label="סגירה" onClick={() => setRowMenu(null)} onContextMenu={(e) => (e.preventDefault(), setRowMenu(null))} />
+              <div className="menu menu-floating" role="menu" style={{ left: Math.max(8, Math.min(x - 216, window.innerWidth - 232)), top: Math.max(8, Math.min(y, window.innerHeight - 330)) }}>
+                <button role="menuitem" className="menu-item" onClick={pick(() => mailbox.open(thread))}>
+                  <MailOpenIcon />
+                  פתיחה
+                </button>
+                <button role="menuitem" className="menu-item" onClick={pick(() => mailbox.setRead(ids, thread.unread))}>
+                  {thread.unread ? <MailOpenIcon /> : <MailIcon />}
+                  {thread.unread ? 'סימון כנקרא' : 'סימון כלא נקרא'}
+                </button>
+                {!binned && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => mailbox.toggleStar(thread.id))}>
+                    <StarIcon filled={thread.starred} />
+                    {thread.starred ? 'הסרת כוכב' : 'סימון בכוכב'}
+                  </button>
+                )}
+                {inbox && !binned && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => mailbox.archive(ids))}>
+                    <ArchiveIcon />
+                    לתיוק
+                  </button>
+                )}
+                {inbox && !binned && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => onHold(ids))}>
+                    <HoldIcon />
+                    להחזיר אליי במועד אחר
+                  </button>
+                )}
+                {!binned && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => onLabels(ids))}>
+                    <TagIcon />
+                    תוויות
+                  </button>
+                )}
+                <button role="menuitem" className="menu-item" onClick={pick(() => (binned ? mailbox.untrash(ids) : mailbox.trash(ids)))}>
+                  {binned ? <RestoreIcon /> : <TrashIcon />}
+                  {binned ? 'שחזור מהאשפה' : 'לפח'}
+                </button>
+              </div>
+            </>
+          )
+        })()}
 
       <button className="compose-fab" onClick={() => mailbox.compose(newDraft())} aria-label="כתיבת מכתב חדש">
         <NibIcon />

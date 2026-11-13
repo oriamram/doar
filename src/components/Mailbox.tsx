@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import { newDraft } from '../lib/compose'
+import { topContacts } from '../lib/contacts'
+import { threadShape } from '../lib/kinds'
+import { ritualQueue, ritualSize } from '../lib/ritual'
+import { getSettings } from '../lib/settings'
 import { peekMessages } from '../lib/gmail'
 import { hasOpenLayers, useBackLayer } from '../lib/layers'
 import { initMailbox, mailbox, useMailbox } from '../lib/mailbox'
+import type { RitualItem } from '../lib/ritual'
 import type { Contact } from '../types'
 import { onAndroidBack } from '../lib/platform'
-import { INBOX, isFolder, type FolderId } from '../lib/views'
+import { FOLDER_TITLES, INBOX, isFolder, labelLeaf, type FolderId } from '../lib/views'
 import { Compose } from './Compose'
 import { LabelsSheet } from './LabelsSheet'
 import { Loader } from './Loader'
 import { Nav } from './Nav'
+import { Palette, type PaletteEntry } from './Palette'
 import { SenderCard, StampAlbum } from './People'
+import { Ritual } from './Ritual'
 import { Logo } from './Postal'
 import { SendFlight } from './SendFlight'
 import { GuideSheet, HoldSheet, LabelSheet, RegisterSheet, RulesSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
@@ -35,6 +42,21 @@ type Sheet =
 
 const GO_TO: Record<string, FolderId> = { i: 'inbox', s: 'starred', t: 'sent', d: 'drafts', a: 'all' }
 
+/** The folders "לאן?" can go to, with other words they answer to. */
+const PLACES: [FolderId, string][] = [
+  ['inbox', 'inbox נכנס'],
+  ['starred', 'starred כוכב'],
+  ['sent', 'sent יוצא'],
+  ['drafts', 'drafts'],
+  ['scheduled', 'scheduled תזמון'],
+  ['held', 'held snooze נודניק'],
+  ['waiting', 'waiting רשום'],
+  ['archive', 'archive ארכיון'],
+  ['all', 'all'],
+  ['spam', 'spam זבל'],
+  ['trash', 'trash פח'],
+]
+
 /** The whole mail app: folders, the list, the letter being read, and whatever is open on top. */
 export function Mailbox({ email, name }: { email: string; name: string }) {
   useState(() => initMailbox({ email, name: name || email }))
@@ -42,6 +64,10 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
   const [drawer, setDrawer] = useState(false)
   const [searching, setSearching] = useState(false)
   const [sheet, setSheet] = useState<Sheet>(null)
+  // "Opening the mail": the letters to go through, while the ritual is on.
+  const [ritual, setRitual] = useState<RitualItem[] | null>(null)
+  // "לאן?" (Ctrl+K): go anywhere, or do anything, by typing a few letters.
+  const [palette, setPalette] = useState(false)
   const holdLetters = useCallback((ids: string[]) => setSheet({ kind: 'hold', ids }), [])
 
   useEffect(() => {
@@ -73,11 +99,16 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
   useEffect(() => {
     let prefix = ''
     const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        if (!mailbox.state().compose) setPalette((shown) => !shown)
+        return
+      }
       if (e.ctrlKey || e.metaKey || e.altKey) return
       // Typing in a box is typing, not a shortcut.
       if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return
       const now = mailbox.state()
-      if (now.compose || sheet) return
+      if (now.compose || sheet || ritual || palette) return
       const list = now.threads ?? []
       const index = now.open ? list.findIndex((thread) => thread.id === now.open!.id) : -1
       const targets = now.selection.size ? [...now.selection] : now.open ? [now.open.id] : []
@@ -120,6 +151,10 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         case 'b':
           if (targets.length) setSheet({ kind: 'hold', ids: targets })
           break
+        case 'n':
+          // The open letter picks up the pen.
+          if (now.open) window.dispatchEvent(new Event('doar:note'))
+          break
         case '#':
         case 'Delete':
           if (targets.length) mailbox.trash(targets)
@@ -153,7 +188,29 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sheet])
+  }, [sheet, ritual, palette])
+
+  // Everything "לאן?" can reach: folders, labels, actions, and the people in the stamp album.
+  const places = (): PaletteEntry[] => {
+    const now = mailbox.state()
+    const act = (id: string, title: string, words: string, run: () => void): PaletteEntry => ({ id: `act-${id}`, title, hint: 'פעולה', words, run })
+    const queue = ritualQueue(now.threads ?? [], getSettings().bundles ? now.bundles : [], (thread) => threadShape(thread, getSettings().notKinds))
+    return [
+      ...PLACES.map(([id, words]): PaletteEntry => ({ id: `folder-${id}`, title: FOLDER_TITLES[id], hint: 'תיקייה', words, run: () => mailbox.show({ kind: 'folder', id }) })),
+      ...now.labels.map((label): PaletteEntry => ({ id: `label-${label.id}`, title: labelLeaf(label.name), hint: 'תווית', words: label.name, run: () => mailbox.show({ kind: 'label', id: label.id, name: label.name }) })),
+      act('compose', 'מכתב חדש', 'לכתוב compose new', () => mailbox.compose(newDraft())),
+      ...(ritualSize(queue) > 0 ? [act('ritual', 'פתיחת הדואר, אחד־אחד', 'טקס הדוור ritual', () => (mailbox.close(), setRitual(queue)))] : []),
+      act('album', 'אלבום הבולים', 'אנשים כתובות contacts', () => setSheet({ kind: 'album' })),
+      act('spike', 'דוקרן הקבלות', 'קבלות חשבוניות receipts', () => setSheet({ kind: 'spike' })),
+      act('rules', 'תיוג אוטומטי', 'כללים rules מיון', () => setSheet({ kind: 'rules' })),
+      act('labels', 'ניהול תוויות', 'labels צבע', () => setSheet({ kind: 'manage-labels' })),
+      act('settings', 'הגדרות', 'settings התראות חתימה', () => setSheet({ kind: 'settings' })),
+      act('guide', 'מדריך קצר', 'עזרה help', () => setSheet({ kind: 'guide' })),
+      act('keys', 'קיצורי מקלדת', 'shortcuts', () => setSheet({ kind: 'shortcuts' })),
+      act('reload', 'בדיקת דואר חדש', 'רענון refresh', () => void mailbox.reload()),
+      ...topContacts(60).map((contact): PaletteEntry => ({ id: `person-${contact.email}`, title: contact.name || contact.email, hint: 'אדם', words: contact.email, run: () => setSheet({ kind: 'person', contact }) })),
+    ]
+  }
 
   // The very first visit has nothing to show yet: one calm loader instead of an empty desk.
   if (state.threads === null && !state.error && atInbox) return <Loader />
@@ -179,6 +236,10 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         onAccount={() => setSheet({ kind: 'settings' })}
         onLabels={(ids) => setSheet({ kind: 'labels', ids })}
         onHold={holdLetters}
+        onRitual={(queue) => {
+          mailbox.close()
+          setRitual(queue)
+        }}
       />
 
       <main className="reader">
@@ -203,8 +264,10 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         )}
       </main>
 
+      {ritual && <Ritual queue={ritual} onClose={() => setRitual(null)} onHold={holdLetters} busy={!!sheet || !!state.compose} />}
       {state.compose && <Compose key={state.composeKey} initial={state.compose} />}
       {state.flight && <SendFlight to={state.flight.to} />}
+      {palette && <Palette entries={places()} onClose={() => setPalette(false)} onSearch={(query) => mailbox.show({ kind: 'search', query })} />}
       {sheet?.kind === 'settings' && <SettingsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'shortcuts' && <ShortcutsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'guide' && <GuideSheet onClose={() => setSheet(null)} />}

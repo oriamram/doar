@@ -20,7 +20,10 @@ import { mailbox, useMailbox } from '../lib/mailbox'
 import { stampColor, stampLetter } from '../lib/stamps'
 import { toast } from '../lib/toast'
 import type { ComposeAttachment, ComposeDraft, Contact } from '../types'
-import { ClipIcon, ClockIcon, CloseIcon, ListIcon, RegisteredIcon, SendIcon, TrashIcon } from './icons'
+import { ClipIcon, ClockIcon, CloseIcon, ListIcon, RegisteredIcon, ScaleIcon, SendIcon, TrashIcon } from './icons'
+
+/** What Gmail lets one letter carry, files and all. */
+const WEIGHT_LIMIT = 25 * 1024 * 1024
 import { RegisterSheet, ScheduleSheet } from './Sheets'
 
 const TITLES: Record<ComposeDraft['mode'], string> = {
@@ -193,6 +196,8 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
   const [showCopies, setShowCopies] = useState(initial.cc.length + initial.bcc.length > 0)
   const [subject, setSubject] = useState(initial.subject)
   const [attachments, setAttachments] = useState<ComposeAttachment[]>(initial.attachments)
+  // Files grow by a third on their way (they travel as text), and that is what counts against the limit.
+  const weight = attachments.reduce((sum, file) => sum + file.size, 0) * (4 / 3)
   const [includeQuote, setIncludeQuote] = useState(initial.quote?.include ?? false)
   const [status, setStatus] = useState<keyof typeof STATUS>(initial.draftId ? 'saved' : 'idle')
   const [words, setWords] = useState(0)
@@ -530,6 +535,17 @@ export function Compose({ initial }: { initial: ComposeDraft }) {
           </label>
         )}
 
+        {attachments.length > 0 && (
+          <p className="postal-scale" data-heavy={weight > WEIGHT_LIMIT * 0.8 || undefined}>
+            <ScaleIcon />
+            <span>
+              משקל המשלוח: <span dir="ltr">{formatBytes(weight)}</span> מתוך <span dir="ltr">25 MB</span>
+            </span>
+            <span className="scale-bar" aria-hidden="true">
+              <span style={{ width: `${Math.min(100, (weight / WEIGHT_LIMIT) * 100)}%` }} />
+            </span>
+          </p>
+        )}
         {attachments.length > 0 && (
           <ul className="compose-files">
             {attachments.map((file) => (

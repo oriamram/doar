@@ -418,6 +418,94 @@ try {
   await desk.click('[aria-label="סגירת החיפוש"]')
   await desk.waitFor('.list[aria-label="דואר נכנס"] .thread-row')
 
+  // A note on a letter: yours alone, shown on the letter and marked in the list.
+  await desk.clickText('תמונות מהשבת', '.thread-row .subject')
+  await desk.waitFor('.letter')
+  await desk.click('[aria-label="עוד פעולות"]')
+  await desk.clickText('פתק על המכתב', '.menu-item')
+  await desk.waitFor('textarea.note-text')
+  await desk.type('להתקשר לאמא ביום שישי')
+  await desk.clickText('שמירה', '.note-actions button')
+  await desk.waitFor('.note-read')
+  check('a note is clipped to the letter', (await desk.text('.note-read')) === 'להתקשר לאמא ביום שישי', await desk.text('.note-read'))
+  check('and its corner shows in the list', (await desk.count('.thread-row[aria-current="true"] .note-corner')) === 1)
+  await shot(desk, 'pc-note')
+  await desk.click('.note-read')
+  await desk.waitFor('textarea.note-text')
+  await desk.clickText('להסיר את הפתק', '.note-actions button')
+  await desk.waitFor(`!document.querySelector('.note-slip')`)
+  check('a note can be taken off', (await desk.count('.note-corner')) === 0)
+
+  // On a PC: "לאן?" by Ctrl+K, a letter's menu by a right click, and dragging a letter onto a label.
+  await desk.key('Control+k')
+  await desk.waitFor('.palette input')
+  await desk.type('משפ')
+  await sleep(150)
+  check('"לאן?" finds a label by a few letters', (await desk.text('.palette-list li[aria-selected="true"]')).includes('משפחה'), await desk.text('.palette-list li[aria-selected="true"]'))
+  await shot(desk, 'pc-palette')
+  await desk.key('Enter')
+  await desk.waitFor('.list[aria-label="משפחה"] .thread-row')
+  check('and Enter goes there', (await desk.text('.view-title')) === 'משפחה')
+  await desk.key('Control+k')
+  await desk.waitFor('.palette input')
+  await desk.type('דוקרן')
+  await sleep(150)
+  await desk.key('Enter')
+  await desk.waitFor('.spike-month')
+  check('"לאן?" also runs actions', true)
+  await desk.key('Escape')
+  await desk.waitFor(`!document.querySelector('.sheet')`)
+  await toInbox()
+
+  await desk.evaluate(`[...document.querySelectorAll('.thread-row')].find((el) => el.textContent.includes('מסמכים לדוח השנתי')).scrollIntoView({ block: 'center' })`)
+  await sleep(400)
+  const rowPoint = await desk.evaluate<{ x: number; y: number }>(`(() => { const row = [...document.querySelectorAll('.thread-row')].find((el) => el.textContent.includes('מסמכים לדוח השנתי')).getBoundingClientRect(); return { x: row.left + row.width / 2, y: row.top + row.height / 2 } })()`)
+  await desk.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: rowPoint.x, y: rowPoint.y })
+  await desk.cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: rowPoint.x, y: rowPoint.y, button: 'right', buttons: 2, clickCount: 1 })
+  await desk.cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: rowPoint.x, y: rowPoint.y, button: 'right', buttons: 0, clickCount: 1 })
+  await desk.waitFor('.menu-floating')
+  const menuItems = await desk.texts('.menu-floating .menu-item')
+  check('a right click opens the letter\'s menu', menuItems.includes('לתיוק') && menuItems.includes('תוויות') && menuItems.includes('לפח'), menuItems.join(', '))
+  await shot(desk, 'pc-row-menu')
+  const starred = () => desk.evaluate<boolean>(`[...document.querySelectorAll('.thread-row')].find((el) => el.textContent.includes('מסמכים לדוח השנתי')).querySelector('.star-mark') !== null`)
+  const hadStar = await starred()
+  await desk.clickText('כוכב', '.menu-floating .menu-item')
+  await desk.waitFor(`!document.querySelector('.menu-floating')`)
+  await sleep(200)
+  check('and its items act on that letter', (await starred()) === !hadStar)
+
+  // Dragging: the browser's own drag cannot be driven from here, so its events are sent as it would send them.
+  const label = `[...document.querySelectorAll('.nav-label')].find((el) => el.textContent.includes('חשבונות'))`
+  await desk.evaluate(`(() => {
+    const row = [...document.querySelectorAll('.thread-row')].find((el) => el.textContent.includes('מסמכים לדוח השנתי'))
+    window.__drag = { row, data: new DataTransfer() }
+    row.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: window.__drag.data }))
+  })()`)
+  await desk.waitFor(`${label}.dataset.drop === 'ready'`)
+  await desk.evaluate(`${label}.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__drag.data }))`)
+  await desk.waitFor(`${label}.dataset.drop === 'over'`)
+  const dropped = await desk.evaluate<string>(`(() => {
+    const target = ${label}
+    target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__drag.data }))
+    window.__drag.row.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__drag.data }))
+    return window.__drag.data.getData('application/x-doar-letters')
+  })()`)
+  await desk.waitFor(`[...document.querySelectorAll('.thread-row')].find((el) => el.textContent.includes('מסמכים לדוח השנתי'))?.querySelector('.tape') !== null`)
+  check('a letter dragged onto a label gets it, and the label shows where to drop', dropped.startsWith('["') && (await toast(desk)).includes('חשבונות'), `${dropped} · ${await toast(desk)}`)
+
+  // Small things: the Hebrew date on an open letter, and larger text in letters.
+  await desk.clickText('הגדרות', '.nav-item')
+  await desk.waitFor('.status-list')
+  await desk.clickText('התאריך העברי', '.check')
+  await desk.clickText('גדול מאוד', '.segments button')
+  await desk.key('Escape')
+  await desk.waitFor(`!document.querySelector('.sheet')`)
+  await desk.clickText('תמונות מהשבת', '.thread-row .subject')
+  await desk.waitFor('.envelope-hebrew')
+  await sleep(500)
+  const letterFont = await desk.evaluate<string>(`getComputedStyle([...document.querySelectorAll('.letter iframe')].at(-1).contentDocument.body).fontSize`)
+  check('the Hebrew date stands beside the date, and the text of the letter is larger', /ב\S+ תשפ״[א-ת]/.test(await desk.text('.envelope-hebrew')) && letterFont === '21px', `${await desk.text('.envelope-hebrew')} · ${letterFont}`)
+
   // The stamp album and the receipts spike, from the menu.
   await desk.clickText('אלבום הבולים', '.nav-item')
   await desk.waitFor('.album-stamp')
@@ -440,6 +528,69 @@ try {
   check('no fault was reported along the way', strays.length === 0, strays.map((report) => `${report.place}: ${report.message}`).join(' | ').slice(0, 400))
   check('nothing went wrong at the desk', desk.errors.length === 0, desk.errors.join(' | ').slice(0, 300))
   desk.close()
+
+  // ================= Opening the mail, one letter at a time (a phone, from a fresh start) =================
+  const rite = await browser.open(`${SITE}/?demo=fast`, PHONE)
+  await start(rite)
+  await rite.waitFor('.postman-strip')
+  await sleep(600)
+  check('with unread mail, the postman offers to open it one by one', (await rite.text('.postman-strip')).includes('הדוור הביא 8 מכתבים'), await rite.text('.postman-strip'))
+  await shot(rite, 'phone-postman')
+  await rite.click('.postman-strip')
+  await rite.waitFor('.ritual .letter iframe')
+  const riteSubject = () => rite.text('.ritual .thread-subject')
+  const riteLeft = () => rite.text('.ritual-count')
+  const ticket = (name: string) => rite.clickText(name, '.ritual-tickets .ticket')
+  const nextLetter = async (after: string) => rite.waitFor(`(document.querySelector('.ritual .thread-subject')?.textContent ?? '') !== ${JSON.stringify(after)} || !!document.querySelector('.ritual-bundle, .clear-desk')`)
+  check('the first letter is from a person, and already open', (await riteSubject()) === 'אישור פגישה ביום שלישי' && (await riteLeft()).includes('8'), `${await riteSubject()} · ${await riteLeft()}`)
+  check('a letter in the ritual has no bar of its own', (await rite.evaluate<string>(`getComputedStyle(document.querySelector('.ritual .reader-bar')).display`)) === 'none')
+  await shot(rite, 'phone-ritual')
+
+  let shown = await riteSubject()
+  await ticket('לתיוק')
+  await nextLetter(shown)
+  check('filing a letter brings the next one', (await riteLeft()).includes('7') && (await riteSubject()) !== shown, `${await riteSubject()} · ${await riteLeft()}`)
+
+  shown = await riteSubject()
+  const kept = shown
+  await ticket('להשאיר')
+  await nextLetter(shown)
+  check('"keep" moves on and leaves the letter in the inbox', (await riteLeft()).includes('6'), await riteLeft())
+
+  shown = await riteSubject()
+  await ticket('אחר כך')
+  await rite.waitFor('.presets')
+  await rite.clickText('מחר בבוקר', '.presets button')
+  await nextLetter(shown)
+  check('"later" holds the letter and moves on', (await riteLeft()).includes('5') && (await rite.evaluate<number>(`window.__doarDemo.reminders.filter((row) => row.kind === 'hold').length`)) === 1, await riteLeft())
+
+  shown = await riteSubject()
+  await ticket('לפח')
+  await nextLetter(shown)
+  check('"bin" bins the letter and moves on', (await riteLeft()).includes('4'), await riteLeft())
+
+  // The rest: file the letters, then each bundle as one decision, until the desk is clear.
+  let sawBundle = false
+  for (let step = 0; step < 20 && !(await rite.count('.clear-desk')); step++) {
+    if (await rite.count('.ritual-bundle')) {
+      if (!sawBundle) await shot(rite, 'phone-ritual-bundle')
+      sawBundle = true
+      await ticket('לתייק הכל')
+    } else await ticket('לתיוק')
+    await sleep(350)
+  }
+  check('a bundle is one decision', sawBundle)
+  await rite.waitFor('.clear-desk')
+  await sleep(1500)
+  const clear = await rite.text('.clear-text')
+  check('after the last letter the desk is clear, and says what returns tomorrow', clear.includes('השולחן נקי') && clear.includes('מכתב שמור אחד יחזור מחר') && (await rite.text('.clear-stamp-top')) === 'אין דואר', clear)
+  await shot(rite, 'phone-clear-desk')
+  await rite.clickText('חזרה לשולחן', '.pill-btn')
+  await rite.waitFor(`!document.querySelector('.ritual')`)
+  const remaining = await rite.texts('.thread-row .subject')
+  check('the letter that was kept is still in the inbox, read', remaining.includes(kept) && (await rite.count('.thread-row[data-unread]')) === 0 && (await rite.count('.postman-strip')) === 0, remaining.slice(0, 4).join(' | '))
+  check('nothing went wrong in the ritual', rite.errors.length === 0, rite.errors.join(' | ').slice(0, 300))
+  rite.close()
 
   // ================= The front door =================
   const door = await browser.open(SITE, PHONE)

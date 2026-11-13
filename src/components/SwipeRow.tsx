@@ -43,8 +43,10 @@ export function SwipeRow({ children, left, right, disabled }: Props) {
   }
 
   const bind = useDrag(
-    ({ down, movement: [mx], velocity: [vx], direction: [dx] }) => {
+    ({ event, down, movement: [mx], velocity: [vx], direction: [dx] }) => {
       if (disabled) return
+      // A mouse drags a letter to a folder (see ThreadRow); swiping is for fingers and pens.
+      if ('pointerType' in event && event.pointerType === 'mouse') return
       const width = rowRef.current?.offsetWidth ?? 1
       // A side with nothing to do resists: the letter barely moves.
       const available = mx < 0 ? left : right

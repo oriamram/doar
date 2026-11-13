@@ -1,5 +1,6 @@
-import { memo, useRef, type MouseEvent, type PointerEvent } from 'react'
+import { memo, useRef, type DragEvent, type MouseEvent, type PointerEvent } from 'react'
 import { shortName } from '../lib/addresses'
+import { canDrag, DRAG_TYPE } from '../lib/dragging'
 import { formatListDate } from '../lib/format'
 import type { Shape } from '../lib/kinds'
 import { mailbox } from '../lib/mailbox'
@@ -26,8 +27,12 @@ type Props = {
   express?: boolean
   /** What kind of mail it is: a code, a parcel, a receipt, an invitation, a leaflet, or a letter. */
   shape: Shape
+  /** You wrote a note on it. */
+  noted?: boolean
   /** Ask when to bring these letters back (opens the held-mail form). */
   onHold: (ids: string[]) => void
+  /** A right click (PC): open the letter's menu at this point of the screen. */
+  onMenu: (thread: Thread, x: number, y: number) => void
 }
 
 /** What swiping this letter does, depending on where it is. */
@@ -85,7 +90,7 @@ function useHold(onHold: () => void) {
   }
 }
 
-export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selected, selecting, current, arrived, reminder, express, shape, onHold }: Props) {
+export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selected, selecting, current, arrived, reminder, express, shape, noted, onHold, onMenu }: Props) {
   const hold = useHold(() => mailbox.toggleSelect(thread.id))
   const ids = [thread.id]
   const person = shortName(thread.from)
@@ -93,6 +98,19 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
   const tapes = labels.filter((label) => thread.labelIds.includes(label.id))
   const inTrash = isFolder(view, 'trash')
   const inSpam = isFolder(view, 'spam')
+
+  // With a mouse, a letter is dragged onto a folder, a label or the bin; selected letters go together.
+  const drag = (event: DragEvent) => {
+    const picked = mailbox.state().selection
+    event.dataTransfer.setData(DRAG_TYPE, JSON.stringify(picked.has(thread.id) ? [...picked] : [thread.id]))
+    event.dataTransfer.effectAllowed = 'move'
+  }
+  const menu = (event: MouseEvent) => {
+    // A finger held down selects (see useHold); the menu is for the mouse's right button.
+    if ((event.nativeEvent as globalThis.PointerEvent).pointerType === 'touch' || !canDrag) return
+    event.preventDefault()
+    onMenu(thread, event.clientX, event.clientY)
+  }
 
   const open = () => {
     if (hold.wasHeld()) return
@@ -109,6 +127,9 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
         data-selected={selected || undefined}
         data-arrived={arrived || undefined}
         aria-current={current || undefined}
+        draggable={canDrag || undefined}
+        onDragStart={canDrag ? drag : undefined}
+        onContextMenu={menu}
       >
         <button
           type="button"
@@ -171,6 +192,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
         </button>
 
         {thread.hasAttachment && <Paperclip />}
+        {noted && <span className="note-corner" role="img" aria-label="יש פתק" title="יש פתק על המכתב הזה" />}
         {shape.kind === 'code' && !selecting && <CodeCopy code={shape.code} />}
 
         {/* Quick actions for a mouse; phones swipe instead. */}

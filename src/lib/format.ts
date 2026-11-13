@@ -57,6 +57,27 @@ export function postmark(iso: string): { top: string; bottom: string } {
   return { top, bottom }
 }
 
+const ONES = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט']
+const TENS = ['', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ']
+const HUNDREDS = ['', 'ק', 'ר', 'ש', 'ת', 'תק', 'תר', 'תש', 'תת', 'תתק']
+
+/** A number the way the Hebrew calendar writes it: 3 → ג׳, 15 → ט״ו, 5787 → תשפ״ז (thousands are left out). */
+export function hebrewNumber(value: number): string {
+  let rest = value % 1000
+  let letters = HUNDREDS[Math.floor(rest / 100)]!
+  rest %= 100
+  // Fifteen and sixteen are written nine-and-six, nine-and-seven.
+  letters += rest === 15 ? 'טו' : rest === 16 ? 'טז' : TENS[Math.floor(rest / 10)]! + ONES[rest % 10]!
+  return letters.length <= 1 ? `${letters}׳` : `${letters.slice(0, -1)}״${letters.slice(-1)}`
+}
+
+/** The Hebrew date: "ג׳ בכסלו תשפ״ז". */
+export function hebrewDate(when: Date | string): string {
+  const parts = new Intl.DateTimeFormat('he-u-ca-hebrew-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(new Date(when))
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
+  return `${hebrewNumber(Number(part('day')))} ב${part('month')} ${hebrewNumber(Number(part('year')))}`
+}
+
 /** When a scheduled letter goes out: "היום ב־18:00", "מחר ב־08:00", "יום ראשון, 16 בנוב׳, ב־08:00". */
 export function formatWhen(when: Date | string, now = new Date()): string {
   const date = new Date(when)

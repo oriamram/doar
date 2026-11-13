@@ -626,6 +626,47 @@
   color: var(--ink-red);
 }
 
+/* The postal scale: what the files weigh against what one letter may carry. */
+.postal-scale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 10px 0 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.postal-scale svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+
+.scale-bar {
+  flex: 1 1 120px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ink-rule);
+  overflow: hidden;
+}
+
+.scale-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ink-blue);
+}
+
+.postal-scale[data-heavy] {
+  color: var(--ink-red);
+}
+
+.postal-scale[data-heavy] .scale-bar span {
+  background: var(--ink-red);
+}
+
 .scheduled-note.registered-note {
   border-inline-start-color: var(--ink-red);
   background: rgba(166, 58, 38, 0.07);

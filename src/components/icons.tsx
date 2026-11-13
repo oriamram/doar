@@ -325,6 +325,34 @@ export const CardIcon = () => (
   </Icon>
 )
 
+/** Reading aloud: a speaker. */
+export const SpeakIcon = () => (
+  <Icon>
+    <path d="M4 9.5v5h3.5L12 18V6L7.5 9.5zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+  </Icon>
+)
+
+/** Printing: a printer. */
+export const PrintIcon = () => (
+  <Icon>
+    <path d="M7 8V4h10v4M7 17H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-2M7 14h10v6H7z" />
+  </Icon>
+)
+
+/** A postal scale. */
+export const ScaleIcon = () => (
+  <Icon>
+    <path d="M5 8h14M12 8v9M8 20h8M12 17c-2 0-3.5 1.2-4 3M12 17c2 0 3.5 1.2 4 3M9 5h6l1 3H8z" />
+  </Icon>
+)
+
+/** A note: a slip with a folded corner. */
+export const NoteIcon = () => (
+  <Icon>
+    <path d="M5 4h14v10l-5 6H5zM19 14h-5v6M8.5 9h7M8.5 12.5h4" />
+  </Icon>
+)
+
 /** A shield: the inspector. */
 export const ShieldIcon = () => (
   <Icon>

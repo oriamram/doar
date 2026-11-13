@@ -3,6 +3,7 @@
 //
 //   node --experimental-strip-types scripts/check-kinds.ts
 
+import { hebrewDate, hebrewNumber } from '../src/lib/format.ts'
 import { calendarLink, findAmount, formatAmount, isFresh, parseInvite, shapeOf, type Facts } from '../src/lib/kinds.ts'
 
 let failed = false
@@ -131,6 +132,17 @@ check('the calendar link carries the event', link && [link.host, link.searchPara
   'חדר ישיבות 2',
 ])
 check('a whole day is written as dates', wholeDay && new URL(calendarLink(wholeDay)).searchParams.get('dates'), '20261120/20261121')
+
+// ---------- The Hebrew date (src/lib/format.ts) ----------
+
+check('a day in letters', hebrewNumber(3), 'ג׳')
+check('fifteen is nine and six', hebrewNumber(15), 'ט״ו')
+check('sixteen is nine and seven', hebrewNumber(16), 'ט״ז')
+check('thirty', hebrewNumber(30), 'ל׳')
+check('a year, without its thousands', hebrewNumber(5787), 'תשפ״ז')
+check('a round year', hebrewNumber(5800), 'ת״ת')
+check('a date', hebrewDate('2026-11-13T12:00:00'), 'ג׳ בכסלו תשפ״ז')
+check('the new year', hebrewDate('2026-09-12T12:00:00'), 'א׳ בתשרי תשפ״ז')
 
 if (failed) {
   console.error('\nsome kinds were told apart wrongly')

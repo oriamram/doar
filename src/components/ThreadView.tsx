@@ -3,14 +3,16 @@ import { matches } from '../../supabase/functions/postman/rules.ts'
 import { sameEmail, shortName } from '../lib/addresses'
 import { realAttachments } from '../lib/compose'
 import { copyText } from '../lib/clipboard'
-import { countDays, formatDay, formatFullDate, formatLetterDate, formatListDate, formatWhen } from '../lib/format'
+import { countDays, formatDay, formatFullDate, formatLetterDate, formatListDate, formatWhen, hebrewDate } from '../lib/format'
 import { lettersFrom, loadMessages, peekMessages } from '../lib/gmail'
 import { inspectSender, type Finding } from '../lib/inspector'
 import { LETTER, shapeOf, type Kind, type Shape } from '../lib/kinds'
 import { DEMO_KNOWN, KNOWN_SENDERS } from '../lib/known-senders'
 import { isDemo } from '../lib/demo'
 import { mailbox, useMailbox } from '../lib/mailbox'
+import { printLetter } from '../lib/print'
 import { useSettings } from '../lib/settings'
+import { canSpeak, hush, speak } from '../lib/speak'
 import { toast } from '../lib/toast'
 import type { Contact, Message, Thread } from '../types'
 import { Attachments } from './Attachments'
@@ -26,17 +28,21 @@ import {
   InboxIcon,
   MailIcon,
   MoreIcon,
+  NoteIcon,
+  PrintIcon,
   RegisteredIcon,
   ReplyAllIcon,
   ReplyIcon,
   RestoreIcon,
   SpamIcon,
+  SpeakIcon,
   StarIcon,
   TagIcon,
   TrashIcon,
 } from './icons'
 import { InspectStrip, ReturnedStamp, Seal } from './Inspector'
 import { KindCard } from './Kinds'
+import { NoteSlip } from './Note'
 import { DuplexCancel, GoldStar, LabelTape, SenderStamp } from './Postal'
 
 const KNOWN = isDemo ? [...KNOWN_SENDERS, ...DEMO_KNOWN] : KNOWN_SENDERS
@@ -91,11 +97,25 @@ type Props = {
   onRegister: (messageId: string) => void
   /** Open a sender's card. */
   onPerson: (contact: Contact) => void
+  /** Shown inside "opening the mail", which has its own bar above and its own answers below. */
+  bare?: boolean
 }
 
-export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPerson }: Props) {
-  const { labels, openRevision, me, reminders, marks, returning } = useMailbox()
-  const { notKinds, trusted } = useSettings()
+export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPerson, bare = false }: Props) {
+  const { labels, openRevision, me, reminders, marks, returning, notes } = useMailbox()
+  const note = notes[thread.id] ?? ''
+  // The pen is down: a new note is being written (an existing one opens by a press on it).
+  const [noting, setNoting] = useState(false)
+  useEffect(() => {
+    if (bare) return
+    const write = () => setNoting(true)
+    window.addEventListener('doar:note', write)
+    return () => window.removeEventListener('doar:note', write)
+  }, [bare])
+  const { notKinds, trusted, hebrewDate: showHebrewDate } = useSettings()
+  // The device's voice is reading this letter aloud.
+  const [reading, setReading] = useState(false)
+  useEffect(() => hush, [])
   const { id, historyId } = thread
   const [messages, setMessages] = useState<Message[] | null>(() => peekMessages(thread))
   const [error, setError] = useState<string | null>(null)
@@ -187,7 +207,7 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPer
   }
 
   return (
-    <article className="thread">
+    <article className="thread" data-bare={bare || undefined}>
       <header className="reader-bar">
         <button className="icon-btn back" onClick={onBack} aria-label="חזרה לרשימה">
           <BackIcon />
@@ -237,6 +257,32 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPer
                   <TagIcon />
                   תוויות
                 </button>
+                {!note && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => setNoting(true))}>
+                    <NoteIcon />
+                    פתק על המכתב
+                  </button>
+                )}
+                {last && canSpeak && (
+                  <button
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={pick(() => {
+                      if (reading) hush()
+                      else speak(`${thread.subject}. ${last.bodyText}`, () => setReading(false))
+                      setReading(!reading)
+                    })}
+                  >
+                    <SpeakIcon />
+                    {reading ? 'להפסיק להקריא' : 'להקריא את המכתב'}
+                  </button>
+                )}
+                {last && (
+                  <button role="menuitem" className="menu-item" onClick={pick(() => void printLetter(last, thread.subject))}>
+                    <PrintIcon />
+                    הדפסה
+                  </button>
+                )}
                 {lastMine && !awaited && !inTrash && (
                   <button role="menuitem" className="menu-item" onClick={pick(() => onRegister(lastMine.id))}>
                     <RegisteredIcon />
@@ -297,6 +343,8 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPer
       </header>
 
       {(beingReturned || refused) && <ReturnedStamp />}
+
+      {(note || noting) && <NoteSlip key={note} threadId={id} text={note} writing={noting} onDone={() => setNoting(false)} />}
 
       <h2 className="thread-subject" dir="auto">
         {thread.subject}
@@ -411,7 +459,10 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPer
                   אל: {recipients(message)}
                 </span>
               )}
-              <span className="envelope-date">{formatLetterDate(message.date)}</span>
+              <span className="envelope-date">
+                {formatLetterDate(message.date)}
+                {showHebrewDate && <span className="envelope-hebrew"> · {hebrewDate(message.date)}</span>}
+              </span>
               <span className="envelope-stamp">
                 <button type="button" className="stamp-btn" onClick={() => onPerson(message.from)} aria-label={`כרטיס השולח: ${message.from.name || message.from.email}`} title="כרטיס השולח">
                   <SenderStamp contact={message.from} size="lg" />
@@ -428,7 +479,7 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPer
         )
       })}
 
-      {last && !inTrash && (
+      {last && !inTrash && !bare && (
         <div className="reply-bar">
           <button className="ticket ticket-main" onClick={() => mailbox.reply(last, 'reply')}>
             <ReplyIcon />

@@ -16,6 +16,10 @@ export type Settings = {
   remoteImages: boolean
   /** One-time suggestions (install the app, switch on notifications) that were put away. */
   tipsDone: string[]
+  /** The Hebrew date beside the date on an open letter. */
+  hebrewDate: boolean
+  /** How large a letter's text is, on this device. */
+  letterSize: 'regular' | 'large' | 'huge'
   /** Corrections: kinds of mail a sender's letters are not ("this is not a parcel"), by address. */
   notKinds: Record<string, string[]>
   /** Senders you said you know, so the inspector's soft notes about them are put away. */
@@ -30,6 +34,8 @@ const DEFAULTS: Settings = {
   sounds: false,
   remoteImages: true,
   tipsDone: [],
+  hebrewDate: false,
+  letterSize: 'regular',
   notKinds: {},
   trusted: [],
 }
@@ -39,7 +45,7 @@ const DEFAULTS: Settings = {
  * them when it starts. The rest (day or night, sounds, which tips were put away)
  * belong to the device they were chosen on.
  */
-const SHARED = ['signature', 'undoSendSeconds', 'bundles', 'remoteImages', 'notKinds', 'trusted'] as const
+const SHARED = ['signature', 'undoSendSeconds', 'bundles', 'remoteImages', 'notKinds', 'trusted', 'hebrewDate'] as const
 type SharedKey = (typeof SHARED)[number]
 
 const KEY = storageKey('doar:settings')

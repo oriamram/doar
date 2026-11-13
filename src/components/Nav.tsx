@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type DragEvent, type FormEvent, type ReactNode } from 'react'
 import { newDraft } from '../lib/compose'
 import { promptInstall, useInstall } from '../lib/install'
 import { mailbox, useMailbox } from '../lib/mailbox'
@@ -28,6 +28,8 @@ import {
   TagIcon,
   TrashIcon,
 } from './icons'
+import { carriesLetters, droppedLetters } from '../lib/dragging'
+import { toast } from '../lib/toast'
 import { Logo, TapeSwatch } from './Postal'
 
 type Props = {
@@ -66,6 +68,14 @@ const MORE_FOLDERS: Folder[] = [
 
 const MORE_KEY = 'doar:nav-more'
 
+/** What letters dropped on a folder do there. Folders not listed take no letters. */
+const DROPS: Partial<Record<FolderId, (ids: string[]) => void>> = {
+  inbox: (ids) => mailbox.moveToInbox(ids),
+  archive: (ids) => mailbox.archive(ids),
+  spam: (ids) => mailbox.spam(ids),
+  trash: (ids) => mailbox.trash(ids),
+}
+
 function savedMore(): boolean {
   try {
     return localStorage.getItem(MORE_KEY) === '1'
@@ -85,8 +95,42 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
   const [labelName, setLabelName] = useState('')
   const [more, setMore] = useState(savedMore)
   const current = viewKey(view)
+  // While letters are being dragged, every place that takes them is in view and says so.
+  const [dragging, setDragging] = useState(false)
+  const [over, setOver] = useState<string | null>(null)
+  useEffect(() => {
+    const start = (event: globalThis.DragEvent) => carriesLetters(event) && setDragging(true)
+    const end = () => {
+      setDragging(false)
+      setOver(null)
+    }
+    window.addEventListener('dragstart', start)
+    window.addEventListener('dragend', end)
+    window.addEventListener('drop', end)
+    return () => {
+      window.removeEventListener('dragstart', start)
+      window.removeEventListener('dragend', end)
+      window.removeEventListener('drop', end)
+    }
+  }, [])
+  /** Makes a menu item a place to drop letters on. */
+  const dropHere = (key: string, act: (ids: string[]) => void) => ({
+    'data-drop': dragging ? (over === key ? 'over' : 'ready') : undefined,
+    onDragOver: (event: DragEvent) => {
+      if (!carriesLetters(event)) return
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+      if (over !== key) setOver(key)
+    },
+    onDragLeave: () => setOver((now) => (now === key ? null : now)),
+    onDrop: (event: DragEvent) => {
+      event.preventDefault()
+      const ids = droppedLetters(event)
+      if (ids.length) act(ids)
+    },
+  })
   // Standing in one of the folded folders keeps them in view.
-  const showMore = more || MORE_FOLDERS.some((folder) => folder.id === current)
+  const showMore = more || dragging || MORE_FOLDERS.some((folder) => folder.id === current)
 
   const toggleMore = () => {
     const next = !showMore
@@ -124,7 +168,13 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
           ? Math.max(0, draftCount - scheduled.length)
           : (kept[folder.id] ?? 0)
     return (
-      <button key={folder.id} className="nav-item" aria-current={active ? 'page' : undefined} onClick={() => go({ kind: 'folder', id: folder.id })}>
+      <button
+        key={folder.id}
+        className="nav-item"
+        aria-current={active ? 'page' : undefined}
+        onClick={() => go({ kind: 'folder', id: folder.id })}
+        {...(DROPS[folder.id] ? dropHere(folder.id, DROPS[folder.id]!) : {})}
+      >
         {folder.icon}
         <span className="nav-name">{FOLDER_TITLES[folder.id]}</span>
         {count > 0 && <span className="count">{count}</span>}
@@ -194,6 +244,10 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
               data-depth={Math.min(label.name.split('/').length - 1, 2) || undefined}
               aria-current={current === `label:${label.id}` ? 'page' : undefined}
               onClick={() => go({ kind: 'label', id: label.id, name: label.name })}
+              {...dropHere(`label:${label.id}`, (ids) => {
+                mailbox.setLabel(ids, label.id, true)
+                toast(ids.length === 1 ? `המכתב קיבל את התווית „${labelLeaf(label.name)}”` : `${ids.length} מכתבים קיבלו את התווית „${labelLeaf(label.name)}”`)
+              })}
             >
               <TapeSwatch label={label} />
               <span className="nav-name ellipsis">{labelLeaf(label.name)}</span>

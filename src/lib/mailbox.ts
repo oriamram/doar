@@ -805,6 +805,21 @@ function trustSender(sender: Contact) {
   toast(`הכתובת של ${shortName(sender)} נרשמה כמוכרת.`, { action: { label: 'ביטול', run: () => updateSettings({ trusted: before }) } })
 }
 
+/** Your own note on a conversation ("" takes it off). Kept by Doar's server, so every device shows it. */
+async function setNote(threadId: string, text: string) {
+  const before = state.notes
+  const notes = { ...before }
+  if (text) notes[threadId] = text
+  else delete notes[threadId]
+  set({ notes })
+  try {
+    await postman.noteSet(threadId, text)
+  } catch {
+    set({ notes: before })
+    toast('הפתק לא נשמר. בדקו את החיבור ונסו שוב.', { tone: 'error' })
+  }
+}
+
 /** Opening hours for notifications (null: they may arrive at any time). */
 async function setHours(hours: postman.Hours | null) {
   const before = state.hours
@@ -1550,6 +1565,7 @@ export const mailbox = {
   removeMark,
   setHours,
   returnToSender,
+  setNote,
   notKind,
   trustSender,
   addRule,
