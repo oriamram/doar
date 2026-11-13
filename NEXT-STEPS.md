@@ -87,10 +87,14 @@ project, which takes you about ten minutes to create. Tell Claude and you'll get
 Buy a domain, add it in Vercel (**Settings**, **Domains**), and tell Claude, who adds it
 to Supabase's allowed addresses.
 
-## What Claude can build next without you
+## What comes next
 
-- Buttons on the notification itself (file, mark as read).
-- Snooze a letter until later.
-- Reading already-opened mail with no connection.
-- Printing a letter, blocking a sender, calendar invitations.
-- Not possible with today's permission: deleting forever (Gmail empties the trash after 30 days).
+The full plan is in ROADMAP.md (and as a page with pictures that Claude published for
+you). Most of it needs nothing from you. To start, Claude needs:
+
+1. One answer: do Doar's notifications appear on the phone's screen?
+2. Your OK for two test emails to your own address. Phase 1 uses them to check that
+   "someone answered" is recognized.
+3. For the clerk (phase 4) only: item 7 above, and a monthly limit in the Anthropic console.
+
+Not possible with today's permission: deleting forever (Gmail empties the trash after 30 days).
