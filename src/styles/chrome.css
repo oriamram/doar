@@ -1058,3 +1058,15 @@
   text-underline-offset: 3px;
   color: var(--ink-blue);
 }
+
+/* Settings: the deliberate way out (everything off the server, every device signed out). */
+.erase-link {
+  align-self: flex-start;
+  min-height: 32px;
+  font-weight: 700;
+  font-size: 13.5px;
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--ink-red);
+}

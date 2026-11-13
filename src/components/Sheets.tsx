@@ -273,6 +273,14 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             התנתקות
           </button>
         </div>
+        <div className="setting">
+          <span className="setting-note">
+            התנתקות מנתקת רק את המכשיר הזה. שאר המכשירים שלך, ההתראות אליהם, המכתבים המתוזמנים והתיוג האוטומטי ממשיכים לעבוד.
+          </span>
+          <button type="button" className="erase-link" onClick={() => void mailbox.forgetEverything()}>
+            ניתוק מכל המכשירים ומחיקת הנתונים מהשרת של דואר
+          </button>
+        </div>
       </fieldset>
     </Sheet>
   )
@@ -533,6 +541,10 @@ const GUIDE: { title: string; text: string }[] = [
   {
     title: 'תוויות',
     text: 'תווית היא מדבקה על מכתב, ואפשר לשים כמה. פותחים מכתב, לוחצים על שלוש הנקודות ובוחרים „תוויות”. כל תווית מופיעה בתפריט.',
+  },
+  {
+    title: 'העתקת שם וכתובת',
+    text: 'במכתב פתוח, לחיצה על שם השולח או על הכתובת שלו מעתיקה אותם.',
   },
   {
     title: 'תיוג אוטומטי',

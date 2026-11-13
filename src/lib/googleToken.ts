@@ -56,8 +56,12 @@ export function peekGoogleAccessToken(): string | null {
   return cached && cached.expiresAt > Date.now() + 10_000 ? cached.token : null
 }
 
-/** Forget the stored refresh token (used on sign-out). */
-export async function forgetGoogleTokens() {
+/**
+ * Ask the server to delete this account and everything it keeps for it (the Google key,
+ * notification addresses, scheduled letters, label rules). Throws if the server refused
+ * or couldn't be reached, so the caller can say so instead of half-finishing.
+ */
+export async function eraseServerAccount() {
+  await callTokenFunction({ action: 'erase' })
   cached = null
-  await callTokenFunction({ action: 'forget' }).catch(() => {})
 }

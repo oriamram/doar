@@ -93,8 +93,28 @@ export const scheduleUpdate = (id: string, sendAt: Date) =>
 
 export const scheduleCancel = (id: string) => call<{ ok: true }>({ action: 'schedule-cancel', id })
 
-/** `from` is whatever the person typed; the server tidies it into an address or a site, or refuses it. */
-export const ruleCreate = (from: string, labelId: string) =>
-  call<{ rule: RuleRow }>({ action: 'rule-create', match: from, label_id: labelId }).then((answer) => fromRule(answer.rule))
+export type RuleSaved = {
+  rule: LabelRule
+  /** How many letters that had already arrived got the label; null if that part failed. */
+  labeled: number | null
+  /** The conversations those letters belong to. */
+  threadIds: string[]
+}
+
+/**
+ * `from` is whatever the person typed; the server tidies it into an address or a site, or
+ * refuses it. With `existing`, the server also labels that sender's mail that is already here.
+ */
+export const ruleCreate = (from: string, labelId: string, existing: boolean): Promise<RuleSaved> =>
+  call<{ rule: RuleRow; labeled?: number | null; thread_ids?: string[] }>({
+    action: 'rule-create',
+    match: from,
+    label_id: labelId,
+    existing,
+  }).then((answer) => ({
+    rule: fromRule(answer.rule),
+    labeled: existing ? (answer.labeled ?? null) : 0,
+    threadIds: answer.thread_ids ?? [],
+  }))
 
 export const ruleDelete = (id: string) => call<{ ok: true }>({ action: 'rule-delete', id })

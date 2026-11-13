@@ -40,6 +40,13 @@ export const InstallIcon = () => (
   </Icon>
 )
 
+export const CopyIcon = () => (
+  <Icon>
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+  </Icon>
+)
+
 export const ArchiveIcon = () => (
   <Icon>
     <rect x="3" y="4" width="18" height="5" rx="1" />

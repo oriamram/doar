@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { sameEmail, shortName } from '../lib/addresses'
 import { realAttachments } from '../lib/compose'
+import { copyText } from '../lib/clipboard'
 import { formatFullDate, formatLetterDate, formatListDate } from '../lib/format'
 import { loadMessages, peekMessages, sendRaw } from '../lib/gmail'
 import { mailbox, useMailbox } from '../lib/mailbox'
@@ -12,6 +13,7 @@ import { EmailBody } from './EmailBody'
 import {
   ArchiveIcon,
   BackIcon,
+  CopyIcon,
   ForwardIcon,
   InboxIcon,
   MailIcon,
@@ -25,6 +27,32 @@ import {
   TrashIcon,
 } from './icons'
 import { DuplexCancel, GoldStar, LabelTape, SenderStamp } from './Postal'
+
+type CopyableProps = {
+  text: string
+  /** What the note says once it's copied. */
+  done: string
+  className: string
+  dir: 'auto' | 'ltr'
+  /** Show a small copy mark beside it, as a hint that it can be tapped. */
+  hint?: boolean
+}
+
+/** A name or an address written on the envelope: tap it and it's copied. */
+function Copyable({ text, done, className, dir, hint }: CopyableProps) {
+  const copy = async () => {
+    if (await copyText(text)) toast(done)
+    else toast('ההעתקה לא הצליחה במכשיר הזה.', { tone: 'error' })
+  }
+  return (
+    <button type="button" className={`copyable ${className}`} onClick={() => void copy()} title="לחיצה מעתיקה" aria-label={`העתקת ${text}`}>
+      <span className="ellipsis" dir={dir}>
+        {text}
+      </span>
+      {hint && <CopyIcon />}
+    </button>
+  )
+}
 
 type Props = {
   thread: Thread
@@ -239,19 +267,18 @@ export function ThreadView({ thread, onBack, onLabels }: Props) {
         return (
           <section key={message.id} className="message">
             <span className="flap" aria-hidden="true" />
-            <button
-              className="envelope"
-              onClick={() => letters.length > 1 && flip(message.id)}
-              aria-expanded={true}
-              aria-label={`מאת ${message.from.name}, ${formatFullDate(message.date)}`}
-            >
+            <div className="envelope">
+              {/* The whole envelope folds the letter away; the name and address on it are buttons of their own, above this one. */}
+              <button
+                type="button"
+                className="envelope-toggle"
+                onClick={() => letters.length > 1 && flip(message.id)}
+                aria-expanded={true}
+                aria-label={`מאת ${message.from.name}, ${formatFullDate(message.date)}`}
+              />
               <span className="envelope-label">מאת</span>
-              <span className="envelope-name ellipsis" dir="auto">
-                {message.from.name}
-              </span>
-              <span className="envelope-addr ellipsis" dir="ltr">
-                {message.from.email}
-              </span>
+              {message.from.name && <Copyable className="envelope-name" dir="auto" text={message.from.name} done="השם הועתק" />}
+              {message.from.email && <Copyable className="envelope-addr" dir="ltr" text={message.from.email} done="הכתובת הועתקה" hint />}
               {message.to.length + message.cc.length > 0 && (
                 <span className="envelope-addr envelope-to ellipsis" dir="auto">
                   אל: {recipients(message)}
@@ -263,7 +290,7 @@ export function ThreadView({ thread, onBack, onLabels }: Props) {
                 <DuplexCancel iso={message.date} />
               </span>
               {message.id === last?.id && thread.starred && <GoldStar className="envelope-star" />}
-            </button>
+            </div>
             <div className="letter">
               <EmailBody message={message} />
               <Attachments files={realAttachments(message)} />

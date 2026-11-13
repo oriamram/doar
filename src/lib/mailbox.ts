@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { ComposeDraft, Contact, Label, Message, Thread } from '../types'
 import { shortName } from './addresses'
-import { signOut } from './auth'
+import { eraseAccount, signOut } from './auth'
 import { draftFromMessage, replyDraft } from './compose'
 import { harvestRecipients, rememberContacts } from './contacts'
 import { formatWhen } from './format'
@@ -930,23 +930,24 @@ function ruleProblem(error: unknown): string {
 /**
  * From now on, mail from `from` (an address or a site) gets this label by itself:
  * Doar's server puts it on within a minute of the letter arriving. With `existing`,
- * the mail from that sender that is already here gets it now.
+ * the server also puts it, right now, on the mail from that sender that is already here.
  */
 async function addRule(from: string, labelId: string, existing: boolean): Promise<boolean> {
   try {
-    const rule = await postman.ruleCreate(from, labelId)
+    const { rule, labeled, threadIds } = await postman.ruleCreate(from, labelId, existing)
     set({ rules: [...state.rules.filter((other) => other.id !== rule.id), rule] })
-    if (!existing) {
+    if (!existing || labeled === 0) {
       toast('הכלל נשמר. מכתבים חדשים יתויגו לבד.')
       return true
     }
-    // A site is kept as "@site"; Gmail's search wants just the site.
-    const sender = rule.match.startsWith('@') ? rule.match.slice(1) : rule.match
-    const found = await api.labelMatching(`from:(${sender})`, labelId)
-    change(found.threadIds, (thread) => ({ ...thread, labelIds: withLabel(thread.labelIds, labelId) }))
+    if (labeled === null) {
+      toast('הכלל נשמר, אבל את המכתבים שכבר הגיעו לא הצלחנו לתייג. מכתבים חדשים יתויגו לבד.', { tone: 'error', duration: 9000 })
+      return true
+    }
+    // The server already put the label on in Gmail; show it on the letters on screen.
+    change(threadIds, (thread) => ({ ...thread, labelIds: withLabel(thread.labelIds, labelId) }))
     viewCache.delete(`label:${labelId}`)
-    if (found.messages === 0) toast('הכלל נשמר. מכתבים חדשים יתויגו לבד.')
-    else toast(found.messages === 1 ? 'הכלל נשמר, ומכתב אחד שכבר הגיע תויג.' : `הכלל נשמר, ו־${found.messages} מכתבים שכבר הגיעו תויגו.`)
+    toast(labeled === 1 ? 'הכלל נשמר, ומכתב אחד שכבר הגיע תויג.' : `הכלל נשמר, ו־${labeled} מכתבים שכבר הגיעו תויגו.`)
     return true
   } catch (error) {
     toast(ruleProblem(error), { tone: 'error' })
@@ -1041,12 +1042,8 @@ function stop() {
   stopRunning = null
 }
 
-/** Sign out, and forget the mail kept on this device. */
-function leave() {
-  const waiting = state.scheduled.filter((item) => item.status === 'pending').length
-  if (waiting && !window.confirm(`${waiting === 1 ? 'מכתב אחד מחכה' : `${waiting} מכתבים מחכים`} לשליחה מתוזמנת. אחרי התנתקות הם לא יישלחו (הם נשארים בטיוטות). להתנתק?`)) {
-    return
-  }
+/** Forget the mail kept on this device, and stop everything that runs in it. */
+function forgetLocal() {
   try {
     localStorage.removeItem(savedKey(state.me.email))
   } catch {
@@ -1057,8 +1054,38 @@ function leave() {
   draftInfos.clear()
   state = blank({ name: '', email: '' })
   document.title = 'דואר'
+}
+
+/**
+ * Sign out on this device only. Your other devices stay signed in, and scheduled
+ * letters, notifications to them and automatic labels carry on.
+ */
+function leave() {
+  forgetLocal()
   // The server must stop notifying this device before the session that proves who we are is gone.
   void forgetPush().finally(() => void signOut())
+}
+
+/**
+ * Disconnect every device and erase what Doar's server keeps for this account.
+ * The mail itself, in Gmail, is not touched.
+ */
+async function forgetEverything() {
+  const waiting = state.scheduled.filter((item) => item.status === 'pending').length
+  const warning = [
+    'הפעולה הזאת מנתקת את דואר מכל המכשירים שלך, ומוחקת מהשרת של דואר את מפתח ההתחברות, כתובות ההתראות וכללי התיוג.',
+    waiting ? `${waiting === 1 ? 'מכתב מתוזמן אחד לא יישלח; הוא נשאר' : `${waiting} מכתבים מתוזמנים לא יישלחו; הם נשארים`} בטיוטות.` : '',
+    'הדואר עצמו, ב־Gmail, לא נמחק. להמשיך?',
+  ]
+  if (!window.confirm(warning.filter(Boolean).join('\n\n'))) return
+  try {
+    await forgetPush()
+    await eraseAccount()
+  } catch {
+    toast('המחיקה מהשרת לא הצליחה. בדקו את החיבור ונסו שוב.', { tone: 'error' })
+    return
+  }
+  forgetLocal()
 }
 
 export const mailbox = {
@@ -1101,6 +1128,7 @@ export const mailbox = {
   openScheduled,
   addRule,
   removeRule,
+  forgetEverything,
   endFlight: () => set({ flight: null }),
   signOut: leave,
 }

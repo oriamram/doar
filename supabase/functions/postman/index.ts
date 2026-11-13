@@ -18,7 +18,8 @@
 //   POST { action: "schedule-create", draft_id, send_at }   { scheduled }
 //   POST { action: "schedule-update", id, send_at }         { scheduled }
 //   POST { action: "schedule-cancel", id }                  { ok }
-//   POST { action: "rule-create", match, label_id }         { rule }   match: an address or a domain
+//   POST { action: "rule-create", match, label_id, existing }   { rule, labeled, thread_ids }
+//        match: an address or a domain; existing: also label that sender's mail already here
 //   POST { action: "rule-delete", id }                      { ok }
 //
 // Called by the database's timer every minute (header x-cron-secret, see the migration):
@@ -507,6 +508,34 @@ async function tick(): Promise<Report> {
   return report
 }
 
+// ---------- Automatic labels ----------
+
+/** Put a label on the mail from a sender that is already in the mailbox (up to 1000 messages). */
+async function labelExisting(token: string, sender: string, labelId: string): Promise<{ messages: number; threads: string[] }> {
+  const ids: string[] = []
+  const threads = new Set<string>()
+  let pageToken = ''
+  do {
+    const page = await gmail(
+      token,
+      `/messages?maxResults=500&q=${encodeURIComponent(`from:(${sender})`)}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+    )
+    if (page.status !== 200) throw new Error(`Gmail search ${page.status}`)
+    for (const message of (page.body.messages ?? []) as MessageRef[]) {
+      if (ids.length >= 1000) break
+      ids.push(message.id)
+      threads.add(message.threadId)
+    }
+    pageToken = page.body.nextPageToken ?? ''
+  } while (pageToken && ids.length < 1000)
+
+  if (ids.length) {
+    const changed = await gmail(token, '/messages/batchModify', { method: 'POST', body: JSON.stringify({ ids, addLabelIds: [labelId] }) })
+    if (changed.status !== 204 && changed.status !== 200) throw new Error(`Gmail label ${changed.status}`)
+  }
+  return { messages: ids.length, threads: [...threads] }
+}
+
 // ---------- Requests from the app ----------
 
 function validTime(value: unknown): string | null {
@@ -675,13 +704,14 @@ async function fromApp(userId: string, body: any): Promise<Response> {
       if (!match) return json({ error: 'bad_match' }, 400)
       if (typeof body.label_id !== 'string' || !body.label_id || body.label_id.length > 120) return json({ error: 'label_missing' }, 404)
       // The label must be one of this person's own Gmail labels.
-      let label
+      let token: string
       try {
-        label = await gmail(await googleToken(userId), `/labels/${encodeURIComponent(body.label_id)}`)
+        token = await googleToken(userId)
       } catch (error) {
         if (error instanceof Reauth) return json({ error: 'reauth' }, 401)
         throw error
       }
+      const label = await gmail(token, `/labels/${encodeURIComponent(body.label_id)}`)
       if (label.status !== 200 || label.body.type !== 'user') return json({ error: 'label_missing' }, 404)
       const { count } = await admin.from('label_rules').select('id', { count: 'exact', head: true }).eq('user_id', userId)
       if ((count ?? 0) >= 200) return json({ error: 'too_many' }, 409)
@@ -697,7 +727,18 @@ async function fromApp(userId: string, body: any): Promise<Response> {
         .eq('match', match)
         .eq('label_id', body.label_id)
         .maybeSingle()
-      return data ? json({ rule: data }) : json({ error: 'Could not save rule' }, 500)
+      if (!data) return json({ error: 'Could not save rule' }, 500)
+      if (body.existing !== true) return json({ rule: data })
+
+      // The rule is saved either way; `labeled` is null if the older mail could not be labeled now.
+      try {
+        // A site is kept as "@site"; Gmail's search wants just the site.
+        const found = await labelExisting(token, match.startsWith('@') ? match.slice(1) : match, body.label_id)
+        return json({ rule: data, labeled: found.messages, thread_ids: found.threads })
+      } catch (error) {
+        console.warn('older mail not labeled', errorText(error))
+        return json({ rule: data, labeled: null, thread_ids: [] })
+      }
     }
 
     case 'rule-delete':

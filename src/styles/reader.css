@@ -593,3 +593,54 @@
 .hint {
   margin-top: 8px;
 }
+
+/* ---------- Copying what's written on the envelope ---------- */
+
+/* The envelope itself is one big button (it folds the letter away), lying under its writing. */
+.envelope-toggle {
+  position: absolute;
+  inset: -10px;
+}
+
+.envelope-toggle:focus-visible {
+  outline: 2px solid var(--ink-red);
+  outline-offset: -3px;
+}
+
+/* A name or an address: tap it and it's copied. Only as wide as its text, so the rest of the envelope still folds. */
+.envelope .copyable {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  text-align: start;
+  cursor: copy;
+}
+
+.envelope .copyable .ellipsis {
+  min-width: 0;
+}
+
+.envelope .copyable svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  opacity: 0.55;
+}
+
+.envelope .copyable:hover .ellipsis,
+.envelope .copyable:focus-visible .ellipsis {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.envelope .copyable:hover svg {
+  opacity: 1;
+}
+
+.envelope .copyable:active {
+  opacity: 0.6;
+}

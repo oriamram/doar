@@ -2,7 +2,7 @@ import { App as CapacitorApp } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
-import { forgetGoogleTokens, rememberGoogleTokens } from './googleToken'
+import { clearGoogleAccessToken, eraseServerAccount, rememberGoogleTokens } from './googleToken'
 import { isNative } from './platform'
 import { supabase } from './supabase'
 
@@ -47,9 +47,22 @@ export async function signInWithGoogle() {
   if (isNative && data.url) await Browser.open({ url: data.url })
 }
 
+/**
+ * Sign out on this device only. The server keeps the Google key, because your other
+ * devices use it, and so do scheduled letters, notifications and automatic labels.
+ */
 export async function signOut() {
-  await forgetGoogleTokens()
-  await supabase.auth.signOut()
+  clearGoogleAccessToken()
+  await supabase.auth.signOut({ scope: 'local' })
+}
+
+/**
+ * Erase everything Doar's server keeps for this account, which signs out every device,
+ * then sign out here. Throws (and changes nothing here) if the server couldn't do it.
+ */
+export async function eraseAccount() {
+  await eraseServerAccount()
+  await supabase.auth.signOut({ scope: 'local' })
 }
 
 let storedRefreshToken: string | null = null

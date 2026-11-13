@@ -6,7 +6,14 @@
 //
 // POST { action: "store", refresh_token }  save the refresh token (right after sign-in)
 // POST { action: "access" }                get { access_token, expires_in }
-// POST { action: "forget" }                delete the stored token (sign-out)
+// POST { action: "erase" }                 delete the account and everything kept for it
+// POST { action: "forget" }                nothing (see below)
+//
+// One refresh token serves all of a person's devices and the postman function (scheduled
+// letters, notifications, automatic labels). So signing out on one device must not delete
+// it: "forget", which older versions of the app send on sign-out, does nothing now.
+// "erase" is the deliberate way out: it deletes the person's user row, and the token,
+// notification addresses, scheduled letters and label rules all hang off that row.
 //
 // Requires secrets GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (Edge Functions → Secrets).
 // Deployed with verify_jwt off because it checks the caller's Supabase session itself.
@@ -64,7 +71,15 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === 'forget') {
-    await admin.from('google_tokens').delete().eq('user_id', userId)
+    return json({ ok: true })
+  }
+
+  if (body.action === 'erase') {
+    const { error } = await admin.auth.admin.deleteUser(userId)
+    if (error) {
+      console.error('Could not erase account', error.message)
+      return json({ error: 'Could not erase account' }, 500)
+    }
     return json({ ok: true })
   }
 
