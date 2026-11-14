@@ -752,6 +752,41 @@ try {
   check('the album\u2019s search line is a pale line on the form, at night too', field === 'light pale' && (await formFits()), field)
   await shot(book, 'phone-album')
   await closeForm()
+
+  // A receipt from abroad that is a web page pasted into an email. Its total is in kronur and
+  // stands only in the HTML (the plain-text part has the price before fees); the page is wider
+  // than any letter, at any scale; and one of its pictures can no longer be fetched.
+  await openFromMenu('דוקרן הקבלות')
+  await book.waitFor(`[...document.querySelectorAll('.spike-amount')].some((cell) => cell.textContent.includes('884'))`, 15_000)
+  const kronur = (await book.texts('.spike-amount')).find((sum) => sum.includes('884')) ?? ''
+  check('a sum in another currency is read from the letter itself, fees included', kronur.includes('884 kr'), kronur)
+  const month = await book.text('.spike-sum')
+  check('a month adds up each currency by itself', month.includes('470.50') && month.includes('$64.00') && month.includes('884 kr'), month)
+  await book.clickText('P2 - Receipt', '.spike-month li button')
+  await book.waitFor('.letter iframe')
+  await book.waitFor(`document.querySelector('.letter iframe').contentDocument?.documentElement.classList.contains('doar-tight')`, 10_000)
+  await sleep(1200)
+  const pasted = await book.evaluate<{ room: number; wide: number; right: number; sideways: string; logo: number; gone: string }>(`(() => {
+    const frame = document.querySelector('.letter iframe')
+    const page = frame.contentDocument
+    const zoom = Number(page.body.style.zoom || 1)
+    const total = [...page.querySelectorAll('td')].find((cell) => cell.textContent.trim() === '884 kr').getBoundingClientRect()
+    return {
+      room: frame.clientWidth,
+      wide: page.documentElement.scrollWidth,
+      right: Math.round(total.right),
+      sideways: page.documentElement.style.overflowX,
+      logo: Math.round(page.querySelector('img[height="30"]').getBoundingClientRect().height / zoom),
+      gone: getComputedStyle(page.querySelector('img.logoimg')).display,
+    }
+  })()`)
+  check('a web page pasted into an email fits the letter, to its last column', pasted.wide <= pasted.room + 2 && pasted.right <= pasted.room && pasted.sideways === '', JSON.stringify(pasted))
+  check('a picture keeps the height its email asked for', pasted.logo === 30, String(pasted.logo))
+  check('a picture that cannot be fetched leaves no mark', pasted.gone === 'none', pasted.gone)
+  const paper = await book.text('.kind-card[data-kind="receipt"]')
+  check('the card on the receipt shows the total', paper.includes('884 kr'), paper)
+  await shot(book, 'phone-pasted-page')
+
   check('nothing went wrong in the guide', book.errors.length === 0, book.errors.join(' | ').slice(0, 300))
   book.close()
 

@@ -4,9 +4,9 @@ import { sameEmail, shortName } from '../lib/addresses'
 import { realAttachments } from '../lib/compose'
 import { copyText } from '../lib/clipboard'
 import { countDays, formatDay, formatFullDate, formatLetterDate, formatListDate, formatWhen, hebrewDate } from '../lib/format'
-import { lettersFrom, loadMessages, peekMessages } from '../lib/gmail'
+import { lettersFrom, letterText, loadMessages, peekMessages } from '../lib/gmail'
 import { inspectSender, type Finding } from '../lib/inspector'
-import { LETTER, shapeOf, type Kind, type Shape } from '../lib/kinds'
+import { findAmount, LETTER, shapeOf, type Kind, type Shape } from '../lib/kinds'
 import { DEMO_KNOWN, KNOWN_SENDERS } from '../lib/known-senders'
 import { isDemo } from '../lib/demo'
 import { mailbox, useMailbox } from '../lib/mailbox'
@@ -51,14 +51,18 @@ const isCalendarFile = (file: { mimeType: string; filename: string }) => /^(?:te
 
 /** What an open letter is, now that all of it can be read. */
 function letterShape(letter: Message, thread: Thread, notKinds: Record<string, string[]>): Shape {
-  return shapeOf({
-    subject: letter.subject || thread.subject,
+  const subject = letter.subject || thread.subject
+  const shape = shapeOf({
+    subject,
     text: letter.bodyText,
     bulk: letter.bulk,
     promotion: thread.category === 'promotions',
     calendar: !!letter.calendar || letter.attachments.some(isCalendarFile),
     not: notKinds[letter.from.email.toLowerCase()] as Kind[] | undefined,
   })
+  // A receipt's sum is read from what the reader sees: the plain-text part may be a stub with one line of it.
+  if (shape.kind !== 'receipt') return shape
+  return { ...shape, amount: findAmount(`${subject}\n${letterText(letter)}`) ?? shape.amount }
 }
 
 type CopyableProps = {

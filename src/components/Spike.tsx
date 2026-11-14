@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { shortName } from '../lib/addresses'
-import { listThreads, loadMessages } from '../lib/gmail'
+import { letterText, listThreads, loadMessages } from '../lib/gmail'
 import { findAmount, formatAmount, RECEIPT_SEARCH, threadShape, type Amount } from '../lib/kinds'
 import { mailbox } from '../lib/mailbox'
 import { useSettings } from '../lib/settings'
@@ -49,14 +49,15 @@ export function SpikeSheet({ onClose }: { onClose: () => void }) {
       }
       if (cancelled) return
       setRows([...found])
-      // A sum that is not in a letter's first words is looked for in the whole letter, a few letters at a time.
-      const missing = found.filter((row) => !row.amount)
-      for (let index = 0; index < missing.length && !cancelled; index += 4) {
+      // A letter's first words often carry one line of a receipt, or none. Every sum is read
+      // again from the whole letter, a few letters at a time; letters kept on the device answer at once.
+      for (let index = 0; index < found.length && !cancelled; index += 4) {
         await Promise.all(
-          missing.slice(index, index + 4).map(async (row) => {
+          found.slice(index, index + 4).map(async (row) => {
             const messages = await loadMessages(row.thread).catch(() => null)
             const letter = messages?.findLast((message) => !message.isDraft)
-            if (letter) row.amount = findAmount(`${letter.subject}\n${letter.bodyText}`)
+            const sum = letter ? findAmount(`${letter.subject}\n${letterText(letter)}`) : null
+            if (sum) row.amount = sum
           }),
         )
         if (!cancelled) setRows([...found])
@@ -78,7 +79,16 @@ export function SpikeSheet({ onClose }: { onClose: () => void }) {
         <section key={month.key} className="spike-month">
           <header>
             <h3>{month.title}</h3>
-            <span className="spike-sum">{month.sums.map(formatAmount).join(' ועוד ') || '—'}</span>
+            <span className="spike-sum">
+              {month.sums.length === 0
+                ? '—'
+                : month.sums.map((sum, index) => (
+                    <span key={sum.currency}>
+                      {index > 0 && 'ועוד '}
+                      {formatAmount(sum)}
+                    </span>
+                  ))}
+            </span>
           </header>
           <ul>
             {month.rows.map(({ thread, amount }) => (

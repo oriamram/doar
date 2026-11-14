@@ -405,6 +405,15 @@ search line had no style of its own, so at night it took the device's dark look.
 Also that day: the button on a receipt said "לדוקרן" but filed the letter, and the owner
 asked why the letter closed with "המכתב תויק". It now says "כל הקבלות" and opens the
 spike over the letter; filing stays with "לתיוק".
+And two more, from a parking company's receipts abroad: (1) the letter was cut at its right
+edge. It is a web page's markup pasted into an email, every box "100% wide plus padding", so
+it is wider than whatever shows it, at any scale. Such a letter now gets back the one rule its
+missing stylesheet had (padding counts inside the width), is laid out as if the letter were
+440px wide and scaled down; a picture keeps a height it asks for, and a picture that cannot be
+fetched is put away. (2) No sum was read: it was in kronur ("884 kr"), and only in the HTML.
+Sums are now read in any common currency (signs, words, codes in capitals), with thousands
+and cents written either way, and a receipt's total is read from what the reader sees
+(`letterText`), on the receipt's card and for every row of the spike.
 
 **The server (done once, for phases 0 to 3).** Migration `20261113100000_post_office.sql`
 and `postman` version 4 are live: fault reports, shared preferences, held and registered

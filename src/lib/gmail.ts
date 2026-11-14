@@ -560,6 +560,22 @@ export function textToHtml(text: string): string {
 }
 
 /** The readable text of an HTML email (parsed, never run). */
+const readAs = new WeakMap<Message, string>()
+
+/**
+ * What a letter says, as its reader sees it: the text of its HTML. Some senders also write a
+ * plain-text part that is only a stub (the price before fees, "open this in a browser"), and
+ * `bodyText` is that part. A receipt's total is looked for here.
+ */
+export function letterText(message: Message): string {
+  let text = readAs.get(message)
+  if (text === undefined) {
+    text = htmlToText(message.bodyHtml) || message.bodyText
+    readAs.set(message, text)
+  }
+  return text
+}
+
 export function htmlToText(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   doc.querySelectorAll('style, script, head, title').forEach((element) => element.remove())

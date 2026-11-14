@@ -93,6 +93,8 @@ const vaad = { name: 'ועד הבית', email: 'vaad@rehov-hagefen.example' }
 const lottery = { name: 'הגרלת הזהב', email: 'winner@hagralat-zahav.example' }
 /** Pretends to be the bank; its address is not the bank's. */
 const fakeBank = { name: 'בנק הדוגמה', email: 'security@bank-dugma-login.example' }
+/** A parking company abroad. Its receipts are a web page pasted into an email (see parkingReceipt). */
+const parking = { name: 'Bilastaedi', email: 'no-reply@bilastaedi.example' }
 /** Writes the way shops abroad do: a long name, a long subject, a long file name, all in Latin letters. */
 const park = { name: 'Northern Glacier National Park Visitor Services', email: 'receipts@glacier-park.example' }
 
@@ -167,6 +169,8 @@ type Spec = {
   files?: FileSpec[]
   /** An invitation: the text of an .ics file. */
   calendar?: string
+  /** The letter's plain-text part, when the sender wrote one that differs from the HTML (often a short stub). */
+  text?: string
   /** What Gmail concluded about the sender; mail from "me" has no verdict. */
   auth?: 'pass' | 'fail' | 'none'
 }
@@ -198,6 +202,48 @@ const promo = (color: string, title: string, lines: string[], site: string) =>
   `<br><br><a href="https://${site}/sale" style="background:${color};color:#fff;padding:12px 22px;text-decoration:none;border-radius:4px;display:inline-block">לכל המבצעים</a></td></tr>` +
   `<tr><td style="padding:16px 24px;font-size:12px;color:#888">קיבלת את המייל הזה כי נרשמת לרשימת התפוצה. <a href="https://${site}/unsubscribe?u=4821">הסרה</a></td></tr></table>` +
   `<img src="https://track.${site}/open.gif?u=4821&m=77" width="1" height="1" alt="" style="display:none">`
+
+/**
+ * A parking receipt the way one real sender builds it: a web page's markup pasted into an
+ * email. Its boxes are "100% wide plus padding", nested three deep, so the page is wider
+ * than whatever it is shown in; its logo is sized by height alone; one picture's address
+ * has expired; the sums are in kronur, written "884 kr"; and the plain-text part is a
+ * short stub with only the price before fees. Everything in it is made up.
+ */
+function parkingReceipt(): string {
+  const logo =
+    'data:image/svg+xml,' +
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160"><rect width="640" height="160" fill="#fff"/><path d="M20 20h90a50 50 0 0 1 0 100H60v30H20z" fill="#1aa39a"/><text x="170" y="118" font-family="Arial" font-weight="700" font-size="120" fill="#0c2a2a">Stadi</text></svg>',
+    )
+  const box = 'padding: 1rem!important; border-radius: 5px; padding-bottom: 3px; background: rgb(255, 255, 255);'
+  const row = 'margin-top: 10px; display: flex; margin-right: -15px; margin-left: -15px; flex-wrap: wrap;'
+  const col = (percent: number) => `position: relative; width: 100%; padding-right: 15px; padding-left: 15px; max-width: ${percent}.0%; flex: 0 0 ${percent}.0%;`
+  const half = (title: string, time: string) => `<div class="col-50" style="${col(50)}"><div class="p-3 white-background rounded" style="${box}"><strong>${title}</strong><br /> ${time}<br /> 16/Sep/2026<br /></div></div>`
+  const wide = (inner: string) => `<div class="row m-t-10" style="${row}"><div class="col-100" style="${col(100)}"><div class="p-3 white-background rounded" style="${box}">${inner}</div></div></div>`
+  const sums = (rows: [string, string][], bold = false) =>
+    `<table style="width: 100%;"><tbody>${rows.map(([name, sum]) => `<tr><td${bold ? ' style="text-align: right;"' : ''}>${bold ? `<strong>${name}</strong>` : name}</td><td style="text-align: right;">${sum}</td></tr>`).join('')}</tbody></table>`
+  return (
+    `<!DOCTYPE html><html lang="en"><head><script src="https://files.bilastaedi.example/static/js/app.min.js"></script><style media="print"> .print-hide { display: none; } </style> &nbsp; </head><body><div class="container">` +
+    `<style> body { font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; } .container .kvittun { text-align: left !important; } .kvittun { background-color: #fff; color: #000; border: solid 1px #ccc; padding: 10px } .kvittun .logo {text-align:center; } .kvittun img.logoimg { width: 80%; max-width: 320px; margin: 0 auto; padding-bottom: 10px; } .kvittun table td { padding: 4px 15px 4px 0; } </style>` +
+    `<div class="flex-row"><div class="d-inline-flex" style="margin: auto; display: inline-block;"><div class="white-background" style="background: rgb(255, 255, 255);"><div class="container">` +
+    `<style> .kvittun { color: rgb(55, 60, 67); padding: 15px } .black-background { background: rgb(55, 60, 67); } .white-background { background: rgb(255, 255, 255); } .grey-background { background: rgb(244, 241, 240); } .rounded { border-radius: 5px; } table { width: 100%; } .container { width: 100%; margin-right: auto; margin-left: auto; padding-right: 15px; padding-left: 15px; } .row { display: flex; margin-right: -15px; margin-left: -15px; flex-wrap: wrap; } .col-6 { max-width: 50%; flex: 0 0 50%; } .col-6, .col-3, .col-4, .col-12 { position: relative; width: 100%; padding-right: 15px; padding-left: 15px; } </style>` +
+    `<div class=""><div class="grey-background container" style="margin: auto; display: inline-block; max-width: 500px; width: 100%; margin-right: auto; margin-left: auto; padding-right: 15px; padding-left: 15px; background: rgb(244, 241, 240);">` +
+    `<div class="row" style="color:#fff; padding: 10px; font-size: 0.9em; display: flex; margin-right: -15px; margin-left: -15px; flex-wrap: wrap;">` +
+    `<div class="col-6 text-left" style="text-align: left; position: relative; width: 100%; padding-right: 15px; padding-left: 15px; max-width: 50%; flex: 0 0 50%;"><div class="black-background rounded" style="border-radius: 5px; padding-left: 5px; padding-right: 5px; display: inline-block; background: rgb(55, 60, 67);"><span>Svæði </span><span style="font-weight: bold; font-size: 20px; vertical-align: middle;">1001</span></div></div>` +
+    `<div class="col-6 text-right" style="text-align: right; position: relative; width: 100%; padding-right: 15px; padding-left: 15px; max-width: 50%; flex: 0 0 50%;"><img style="max-width:250px;" src="${logo}" height="30" align="absmiddle"></div></div>` +
+    `<div class="kvittun" style="width: auto;"><div class="logo" style="margin-top: 5px;text-align: center;"><img style="max-width: 200px;" class="logoimg" src="https://files.bilastaedi.example/lot_logo/p2.png?Signature=made-up&Expires=1"></div>` +
+    `<div class="row" style="display: flex; margin-right: -15px; margin-left: -15px; flex-wrap: wrap;"><div class="col-12" style="position: relative; width: 100%; padding-right: 15px; padding-left: 15px;"> Parking lot <h2><strong>P2</strong></h2> Receipt for payment<br /> Paid at 16-09-2026 kl 09:00<br /> Payment Nr. 10000001 </div></div>` +
+    `<div class="text-center" style="text-align: center"><p class="m-b-5" style="margin-bottom: 5px;">License plate</p><span class="black-background rounded" style="border-radius: 5px; padding: 5px 20px 5px 20px; color: #fff; font-size: 30px; font-weight: bold; background: rgb(55, 60, 67);">AB123</span></div>` +
+    wide('<strong>Check-in and check-out</strong><br />') +
+    `<div class="row m-t-10" style="${row}">${half('Check-in', '09:00:25')}${half('Check-out', '12:19:11')}</div>` +
+    wide(sums([['<strong>Parking fee</strong>', ''], ['Price', '795 kr']])) +
+    wide(sums([['<strong>Transaction fee</strong>', ''], ['Transaction fee', '89 kr'], ['Thereof VAT 24%', '17 kr']])) +
+    wide(sums([['VAT total:', '17 kr'], ['Total:', '884 kr']], true)) +
+    `</div><div class="row m-t-10" style="${row}"><div class="col-12 text-center" style="text-align: center; position: relative; width: 100%; padding-right: 15px; padding-left: 15px;"><p class="merchant-line">Bilastaedi Dugma ehf.<br />Reykjavík</p></div></div>` +
+    `</div></div></div></div></div></div></div></body></html>`
+  )
+}
 
 function invitation(start: Date): string {
   const stamp = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '')
@@ -456,6 +502,16 @@ function specs(): Spec[] {
       files: [{ filename: 'Receipt-Northern-Glacier-National-Park-booking-7H2K-99413-ZX.pdf', mimeType: 'application/pdf', data: tinyPdf(['Receipt', 'Total: $64.00']) }],
     },
     {
+      // Already filed. A web page pasted into an email: it must fit the letter, and its sum is in kronur.
+      thread: 't-parking',
+      from: parking,
+      subject: 'P2 - Receipt',
+      ago: 6100,
+      html: parkingReceipt(),
+      text: 'Payment #10000001\r\n\r\nP2\r\nBorgartun 1\r\n101\r\nLicense plate:\r\nAB123\r\n\r\nPeriod\r\nFrom: 2026-09-16 9:00:25\r\nTo: 2026-09-16 12:19:11\r\n\r\nPrice\r\n795 ISK *\r\n',
+      labels: [UPDATES],
+    },
+    {
       thread: 't-michal',
       from: me,
       to: [michal],
@@ -573,7 +629,7 @@ export function makeMessage(
   historyId: number,
 ): DemoMessage {
   const id = `m${nextId++}`
-  const text = plainText(spec.html)
+  const text = spec.text ?? plainText(spec.html)
   const to = spec.to ?? (spec.from === DEMO_ME ? [] : [DEMO_ME])
   const content = (type: string, data: string): Part => ({
     mimeType: type.split(';')[0]!,

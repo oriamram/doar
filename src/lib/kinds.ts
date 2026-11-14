@@ -10,7 +10,8 @@ export type Kind = 'code' | 'parcel' | 'receipt' | 'invitation' | 'leaflet' | 'l
 
 export type ParcelStatus = 'way' | 'ready' | 'delivered' | 'problem'
 
-export type Amount = { value: number; currency: '₪' | '$' | '€' | '£' }
+/** A sum of money. The currency is kept the way it is shown: a sign ("₪", "$"), a word ("kr") or a code ("CHF"). */
+export type Amount = { value: number; currency: string }
 
 export type Shape =
   | { kind: 'code'; code: string }
@@ -97,28 +98,70 @@ const RECEIPT_PAPER = /(?<!\p{L})[הלבכומש]{0,2}(?:קבלה|חשבונית
 /** A weaker name: it counts only with an amount beside it. */
 const RECEIPT_MAYBE = /אישור\s+הזמנה|ההזמנה\s+שלך|החשבון\s+(?:שלך|החודשי|לחודש|לתקופה)|תשלום\s+(?:התקבל|בוצע)|order\s+confirm|your\s+order|thanks?\s+for\s+your\s+(?:order|purchase|payment)|your\s+(?:bill|statement)|תודה\s+על\s+(?:הזמנתך|רכישתך|הקנייה|התשלום)/i
 
-const CURRENCY: Record<string, Amount['currency']> = {
-  '₪': '₪', 'ש"ח': '₪', 'ש״ח': '₪', 'שח': '₪', nis: '₪', ils: '₪',
-  $: '$', usd: '$', '€': '€', eur: '€', '£': '£', gbp: '£',
+// A sum of money is a number with a currency beside it. Receipts come from everywhere, so
+// the currency may be a sign ("₪", "$"), a word ("ש״ח", "kr") or a code ("ISK", "CHF"),
+// before the number or after it, and the number may be written "1,249.90" or "1.249,90".
+
+/** Signs. They stand before the number when shown (the shekel after it). */
+const SIGNS: Record<string, string> = { '₪': '₪', $: '$', '€': '€', '£': '£', '¥': '¥', '₹': '₹', '₺': '₺', '฿': '฿', '₩': '₩', '₽': '₽' }
+/** Words that name a currency in any case, and the way each is shown. They count only as whole words ("nis", not "tennis"). */
+const WORDS: Record<string, string> = {
+  'ש"ח': '₪',
+  'ש״ח': '₪',
+  'שח': '₪',
+  nis: '₪',
+  ils: '₪',
+  usd: '$',
+  'דולר': '$',
+  eur: '€',
+  'יורו': '€',
+  'אירו': '€',
+  gbp: '£',
+  kr: 'kr',
+  'zł': 'zł',
+  'kč': 'Kč',
 }
-const SYMBOL = String.raw`[₪$€£]`
-/** Written-out currencies count only as whole words ("nis", not "tennis"). */
-const WORD = String.raw`ש"ח|ש״ח|שח|nis|ils|usd|eur|gbp`
-const NUMBER = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d{1,7}(?:\.\d{1,2})?`
+/** Codes that count only in capitals: "TRY" is a currency, "try" is a word. */
+const CODES = ['ISK', 'SEK', 'NOK', 'DKK', 'CHF', 'JPY', 'CNY', 'CAD', 'AUD', 'NZD', 'PLN', 'CZK', 'HUF', 'RON', 'TRY', 'THB', 'INR', 'KRW', 'AED', 'SAR', 'EGP', 'MXN', 'BRL', 'SGD', 'HKD', 'ZAR']
+
+const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const SIGN = `[${Object.keys(SIGNS).map(literal).join('')}]`
+/** A word or a code, with the full stop some write after it ("kr."). Longer ones first, so "kr" does not hide "krw". */
+const WORD = `(?:${[...Object.keys(WORDS), ...CODES].sort((a, b) => b.length - a.length).map(literal).join('|')})\\.?`
+/** Thousands divided by a comma, a dot or a thin space; decimals after a dot or a comma. */
+const NUMBER = String.raw`\d{1,3}(?:[.,   ]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?`
 const AMOUNT = new RegExp(
-  String.raw`(?:(?<s1>${SYMBOL}|(?<![\p{L}\d])(?:${WORD}))\s?(?<n1>${NUMBER})(?![\d%])|(?<![\d.,])(?<n2>${NUMBER})\s?(?<s2>${SYMBOL}|(?:${WORD})(?![\p{L}\d])))`,
+  String.raw`(?:(?<s1>${SIGN}|(?<![\p{L}\d])${WORD})\s?(?<n1>${NUMBER})(?![\d%])|(?<![\d.,])(?<n2>${NUMBER})\s?(?<s2>${SIGN}|${WORD}(?![\p{L}\d])))`,
   'giu',
 )
-const TOTAL = /סה["״]כ|סך\s+הכל|סכום\s+(?:ל?תשלום|העסקה|החיוב|כולל)|לתשלום|שולם|חויב|\btotal\b|amount\s+(?:paid|due|charged)|grand\s+total|you\s+paid/gi
+const TOTAL =
+  /סה["״]כ|סך\s+הכל|סכום\s+(?:ל?תשלום|העסקה|החיוב|כולל)|לתשלום|שולם|חויב|\btotal\b|amount\s+(?:paid|due|charged)|grand\s+total|you\s+paid|\bsamtals\b|\bsumma\b|\bsumme\b|\bgesamt(?:betrag|summe)?\b/gi
+
+/** How a currency is shown, from the way it was written; null when it is not one (a code in small letters). */
+function currencyOf(written: string): string | null {
+  const name = written.replace(/\.$/, '')
+  return SIGNS[name] ?? WORDS[name.toLowerCase()] ?? (CODES.includes(name) ? name : null)
+}
+
+/** "1,249.90", "1.249,90" and "1 249,90" are one number; "12,5" is twelve and a half; "12.500" is twelve thousand five hundred. */
+function numberOf(written: string): number {
+  const text = written.replace(/[   ]/g, '')
+  const last = Math.max(text.lastIndexOf('.'), text.lastIndexOf(','))
+  if (last < 0) return Number(text)
+  const marks = text.replace(/\d/g, '')
+  // The last mark sets off decimals when one or two digits follow it and it is not the mark that divides the thousands.
+  const decimal = text.length - last - 1 <= 2 && (marks.length === 1 || marks.at(-1) !== marks.at(-2))
+  const whole = (decimal ? text.slice(0, last) : text).replace(/[.,]/g, '')
+  return Number(decimal ? `${whole}.${text.slice(last + 1)}` : whole)
+}
 
 /** Every sum of money written in a text, in order. */
 function amounts(text: string): { at: number; amount: Amount }[] {
   const found: { at: number; amount: Amount }[] = []
   AMOUNT.lastIndex = 0
   for (let hit = AMOUNT.exec(text); hit; hit = AMOUNT.exec(text)) {
-    const sign = (hit.groups!.s1 ?? hit.groups!.s2)!.toLowerCase()
-    const value = Number((hit.groups!.n1 ?? hit.groups!.n2)!.replace(/,/g, ''))
-    const currency = CURRENCY[sign]
+    const currency = currencyOf((hit.groups!.s1 ?? hit.groups!.s2)!)
+    const value = numberOf((hit.groups!.n1 ?? hit.groups!.n2)!)
     if (currency && Number.isFinite(value) && value > 0) found.push({ at: hit.index, amount: { value, currency } })
   }
   return found
@@ -139,9 +182,17 @@ export function findAmount(text: string): Amount | null {
   return all.reduce((best, item) => (item.amount.value > best.value ? item.amount : best), all[0]!.amount)
 }
 
+/**
+ * A sum as it is shown. Shekels, dollars, euros and pounds always show their cents; other
+ * currencies only when the sum has them ("884 kr", "¥1,200"). A currency written as a word
+ * stands after the number, and the pair is read left to right even inside a Hebrew line.
+ */
 export function formatAmount(amount: Amount): string {
-  const text = amount.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  return amount.currency === '₪' ? `${text} ₪` : `${amount.currency}${text}`
+  const cents = ['₪', '$', '€', '£'].includes(amount.currency) || !Number.isInteger(amount.value)
+  const text = amount.value.toLocaleString('en-US', { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: 2 })
+  if (amount.currency === '₪') return `${text} ₪`
+  if (SIGNS[amount.currency]) return `${amount.currency}${text}`
+  return `⁦${text} ${amount.currency}⁩`
 }
 
 function receipt(subject: string, text: string): Shape | null {

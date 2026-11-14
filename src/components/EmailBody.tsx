@@ -43,7 +43,12 @@ ${blocked ? `<meta http-equiv="Content-Security-Policy" content="img-src data: b
 <style>
   html { overflow: hidden; background: transparent; }
   body { margin: 0; padding: 16px; font: ${textSize}px/1.6 system-ui, sans-serif; color: #1f2a3a; overflow-wrap: anywhere; }
-  img { max-width: 100%; height: auto; }
+  img { max-width: 100%; }
+  img[width] { height: auto; }
+  img[height]:not([width]) { object-fit: contain; }
+  img[data-doar-gone]:not([alt]), img[data-doar-gone][alt=""] { display: none !important; }
+  html.doar-tight * { box-sizing: border-box !important; }
+  html.doar-tight body { padding: 8px; }
   table { max-width: 100%; }
   a { color: #8f2f1f; }
   blockquote { margin: 0 0 0 .8ex; padding-left: 1ex; border-left: 2px solid #cfc4ad; color: #574f42; }
@@ -62,9 +67,16 @@ ${blocked ? `<meta http-equiv="Content-Security-Policy" content="img-src data: b
   )
 
   /**
-   * Make the iframe as tall as its content so the thread scrolls as one page.
-   * Newsletters built wider than the screen (often 600px) are scaled down to fit,
-   * as Gmail does, instead of being cut off. Re-fits as images load or the window resizes.
+   * Make the iframe as tall as its content so the thread scrolls as one page, and make the
+   * email fit the letter's width instead of being cut off at its edge:
+   * - A newsletter built wider than the screen (often a 600px table) is scaled down, as Gmail does.
+   * - A web page's markup pasted into an email is "as wide as the page, plus padding" at every
+   *   level, so it overflows whatever it is shown in, at any scale. Its own stylesheet, which
+   *   counted padding inside the width, did not come with it; that one rule is given back.
+   *   Such a page was drawn for a wide screen, so on a phone it is laid out as if the letter
+   *   were 440px wide and scaled down to it, rather than squeezed into columns a word wide.
+   * - Whatever still does not fit can be scrolled sideways.
+   * Re-fits as images load or the window resizes.
    */
   const fit = () => {
     const frame = frameRef.current
@@ -80,14 +92,45 @@ ${blocked ? `<meta http-equiv="Content-Security-Policy" content="img-src data: b
       frame.style.height = '0'
       fitHeight()
     })
-    // The email's own width, measured once before any scaling.
-    const natural = Math.max(content.scrollWidth, page.scrollWidth)
     const fitWidth = () => {
-      const scale = Math.min(1, frame.clientWidth / natural)
-      content.style.zoom = scale < 1 ? String(scale) : ''
+      content.style.zoom = ''
+      page.classList.remove('doar-tight')
+      page.style.overflowX = ''
+      const room = frame.clientWidth
+      /** How wide the email is, unscaled. */
+      const extent = () => Math.max(content.scrollWidth, page.scrollWidth)
+      /** Scale the email; false when it still runs past the letter's edge. */
+      const scaleTo = (scale: number) => {
+        content.style.zoom = scale < 1 ? String(scale) : ''
+        return page.scrollWidth <= room + 2
+      }
+      if (!scaleTo(Math.min(1, room / extent()))) {
+        content.style.zoom = ''
+        page.classList.add('doar-tight')
+        const roomy = Math.min(1, Math.max(0.7, room / 440))
+        if (!scaleTo(Math.min(roomy, room / extent()))) page.style.overflowX = 'auto'
+      }
       fitHeight()
     }
     fitWidth()
+
+    // A picture that cannot be fetched (its address expired, its server is gone) would leave
+    // the browser's "broken picture" mark in the letter. One with no words of its own is put away.
+    for (const image of content.querySelectorAll<HTMLImageElement>('img')) {
+      const source = image.getAttribute('src') ?? ''
+      if (!image.complete || image.naturalWidth > 0 || source.startsWith('cid:')) continue
+      if (blocked || !source) {
+        image.setAttribute('data-doar-gone', '')
+        continue
+      }
+      // Empty-handed may also mean a drawing with no size of its own, so the address is tried once more.
+      const again = frame.contentDocument!.createElement('img')
+      again.addEventListener('error', () => {
+        image.setAttribute('data-doar-gone', '')
+        fitWidth()
+      })
+      again.src = image.src
+    }
     new ResizeObserver(fitHeight).observe(content)
     frame.contentWindow?.addEventListener('resize', fitWidth)
 
