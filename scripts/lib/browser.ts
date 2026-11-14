@@ -2,7 +2,7 @@
 // open a page at a phone's or a PC's size, click, type, press keys, read the page, take pictures.
 
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -80,10 +80,37 @@ export async function launch(port = 9391) {
   if (await fetch(`http://127.0.0.1:${port}/json/version`).then(() => true, () => false)) {
     throw new Error(`something already listens on port ${port}; close it and run again`)
   }
+  // A run that was stopped could not clean up after itself: its profile is still in the
+  // temp folder. An hour on, no run can still be using it.
+  for (const name of readdirSync(tmpdir())) {
+    if (!name.startsWith('doar-check-')) continue
+    try {
+      const old = join(tmpdir(), name)
+      if (Date.now() - statSync(old).mtimeMs > 3_600_000) rmSync(old, { recursive: true, force: true })
+    } catch {
+      // Not ours to insist on; the next run tries again.
+    }
+  }
   const profile = mkdtempSync(join(tmpdir(), 'doar-check-'))
   const child: ChildProcess = spawn(
     path,
-    ['--headless=new', '--disable-gpu', '--no-first-run', '--hide-scrollbars', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'],
+    // A browser that belongs to nobody. Left alone, Edge signs a new profile in with the
+    // Windows account and starts syncing that person's browser into it: their extensions
+    // arrive some minutes in, one of them opens a welcome tab, and a picture taken of a tab
+    // that lost the front never returns. So: no sign-in, no sync, no extensions.
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-first-run',
+      '--disable-features=msImplicitSignin',
+      '--disable-sync',
+      '--disable-extensions',
+      '--hide-scrollbars',
+      '--mute-audio',
+      `--remote-debugging-port=${port}`,
+      `--user-data-dir=${profile}`,
+      'about:blank',
+    ],
     { stdio: 'ignore' },
   )
 
