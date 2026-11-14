@@ -27,6 +27,11 @@ export function Guide({ onClose, onTry, places, busy }: Props) {
   const [opened, setOpened] = useState<string | null>(null)
   const body = useRef<HTMLDivElement>(null)
   const tabs = useRef<HTMLDivElement>(null)
+  // When a hand was last on the rail of tags (pressing, dragging, turning a wheel over it).
+  const railHeld = useRef(0)
+  const holdRail = () => {
+    railHeld.current = Date.now()
+  }
   useBackLayer(true, onClose)
 
   useEffect(() => {
@@ -51,11 +56,16 @@ export function Guide({ onClose, onTry, places, busy }: Props) {
     setChapter(reading)
   }
 
-  // Its tag stays in sight in the rail.
+  // Its tag stays in sight in the rail. The rail moves only when the tag is out of sight,
+  // and never while a hand is on it, so it does not slide away under a finger that is
+  // reaching for another tag.
   useEffect(() => {
     const rail = tabs.current
     const tag = rail?.querySelector<HTMLElement>('[aria-current="true"]')
-    if (!rail || !tag) return
+    if (!rail || !tag || Date.now() - railHeld.current < 1500) return
+    const view = rail.getBoundingClientRect()
+    const box = tag.getBoundingClientRect()
+    if (box.left >= view.left + 8 && box.right <= view.right - 8) return
     rail.scrollTo({ left: tag.offsetLeft - (rail.clientWidth - tag.offsetWidth) / 2, behavior: 'smooth' })
   }, [chapter])
 
@@ -84,7 +94,7 @@ export function Guide({ onClose, onTry, places, busy }: Props) {
         </header>
 
         <nav className="guide-rail" aria-label="פרקים">
-          <div className="guide-tabs" ref={tabs}>
+          <div className="guide-tabs" ref={tabs} onPointerDown={holdRail} onTouchMove={holdRail} onWheel={holdRail}>
             {GUIDE.map((item) => (
               <button key={item.id} type="button" className="filter" aria-current={chapter === item.id ? 'true' : undefined} onClick={() => goTo(item.id)}>
                 {item.tab}

@@ -670,6 +670,8 @@ try {
   await book.waitFor('#guide-more-ticket')
   check('one row is open at a time', (await book.count('.guide-more')) === 1)
 
+  // The opened row has been brought into view; the page stands still before the next press.
+  await sleep(700)
   await book.clickText('מחפשים', '.guide-tabs .filter')
   await book.waitFor(`document.querySelector('.guide-tabs [aria-current]')?.textContent === 'מחפשים'`)
   const reading = await book.evaluate<boolean>(`(() => {
