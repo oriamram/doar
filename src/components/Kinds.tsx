@@ -9,7 +9,7 @@ import { mailbox } from '../lib/mailbox'
 import { toast } from '../lib/toast'
 import { useNow } from '../lib/useNow'
 import type { Contact, Message, Thread } from '../types'
-import { CalendarIcon, CopyIcon, ParcelIcon, ReceiptIcon } from './icons'
+import { CalendarIcon, CopyIcon, ParcelIcon, SpikeIcon } from './icons'
 
 async function copyCode(code: string) {
   if (await copyText(code)) toast('הקוד הועתק')
@@ -202,7 +202,6 @@ function InviteCard({ invite }: { invite: Invite }) {
 }
 
 type CardProps = {
-  thread: Thread
   /** The letter the card is about (the latest one that isn't yours). */
   message: Message
   shape: Shape
@@ -211,7 +210,7 @@ type CardProps = {
 }
 
 /** The object a shaped letter is, shown above it: the ticket, the delivery slip, the receipt, the card. */
-export function KindCard({ thread, message, shape, onNot }: CardProps) {
+export function KindCard({ message, shape, onNot }: CardProps) {
   const now = useNow()
   const invite = useInvite(message, shape.kind === 'invitation')
   const parcelNumber = shape.kind === 'parcel' ? shape.number : undefined
@@ -293,12 +292,13 @@ export function KindCard({ thread, message, shape, onNot }: CardProps) {
               <span className="kind-sub">הסכום לא נמצא במכתב.</span>
             )}
           </span>
-          {thread.labelIds.includes('INBOX') && (
-            <button type="button" className="kind-action" onClick={() => mailbox.archive([thread.id])} title="לתייק: הקבלה תחכה בדוקרן הקבלות">
-              <ReceiptIcon />
-              לדוקרן
-            </button>
-          )}
+          {/* Every receipt stands on the spike by itself, so the button only goes there. It used to
+              file the letter under the name "to the spike", which read as "put this receipt there":
+              the letter closed and a note said it was filed, and the owner asked why. */}
+          <button type="button" className="kind-action" onClick={() => window.dispatchEvent(new Event('doar:spike'))} title="דוקרן הקבלות: כל הקבלות של השנה, לפי חודש">
+            <SpikeIcon />
+            כל הקבלות
+          </button>
         </>
       )}
       {shape.kind === 'invitation' && invite && <InviteCard invite={invite} />}

@@ -405,7 +405,7 @@ export function ThreadView({ thread, onBack, onLabels, onHold, onRegister, onPer
         </div>
       )}
 
-      {subject && <KindCard thread={thread} message={subject} shape={shape} onNot={(kind, sender) => kind !== 'letter' && mailbox.notKind(kind, sender)} />}
+      {subject && <KindCard message={subject} shape={shape} onNot={(kind, sender) => kind !== 'letter' && mailbox.notKind(kind, sender)} />}
 
       {error && <p className="error">לא הצלחנו לפתוח את המכתב. {error}</p>}
       {!messages && !error && <p className="muted thread-wait">פותחים את המעטפה…</p>}

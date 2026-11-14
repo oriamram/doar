@@ -82,11 +82,17 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
     return mailbox.stop
   }, [])
 
-  // The note at the top of the inbox that offers the guide asks for it this way.
+  // The note at the top of the inbox that offers the guide asks for it this way,
+  // and a receipt's card asks for the receipts spike.
   useEffect(() => {
-    const open = () => setGuide(true)
-    window.addEventListener('doar:guide', open)
-    return () => window.removeEventListener('doar:guide', open)
+    const openGuide = () => setGuide(true)
+    const openSpike = () => setSheet({ kind: 'spike' })
+    window.addEventListener('doar:guide', openGuide)
+    window.addEventListener('doar:spike', openSpike)
+    return () => {
+      window.removeEventListener('doar:guide', openGuide)
+      window.removeEventListener('doar:spike', openSpike)
+    }
   }, [])
 
   // The phone's Back closes what's open, innermost first, before leaving the app.

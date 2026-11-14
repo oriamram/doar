@@ -402,6 +402,9 @@ Fixed the same day, from the owner's phone: a receipt with a long subject pushed
 receipts spike off the left of the screen (any form could be widened by a long word; now
 none can), the files drawer's slips kept a letter's narrow width, and the stamp album's
 search line had no style of its own, so at night it took the device's dark look.
+Also that day: the button on a receipt said "לדוקרן" but filed the letter, and the owner
+asked why the letter closed with "המכתב תויק". It now says "כל הקבלות" and opens the
+spike over the letter; filing stays with "לתיוק".
 
 **The server (done once, for phases 0 to 3).** Migration `20261113100000_post_office.sql`
 and `postman` version 4 are live: fault reports, shared preferences, held and registered

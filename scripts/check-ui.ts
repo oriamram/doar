@@ -346,6 +346,13 @@ try {
   await desk.clickText('קבלה על הזמנה 10482', '.thread-row .subject')
   await desk.waitFor('.kind-card[data-kind="receipt"]')
   check('an open receipt shows its total', (await desk.text('.receipt-sum')).includes('128.00'), await desk.text('.receipt-sum'))
+  // Its button goes to all the receipts. It does not file the letter: the letter stays open, in the inbox.
+  await desk.clickText('כל הקבלות', '.kind-card .kind-action')
+  await desk.waitFor('.spike-month')
+  check('from a receipt, "all the receipts" opens the spike over the letter', (await desk.text('.sheet h2')) === 'דוקרן הקבלות' && (await desk.text('.thread-subject')) === 'קבלה על הזמנה 10482')
+  await desk.key('Escape')
+  await desk.waitFor(`!document.querySelector('.sheet')`)
+  check('and the letter was not filed', (await desk.count('.kind-card[data-kind="receipt"]')) === 1 && (await desk.evaluate<boolean>(`[...document.querySelectorAll('.thread-row .subject')].some((el) => el.textContent === 'קבלה על הזמנה 10482')`)))
 
   // An invitation, open: the day, the hour, and the way to the calendar.
   await toInbox()
