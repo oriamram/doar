@@ -89,7 +89,7 @@ page (`src/demo/`). It is how the screens are tested without touching a real mai
 ## Checks
 
 ```bash
-npm run check        # types, lint, the server's pure parts (rules, encryption, codes, hours, tickets), kinds of mail, the inspector
+npm run check        # types, lint, the server's pure parts (rules, encryption, codes, hours, tickets), kinds of mail, the inspector, the guide's lines
 npm run build
 npm run preview -- --port 4173 --strictPort    # in one terminal
 npm run check:ui     # in another: walks the main screens in the demo mailbox with a hidden browser

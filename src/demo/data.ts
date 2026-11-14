@@ -93,6 +93,8 @@ const vaad = { name: 'ועד הבית', email: 'vaad@rehov-hagefen.example' }
 const lottery = { name: 'הגרלת הזהב', email: 'winner@hagralat-zahav.example' }
 /** Pretends to be the bank; its address is not the bank's. */
 const fakeBank = { name: 'בנק הדוגמה', email: 'security@bank-dugma-login.example' }
+/** Writes the way shops abroad do: a long name, a long subject, a long file name, all in Latin letters. */
+const park = { name: 'Northern Glacier National Park Visitor Services', email: 'receipts@glacier-park.example' }
 
 // ---------- Small files ----------
 
@@ -442,6 +444,16 @@ function specs(): Spec[] {
       html: rtl('שלום,', 'מצורפת החשבונית לתקופה 1.10 עד 31.10.', '<b>סה״כ לתשלום: 342.50 ₪</b>', 'מועד אחרון לתשלום: 25.11.2026.'),
       labels: ['INBOX', UPDATES, L_BILLS],
       files: [{ filename: 'חשבונית-אוקטובר.pdf', mimeType: 'application/pdf', data: tinyPdf(['Electricity bill, October 2026', 'Total: 342.50 NIS', 'Pay by 25.11.2026']) }],
+    },
+    {
+      // Already filed. It is here for its length: no form may grow wider than the screen because of it.
+      thread: 't-receipt-long',
+      from: park,
+      subject: 'Receipt for your visit to the Northern Glacier National Park visitor centre and lagoon boat tour, booking 7H2K-99413-ZX',
+      ago: 5200,
+      html: ltr('Thank you for visiting.', 'Lagoon boat tour, 2 adults: $58.00', 'Parking: $6.00', '<b>Total: $64.00</b>'),
+      labels: [UPDATES],
+      files: [{ filename: 'Receipt-Northern-Glacier-National-Park-booking-7H2K-99413-ZX.pdf', mimeType: 'application/pdf', data: tinyPdf(['Receipt', 'Total: $64.00']) }],
     },
     {
       thread: 't-michal',

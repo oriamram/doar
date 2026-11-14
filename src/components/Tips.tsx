@@ -3,14 +3,14 @@ import { promptInstall, useInstall } from '../lib/install'
 import { enablePush, usePush } from '../lib/push'
 import { updateSettings, useSettings } from '../lib/settings'
 import { toast } from '../lib/toast'
-import { BellIcon, InstallIcon, MailIcon } from './icons'
+import { BellIcon, HelpIcon, InstallIcon, MailIcon } from './icons'
 
 /** Edge on Android agrees to notifications but never delivers them (a long-standing fault in that browser). */
 const EDGE_ON_ANDROID = /Android/i.test(navigator.userAgent) && /EdgA\//i.test(navigator.userAgent)
 
 /**
- * One-time suggestions at the top of the inbox: install Doar as an app, then switch
- * on notifications. One at a time, and each can be put away for good.
+ * One-time suggestions at the top of the inbox: install Doar as an app, switch on
+ * notifications, read the guide. One at a time, and each can be put away for good.
  */
 export function Tips() {
   const install = useInstall()
@@ -107,6 +107,32 @@ export function Tips() {
             הפעלה
           </button>
           <button type="button" onClick={() => done('push')}>
+            לא עכשיו
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (open('guide')) {
+    return (
+      <div className="tip">
+        <HelpIcon />
+        <p>
+          <strong>מה דואר יודע לעשות?</strong> הכול בדף אחד: שורה ותמונה לכל דבר.
+        </p>
+        <div className="tip-actions">
+          <button
+            type="button"
+            className="tip-yes"
+            onClick={() => {
+              done('guide')
+              window.dispatchEvent(new Event('doar:guide'))
+            }}
+          >
+            לקרוא
+          </button>
+          <button type="button" onClick={() => done('guide')}>
             לא עכשיו
           </button>
         </div>

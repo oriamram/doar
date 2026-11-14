@@ -91,8 +91,15 @@ export function FilesDrawer({ onClose }: { onClose: () => void }) {
                 <span className="file-name ellipsis" dir="auto">
                   {row.file.filename}
                 </span>
-                <span className="file-size">
-                  {shortName(row.from)} · {formatListDate(row.date)} · <span dir="ltr">{formatBytes(row.file.size)}</span>
+                {/* The sender's name gives way when the line is short; the day and the size always show.
+                    Each part keeps to itself, so a name in Latin letters does not pull the day's number to its side. */}
+                <span className="file-size drawer-meta">
+                  <span className="drawer-from ellipsis" dir="auto">
+                    {shortName(row.from)}
+                  </span>
+                  <span className="drawer-when">
+                    · <bdi>{formatListDate(row.date)}</bdi> · <bdi dir="ltr">{formatBytes(row.file.size)}</bdi>
+                  </span>
                 </span>
               </span>
             </button>

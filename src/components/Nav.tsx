@@ -341,7 +341,7 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
             }}
           >
             <HelpIcon />
-            <span className="nav-name">מדריך קצר</span>
+            <span className="nav-name">מה דואר יודע לעשות</span>
           </button>
           <button
             className="nav-item nav-keys"

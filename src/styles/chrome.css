@@ -660,6 +660,9 @@
   inset: 0;
   z-index: 60;
   display: grid;
+  /* One column, exactly as wide as the screen: a long word inside a form
+     (a receipt's subject, a file's name) must never make the form wider than it. */
+  grid-template-columns: minmax(0, 1fr);
   place-items: end center;
 }
 
@@ -676,6 +679,7 @@
   display: flex;
   flex-direction: column;
   width: min(540px, 100%);
+  min-width: 0;
   max-height: min(88dvh, 760px);
   border-radius: 3px 3px 0 0;
   box-shadow: var(--shadow-float);
@@ -723,8 +727,32 @@
 }
 
 .sheet-body {
-  overflow-y: auto;
+  overflow: hidden auto;
   padding: 14px 18px calc(22px + env(safe-area-inset-bottom));
+}
+
+/* A line to write on, in any form. The form is light paper in the night theme too,
+   so the field never takes the device's dark look. */
+.text-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid var(--ink-rule);
+  border-radius: 3px;
+  background: rgba(255, 253, 247, 0.55);
+  font: inherit;
+  color: var(--ink);
+  color-scheme: light;
+}
+
+.text-input::placeholder {
+  color: var(--ink-faded);
+  opacity: 1;
+}
+
+.text-input:focus {
+  outline: 2px solid var(--ink-red);
+  outline-offset: 1px;
 }
 
 .sheet .muted {
@@ -1020,30 +1048,6 @@
 
 .nav-more[aria-expanded='true'] svg {
   rotate: 180deg;
-}
-
-/* The short guide: a numbered leaflet. */
-.guide {
-  display: grid;
-  gap: 14px;
-  margin: 0;
-  padding-inline-start: 22px;
-}
-
-.guide li::marker {
-  font-family: var(--mono);
-  font-weight: 700;
-  color: var(--ink-red);
-}
-
-.guide strong {
-  display: block;
-  font-weight: 800;
-}
-
-/* The guide is printed on paper, so its text is ink (the desk's text color is too pale on paper at night). */
-.guide span {
-  color: var(--ink);
 }
 
 /* ---------- Choosing when a letter goes out ---------- */
@@ -1417,7 +1421,6 @@
 
 /* The album: stamps mounted in rows on a page. */
 .album-search {
-  width: 100%;
   margin-bottom: 14px;
 }
 
@@ -1545,6 +1548,12 @@
 .spike-what strong {
   font-size: 15px;
   color: var(--ink);
+}
+
+/* A name in Latin letters still starts beside the day, like the Hebrew ones;
+   when it is too long, it is its end that is cut. */
+.spike-what .ellipsis {
+  text-align: right;
 }
 
 .spike-amount {
@@ -1695,9 +1704,30 @@
   list-style: none;
 }
 
-.drawer-file {
+/* In the drawer a slip fills its column (in a letter it is a small slip of its own). */
+.drawer-files .drawer-file {
   width: 100%;
   text-align: start;
+}
+
+.drawer-file .file-name,
+.drawer-from {
+  text-align: right;
+}
+
+.drawer-meta {
+  display: flex;
+  gap: 0.6ch;
+  min-width: 0;
+}
+
+.drawer-from {
+  min-width: 0;
+}
+
+.drawer-when {
+  flex: none;
+  white-space: nowrap;
 }
 
 /* ---------- The lamp's chain: day and night ---------- */

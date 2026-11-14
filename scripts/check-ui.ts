@@ -18,10 +18,10 @@ const check = (name: string, ok: boolean, detail = '') => {
   if (!ok) failed = true
 }
 
-/** The demo with its one-time note put away and no wait before sending, so steps don't depend on timing. */
+/** The demo with its one-time notes put away and no wait before sending, so steps don't depend on timing. */
 async function start(page: Page, settings: Record<string, unknown> = {}) {
   await page.waitFor('.thread-row', 25_000)
-  await page.evaluate(`localStorage.setItem('doar:settings:demo', ${JSON.stringify(JSON.stringify({ tipsDone: ['demo'], undoSendSeconds: 0, ...settings }))})`)
+  await page.evaluate(`localStorage.setItem('doar:settings:demo', ${JSON.stringify(JSON.stringify({ tipsDone: ['demo', 'guide'], undoSendSeconds: 0, ...settings }))})`)
   await page.goto(`${SITE}/?demo=fast`)
   await sleep(400)
   await page.waitFor('.thread-row', 25_000)
@@ -642,11 +642,146 @@ try {
   check('nothing went wrong in the ritual', rite.errors.length === 0, rite.errors.join(' | ').slice(0, 300))
   rite.close()
 
+  // ================= The guide: what Doar can do (a phone at night, from a fresh start) =================
+  const book = await browser.open(`${SITE}/?demo=fast`, { ...PHONE, dark: true })
+  await start(book, { tipsDone: ['demo'] })
+  await book.waitFor('.tip')
+  check('a note at the top of the inbox offers the guide', (await book.text('.tip')).includes('מה דואר יודע לעשות'), await book.text('.tip'))
+  await book.clickText('לקרוא', '.tip-actions button')
+  await book.waitFor('.guide-book')
+  await sleep(600)
+  const guideRows = await book.count('.guide-row')
+  check('the guide gives every thing one row, with its picture', guideRows >= 25 && (await book.count('.guide-row .guide-art > *')) === guideRows && (await book.count('.guide-small > div')) >= 15, `${guideRows} rows, ${await book.count('.guide-small > div')} small ones`)
+  check('a row is a name and one short line', (await book.text('[aria-controls="guide-more-hold"] .guide-name')) === 'דואר שמור' && (await book.text('[aria-controls="guide-more-hold"] .guide-plain')) === 'מכתב שחוזר אליכם במועד שבחרתם.')
+  const guideFits = await book.evaluate<boolean>(`(() => {
+    const body = document.querySelector('.guide-body')
+    const box = document.querySelector('.guide-book').getBoundingClientRect()
+    return body.scrollWidth <= body.clientWidth && box.left >= 0 && box.right <= innerWidth
+  })()`)
+  check('it fits a phone, with nothing to scroll sideways', guideFits)
+  await shot(book, 'phone-guide')
+
+  await book.click('[aria-controls="guide-more-hold"]')
+  await book.waitFor('#guide-more-hold')
+  const more = await book.text('#guide-more-hold')
+  check('a row opens to say how and why', more.includes('איך') && more.includes('שעון החול') && more.includes('למה') && more.includes('התיבה מראה רק'), more.slice(0, 70))
+  await shot(book, 'phone-guide-open')
+  await book.click('[aria-controls="guide-more-ticket"]')
+  await book.waitFor('#guide-more-ticket')
+  check('one row is open at a time', (await book.count('.guide-more')) === 1)
+
+  await book.clickText('מחפשים', '.guide-tabs .filter')
+  await book.waitFor(`document.querySelector('.guide-tabs [aria-current]')?.textContent === 'מחפשים'`)
+  const reading = await book.evaluate<boolean>(`(() => {
+    const body = document.querySelector('.guide-body').getBoundingClientRect()
+    const title = document.querySelector('#guide-finding h3').getBoundingClientRect()
+    return title.top >= body.top - 2 && title.top < body.top + 120
+  })()`)
+  check('a chapter\u2019s tag jumps to the chapter', reading)
+
+  // A row can take the reader to the thing itself; the guide waits under it.
+  await book.click('[aria-controls="guide-more-album"]')
+  await book.waitFor('#guide-more-album .guide-try')
+  await book.click('#guide-more-album .guide-try')
+  await book.waitFor('.album-stamp')
+  check('a row opens the thing it is about', (await book.count('.album-stamp')) >= 5)
+  await book.click('.sheet .icon-btn')
+  await book.waitFor(`!document.querySelector('.sheet')`)
+  check('closing it goes back to the guide, where the reading stopped', (await book.count('#guide-more-album')) === 1)
+  await book.click('[aria-controls="guide-more-lamp"]')
+  await book.waitFor('#guide-more-lamp .guide-try')
+  await book.click('#guide-more-lamp .guide-try')
+  await book.waitFor(`document.documentElement.dataset.theme === 'light'`)
+  check('the lamp chain can be pulled from the guide, which stays open', (await book.count('.guide-book')) === 1)
+  await book.click('#guide-more-lamp .guide-try')
+  await book.waitFor(`document.documentElement.dataset.theme === 'dark'`)
+  await book.click('.guide-head .icon-btn')
+  await book.waitFor(`!document.querySelector('.guide-book')`)
+  check('the note about the guide is shown once', (await book.count('.tip')) === 0)
+
+  // Forms stay inside the screen whatever is written in them (the demo has a receipt with a very long subject).
+  const openFromMenu = async (name: string) => {
+    await book.click('[aria-label="תיקיות ותוויות"]')
+    await sleep(350)
+    await book.clickText(name, '.nav-item')
+    await book.waitFor('.sheet')
+  }
+  const formFits = () =>
+    book.evaluate<boolean>(`(() => {
+      const sheet = document.querySelector('.sheet').getBoundingClientRect()
+      const close = document.querySelector('.sheet .icon-btn').getBoundingClientRect()
+      const body = document.querySelector('.sheet-body')
+      return sheet.left >= 0 && sheet.right <= innerWidth && close.left >= 0 && close.right <= innerWidth && body.scrollWidth <= body.clientWidth
+    })()`)
+  const closeForm = async () => {
+    await book.click('.sheet .icon-btn')
+    await book.waitFor(`!document.querySelector('.sheet')`)
+  }
+  await openFromMenu('דוקרן הקבלות')
+  await book.waitFor(`document.querySelectorAll('.spike-month li').length >= 4`, 12_000)
+  await sleep(500)
+  check('a receipt with a very long subject does not push the spike off the screen', await formFits(), (await book.texts('.spike-what strong')).join(' | ').slice(0, 80))
+  await shot(book, 'phone-spike')
+  await closeForm()
+  await openFromMenu('מגירת הקבצים')
+  await book.waitFor(`document.querySelectorAll('.drawer-file').length >= 4`, 12_000)
+  const widths = await book.evaluate<number[]>(`(() => {
+    const list = document.querySelector('.drawer-files').getBoundingClientRect()
+    const first = document.querySelector('.drawer-file').getBoundingClientRect()
+    return [Math.round(first.width), Math.round(list.width)]
+  })()`)
+  check('in the files drawer a slip is as wide as the drawer', (await formFits()) && widths[0]! >= widths[1]! - 2, widths.join(' of '))
+  await shot(book, 'phone-files')
+  await closeForm()
+  await openFromMenu('אלבום הבולים')
+  await book.waitFor('.album-search')
+  const field = await book.evaluate<string>(`(() => {
+    const style = getComputedStyle(document.querySelector('.album-search'))
+    const [r, g, b] = style.backgroundColor.match(/[0-9.]+/g).map(Number)
+    return style.colorScheme + ' ' + (r > 200 && g > 200 && b > 180 ? 'pale' : 'dark ' + style.backgroundColor)
+  })()`)
+  check('the album\u2019s search line is a pale line on the form, at night too', field === 'light pale' && (await formFits()), field)
+  await shot(book, 'phone-album')
+  await closeForm()
+  check('nothing went wrong in the guide', book.errors.length === 0, book.errors.join(' | ').slice(0, 300))
+  book.close()
+
+  // On a PC the guide's rows stand in two columns, and a row can open "לאן?".
+  const wide = await browser.open(`${SITE}/?demo=fast&guide`, PC)
+  await wide.waitFor('.guide-book', 25_000)
+  await sleep(500)
+  check('"?guide" in the address opens the guide at once', (await wide.count('.guide-row')) >= 25)
+  check('on a PC its rows stand in two columns', (await wide.evaluate<number>(`getComputedStyle(document.querySelector('.guide-rows')).gridTemplateColumns.split(' ').length`)) === 2)
+  await shot(wide, 'pc-guide')
+  await wide.click('[aria-controls="guide-more-palette"]')
+  await wide.waitFor('#guide-more-palette .guide-try')
+  await wide.click('#guide-more-palette .guide-try')
+  await wide.waitFor('.palette')
+  check('from the guide, "לאן?" opens on the desk', (await wide.count('.guide-book')) === 0)
+  await wide.type('מדריך')
+  await sleep(250)
+  await wide.key('Enter')
+  await wide.waitFor('.guide-book')
+  check('and "לאן?" finds the guide', true)
+  await wide.key('Escape')
+  await wide.waitFor(`!document.querySelector('.guide-book')`)
+  check('nothing went wrong in the guide on a PC', wide.errors.length === 0, wide.errors.join(' | ').slice(0, 300))
+  wide.close()
+
   // ================= The front door =================
   const door = await browser.open(SITE, PHONE)
   await door.waitFor('.google-btn', 25_000)
   check('without the demo, the sign-in screen opens', (await door.text('.google-btn')).includes('Google'))
   check('it offers the demo', (await door.count('a[href="/?demo"]')) === 1)
+  await door.click('.guide-link')
+  await door.waitFor('.guide-book')
+  check('the guide is open to those who have not signed in', (await door.count('.guide-row')) >= 25)
+  await door.click('[aria-controls="guide-more-album"]')
+  await door.waitFor('#guide-more-album')
+  check('there its rows explain, and offer nothing to press', (await door.count('.guide-try')) === 0)
+  check('and it ends with the way to the demo', (await door.count('.guide-end a[href="/?demo"]')) === 1)
+  await door.click('.guide-head .icon-btn')
+  await door.waitFor(`!document.querySelector('.guide-book')`)
   check('nothing went wrong at the front door', door.errors.length === 0, door.errors.join(' | ').slice(0, 300))
 } finally {
   await browser.close()

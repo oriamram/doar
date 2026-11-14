@@ -390,6 +390,19 @@ short report. NEXT-STEPS.md keeps the list of what only the user can do.
 
 Approved by the owner on 13 November 2026: phases 0 to 3. The clerk (phase 4) is left out for now.
 
+**The guide (live, 14 November 2026).** Asked for by the owner after the names of phases
+1 to 3 needed explaining: one place where anyone can read what Doar does, lightly. "מה
+דואר יודע לעשות" (`src/lib/guide.ts`, `Guide.tsx`, `GuideArt.tsx`): 29 rows with pictures
+and 23 one-line small things, in seven chapters by moment of use. It opens from the menu,
+from "לאן?", from a one-time note at the top of the inbox, from the sign-in screen (for
+people who have not signed in), and from the address `/?guide`. It replaces the old
+"מדריך קצר", a numbered list of paragraphs. Every later feature adds its line there.
+
+Fixed the same day, from the owner's phone: a receipt with a long subject pushed the
+receipts spike off the left of the screen (any form could be widened by a long word; now
+none can), the files drawer's slips kept a letter's narrow width, and the stamp album's
+search line had no style of its own, so at night it took the device's dark look.
+
 **The server (done once, for phases 0 to 3).** Migration `20261113100000_post_office.sql`
 and `postman` version 4 are live: fault reports, shared preferences, held and registered
 mail, sender marks (express and refused), opening hours, notes, one-click unsubscribe,

@@ -48,6 +48,8 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | The files that came by mail | "מגירת הקבצים" (form 18): the file slips of the reader, in a grid |
 | Day and night | The lamp's bead chain with a brass pull, hanging beside the logo |
 | The weight of the files being sent | A postal scale's line in the writing form, red near the limit |
+| The guide ("מה דואר יודע לעשות", נספח ב׳) | A printed booklet over the whole desk. Every thing the app does is one row: a small picture of the real object lying on a piece of the desk, its name, and what the name means in everyday words. A row opens into a blue-edged slip that says how ("איך") and why ("למה"), and can lead to the thing itself. The chapters are the inbox's paper tags on a strip of the desk; they jump, and they follow the reading |
+| A line to write on in a form | Pale paper with a thin ruled border (`.text-input`); it stays light at night, like the form it is on |
 | Managing labels | The form "טופס 5 · רישום תוויות": a row per label, and dots of tape color |
 | Earlier letters quoted under a reply | Folded behind a small paper tab ("···") at the foot of the letter |
 | "New letter" | A blue airmail label |
@@ -103,6 +105,23 @@ icon, and the Android launcher icons. It carries no text, so it reads the same i
 Short, plain Hebrew, in the post office's voice: "לתיוק", "מברק", "המכתב בדרך",
 "ממיינים את הדואר…". Buttons say what happens. Errors say what went wrong and what to do.
 Plural imperative ("משכו", "בחרו") instead of gendered forms.
+
+## The guide's rules
+
+The guide exists so that nobody has to guess what a name means. It keeps four rules, and
+`scripts/check-guide.ts` checks the ones a script can check:
+
+1. **One line each.** A name, and under it what it means (at most 56 characters). How and
+   why are one sentence each, shown only when the row is opened.
+2. **Everyday words.** No word a newcomer would have to ask about; a thing's own name is
+   explained by the line under it ("דוקרן הקבלות": "כל הקבלות של השנה, לפי חודש").
+3. **A picture of the thing itself**, drawn from the app's own paper, stamps and ink, so
+   it is recognized when it turns up in the mail. Pictures cannot be pressed.
+4. **By moment, not by feature**: "when mail arrives", "when you write". At most six rows
+   in a chapter; smaller things get one line and no picture.
+
+A new feature is not finished until it has its line in `src/lib/guide.ts` (and, if it is
+a main one, its picture in `src/components/GuideArt.tsx`).
 
 ## Tried and rejected
 

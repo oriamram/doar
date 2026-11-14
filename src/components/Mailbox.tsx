@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { newDraft } from '../lib/compose'
 import { topContacts } from '../lib/contacts'
+import { canDrag } from '../lib/dragging'
+import type { Try } from '../lib/guide'
 import { threadShape } from '../lib/kinds'
 import { ritualQueue, ritualSize } from '../lib/ritual'
-import { getSettings } from '../lib/settings'
+import { getSettings, resolvedTheme, updateSettings } from '../lib/settings'
 import { peekMessages } from '../lib/gmail'
 import { hasOpenLayers, useBackLayer } from '../lib/layers'
 import { initMailbox, mailbox, useMailbox } from '../lib/mailbox'
@@ -13,6 +15,7 @@ import { onAndroidBack } from '../lib/platform'
 import { FOLDER_TITLES, INBOX, isFolder, labelLeaf, type FolderId } from '../lib/views'
 import { Compose } from './Compose'
 import { FilesDrawer } from './Files'
+import { Guide } from './Guide'
 import { LabelsSheet } from './LabelsSheet'
 import { Loader } from './Loader'
 import { Nav } from './Nav'
@@ -21,7 +24,7 @@ import { SenderCard, StampAlbum } from './People'
 import { Ritual } from './Ritual'
 import { Logo } from './Postal'
 import { SendFlight } from './SendFlight'
-import { GuideSheet, HoldSheet, LabelSheet, RegisterSheet, RulesSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
+import { HoldSheet, LabelSheet, RegisterSheet, RulesSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
 import { SpikeSheet } from './Spike'
 import { ThreadList } from './ThreadList'
 import { ThreadView } from './ThreadView'
@@ -30,7 +33,6 @@ import { Toasts } from './Toasts'
 type Sheet =
   | { kind: 'settings' }
   | { kind: 'shortcuts' }
-  | { kind: 'guide' }
   | { kind: 'labels'; ids: string[] }
   | { kind: 'manage-labels' }
   | { kind: 'hold'; ids: string[]; current?: string }
@@ -70,11 +72,21 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
   const [ritual, setRitual] = useState<RitualItem[] | null>(null)
   // "לאן?" (Ctrl+K): go anywhere, or do anything, by typing a few letters.
   const [palette, setPalette] = useState(false)
+  // The guide stays open under a form that was opened from it, so closing the form goes back to the reading.
+  // "?guide" in the address opens it at once: a link to send to someone.
+  const [guide, setGuide] = useState(() => new URLSearchParams(location.search).has('guide'))
   const holdLetters = useCallback((ids: string[]) => setSheet({ kind: 'hold', ids }), [])
 
   useEffect(() => {
     mailbox.start()
     return mailbox.stop
+  }, [])
+
+  // The note at the top of the inbox that offers the guide asks for it this way.
+  useEffect(() => {
+    const open = () => setGuide(true)
+    window.addEventListener('doar:guide', open)
+    return () => window.removeEventListener('doar:guide', open)
   }, [])
 
   // The phone's Back closes what's open, innermost first, before leaving the app.
@@ -103,14 +115,18 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        if (!mailbox.state().compose) setPalette((shown) => !shown)
+        if (!mailbox.state().compose) {
+          // Going somewhere else means leaving the guide.
+          setGuide(false)
+          setPalette((shown) => !shown)
+        }
         return
       }
       if (e.ctrlKey || e.metaKey || e.altKey) return
       // Typing in a box is typing, not a shortcut.
       if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return
       const now = mailbox.state()
-      if (now.compose || sheet || ritual || palette) return
+      if (now.compose || sheet || ritual || palette || guide) return
       const list = now.threads ?? []
       const index = now.open ? list.findIndex((thread) => thread.id === now.open!.id) : -1
       const targets = now.selection.size ? [...now.selection] : now.open ? [now.open.id] : []
@@ -190,13 +206,50 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sheet, ritual, palette])
+  }, [sheet, ritual, palette, guide])
+
+  /** The new mail there is to open one by one, right now. */
+  const waitingMail = () => {
+    const now = mailbox.state()
+    return ritualQueue(now.threads ?? [], getSettings().bundles ? now.bundles : [], (thread) => threadShape(thread, getSettings().notKinds))
+  }
+
+  // Where the guide's rows can take the reader. A form opens over the guide, which waits
+  // under it; anything that is not a form (writing, searching, opening the mail) needs the desk.
+  const guidePlaces = (): Set<Try> => {
+    const open = new Set<Try>(['settings', 'album', 'spike', 'files', 'rules', 'labels', 'compose', 'search', 'theme'])
+    if (canDrag) open.add('palette')
+    if (ritualSize(waitingMail()) > 0) open.add('ritual')
+    return open
+  }
+  const goFromGuide = (place: Try) => {
+    switch (place) {
+      case 'settings':
+      case 'album':
+      case 'spike':
+      case 'files':
+      case 'rules':
+        return setSheet({ kind: place })
+      case 'labels':
+        return setSheet({ kind: 'manage-labels' })
+      case 'theme':
+        return updateSettings({ theme: resolvedTheme() === 'dark' ? 'light' : 'dark' })
+    }
+    setGuide(false)
+    if (place === 'compose') mailbox.compose(newDraft())
+    else if (place === 'search') setSearching(true)
+    else if (place === 'palette') setPalette(true)
+    else if (place === 'ritual') {
+      mailbox.close()
+      setRitual(waitingMail())
+    }
+  }
 
   // Everything "לאן?" can reach: folders, labels, actions, and the people in the stamp album.
   const places = (): PaletteEntry[] => {
     const now = mailbox.state()
     const act = (id: string, title: string, words: string, run: () => void): PaletteEntry => ({ id: `act-${id}`, title, hint: 'פעולה', words, run })
-    const queue = ritualQueue(now.threads ?? [], getSettings().bundles ? now.bundles : [], (thread) => threadShape(thread, getSettings().notKinds))
+    const queue = waitingMail()
     return [
       ...PLACES.map(([id, words]): PaletteEntry => ({ id: `folder-${id}`, title: FOLDER_TITLES[id], hint: 'תיקייה', words, run: () => mailbox.show({ kind: 'folder', id }) })),
       ...now.labels.map((label): PaletteEntry => ({ id: `label-${label.id}`, title: labelLeaf(label.name), hint: 'תווית', words: label.name, run: () => mailbox.show({ kind: 'label', id: label.id, name: label.name }) })),
@@ -208,7 +261,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       act('rules', 'תיוג אוטומטי', 'כללים rules מיון', () => setSheet({ kind: 'rules' })),
       act('labels', 'ניהול תוויות', 'labels צבע', () => setSheet({ kind: 'manage-labels' })),
       act('settings', 'הגדרות', 'settings התראות חתימה', () => setSheet({ kind: 'settings' })),
-      act('guide', 'מדריך קצר', 'עזרה help', () => setSheet({ kind: 'guide' })),
+      act('guide', 'מה דואר יודע לעשות', 'מדריך עזרה יכולות help guide', () => setGuide(true)),
       act('keys', 'קיצורי מקלדת', 'shortcuts', () => setSheet({ kind: 'shortcuts' })),
       act('reload', 'בדיקת דואר חדש', 'רענון refresh', () => void mailbox.reload()),
       ...topContacts(60).map((contact): PaletteEntry => ({ id: `person-${contact.email}`, title: contact.name || contact.email, hint: 'אדם', words: contact.email, run: () => setSheet({ kind: 'person', contact }) })),
@@ -225,7 +278,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         onClose={() => setDrawer(false)}
         onSettings={() => setSheet({ kind: 'settings' })}
         onShortcuts={() => setSheet({ kind: 'shortcuts' })}
-        onGuide={() => setSheet({ kind: 'guide' })}
+        onGuide={() => setGuide(true)}
         onRules={() => setSheet({ kind: 'rules' })}
         onManageLabels={() => setSheet({ kind: 'manage-labels' })}
         onAlbum={() => setSheet({ kind: 'album' })}
@@ -275,15 +328,15 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
           onHold={holdLetters}
           onPerson={(contact) => setSheet({ kind: 'person', contact })}
           onRegister={(threadId, messageId) => setSheet({ kind: 'register', threadId, messageId })}
-          busy={!!sheet || !!state.compose || palette}
+          busy={!!sheet || !!state.compose || palette || guide}
         />
       )}
       {state.compose && <Compose key={state.composeKey} initial={state.compose} />}
       {state.flight && <SendFlight to={state.flight.to} />}
       {palette && <Palette entries={places()} onClose={() => setPalette(false)} onSearch={(query) => mailbox.show({ kind: 'search', query })} />}
+      {guide && <Guide onClose={() => setGuide(false)} onTry={goFromGuide} places={guidePlaces()} busy={!!sheet} />}
       {sheet?.kind === 'settings' && <SettingsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'shortcuts' && <ShortcutsSheet onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'guide' && <GuideSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'labels' && (
         <LabelSheet ids={sheet.ids} onClose={() => setSheet(null)} onRules={(from, labelId) => setSheet({ kind: 'rules', from, labelId })} />
       )}

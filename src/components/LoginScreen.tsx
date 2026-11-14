@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { signInReturnError, signInWithGoogle } from '../lib/auth'
+import { GUIDE_TITLE } from '../lib/guide'
+import { Guide } from './Guide'
 import { Logo } from './Postal'
 
 export function LoginScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // "?guide" in the address opens the guide at once: a link to send to someone.
+  const [guide, setGuide] = useState(() => new URLSearchParams(location.search).has('guide'))
 
   // Coming back from Google without a session means finishing sign-in failed: say why.
   useEffect(() => {
@@ -42,12 +46,16 @@ export function LoginScreen() {
         {busy ? 'פותחים את Google…' : 'התחברות עם Google'}
       </button>
       {error && <p className="error">{error}</p>}
+      <button type="button" className="guide-link" onClick={() => setGuide(true)}>
+        {GUIDE_TITLE}?
+      </button>
       <p className="muted fineprint">
         <a href="/?demo">להציץ בלי להתחבר, בתיבת הדגמה</a>
       </p>
       <p className="muted fineprint">
         המכתבים שלך עוברים ישירות מ־Google למכשיר הזה. <a href="/privacy.html">פרטיות ותנאים</a>
       </p>
+      {guide && <Guide onClose={() => setGuide(false)} />}
     </div>
   )
 }

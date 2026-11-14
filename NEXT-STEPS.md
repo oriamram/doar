@@ -100,6 +100,10 @@ mail one by one, notes, Ctrl+K, right click, dragging, the files drawer, reading
 connection); what is not built yet is listed in ROADMAP.md under "Progress", and none of
 it needs anything from you except saying which of them you want.
 
+Every feature and every name is explained inside Doar, one line each with a picture: menu,
+**מה דואר יודע לעשות**. To show it to someone who has no account yet, send them
+https://doar-henna.vercel.app/?guide (it opens without signing in).
+
 Worth trying once on your own mail, because only real mail can show it:
 1. Open Doar when three or more new letters wait, and press "הדוור הביא…".
 2. On a newsletter you don't want, press "החזר לשולח" (five seconds to change your mind).
