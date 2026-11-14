@@ -9,8 +9,8 @@ import { BellIcon, HelpIcon, InstallIcon, MailIcon } from './icons'
 const EDGE_ON_ANDROID = /Android/i.test(navigator.userAgent) && /EdgA\//i.test(navigator.userAgent)
 
 /**
- * One-time suggestions at the top of the inbox: install Doar as an app, switch on
- * notifications, read the guide. One at a time, and each can be put away for good.
+ * One-time suggestions at the top of the inbox: read the guide, install Doar as an app,
+ * switch on notifications. One at a time, and each can be put away for good.
  */
 export function Tips() {
   const install = useInstall()
@@ -32,6 +32,33 @@ export function Tips() {
           </a>
           <button type="button" onClick={() => done('demo')}>
             הבנתי
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // First of all, what Doar is for: a newcomer reads that before deciding to install it.
+  if (open('guide')) {
+    return (
+      <div className="tip">
+        <HelpIcon />
+        <p>
+          <strong>מה דואר יודע לעשות?</strong> הכול בדף אחד: שורה ותמונה לכל דבר.
+        </p>
+        <div className="tip-actions">
+          <button
+            type="button"
+            className="tip-yes"
+            onClick={() => {
+              done('guide')
+              window.dispatchEvent(new Event('doar:guide'))
+            }}
+          >
+            לקרוא
+          </button>
+          <button type="button" onClick={() => done('guide')}>
+            לא עכשיו
           </button>
         </div>
       </div>
@@ -107,32 +134,6 @@ export function Tips() {
             הפעלה
           </button>
           <button type="button" onClick={() => done('push')}>
-            לא עכשיו
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (open('guide')) {
-    return (
-      <div className="tip">
-        <HelpIcon />
-        <p>
-          <strong>מה דואר יודע לעשות?</strong> הכול בדף אחד: שורה ותמונה לכל דבר.
-        </p>
-        <div className="tip-actions">
-          <button
-            type="button"
-            className="tip-yes"
-            onClick={() => {
-              done('guide')
-              window.dispatchEvent(new Event('doar:guide'))
-            }}
-          >
-            לקרוא
-          </button>
-          <button type="button" onClick={() => done('guide')}>
             לא עכשיו
           </button>
         </div>

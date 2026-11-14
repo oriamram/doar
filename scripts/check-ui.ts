@@ -697,7 +697,7 @@ try {
   await book.waitFor(`document.documentElement.dataset.theme === 'dark'`)
   await book.click('.guide-head .icon-btn')
   await book.waitFor(`!document.querySelector('.guide-book')`)
-  check('the note about the guide is shown once', (await book.count('.tip')) === 0)
+  check('the note about the guide is shown once', !(await book.text('.tip')).includes('מה דואר יודע'), await book.text('.tip'))
 
   // Forms stay inside the screen whatever is written in them (the demo has a receipt with a very long subject).
   const openFromMenu = async (name: string) => {
