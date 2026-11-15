@@ -193,7 +193,7 @@ export const ThreadRow = memo(function ThreadRow({ thread, view, labels, selecte
 
         {thread.hasAttachment && <Paperclip />}
         {noted && <span className="note-corner" role="img" aria-label="יש פתק" title="יש פתק על המכתב הזה" />}
-        {shape.kind === 'code' && !selecting && <CodeCopy code={shape.code} />}
+        {shape.kind === 'code' && !selecting && <CodeCopy code={shape.code} threadId={thread.id} />}
 
         {/* Quick actions for a mouse; phones swipe instead. */}
         <span className="row-actions">

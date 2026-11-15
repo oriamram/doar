@@ -227,6 +227,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           note="כשזה כבוי, תמונות מהאינטרנט מוסתרות עד שמבקשים, והשולח לא יודע שפתחתם."
         />
         <Check
+          checked={settings.binCopiedCodes}
+          onChange={(binCopiedCodes) => updateSettings({ binCopiedCodes })}
+          title="קוד שהעתקתי עובר לאשפה"
+          note="רבע שעה אחרי שהעתקתם קוד חד־פעמי, המכתב שלו עובר לאשפה. מכתב עם כוכב נשאר. במכשיר הזה בלבד."
+        />
+        <Check
           checked={settings.hebrewDate}
           onChange={(hebrewDate) => updateSettings({ hebrewDate })}
           title="התאריך העברי"

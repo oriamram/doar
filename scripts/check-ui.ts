@@ -309,7 +309,9 @@ try {
   await desk.evaluate(`(Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (text) => ((window.__copied = text), Promise.resolve()) } }), 0)`)
   await desk.click('.qt-copy')
   await desk.waitFor(`!!document.querySelector('.toast-text')`)
-  check('one press copies it', (await toast(desk)) === 'הקוד הועתק' && (await desk.evaluate<string>('window.__copied')) === '482913', `${await toast(desk)}: ${await desk.evaluate<string>('window.__copied')}`)
+  check('one press copies it, and says its letter will go to the bin', (await toast(desk)).startsWith('הקוד הועתק. בעוד רבע שעה') && (await desk.evaluate<string>('window.__copied')) === '482913', `${await toast(desk)}: ${await desk.evaluate<string>('window.__copied')}`)
+  const codeDue = await desk.evaluate<number>(`Object.values(JSON.parse(localStorage.getItem('doar:copied-codes:demo') ?? '{}'))[0] ?? 0`)
+  check('the letter is due in the bin a quarter of an hour from now', Math.abs(codeDue - Date.now() - 15 * 60_000) < 60_000, String(codeDue - Date.now()))
   check('parcels on their way are counted', (await desk.text('.parcel-strip-head')).includes('2 חבילות בדרך'), await desk.text('.parcel-strip-head'))
   await desk.click('.parcel-strip-head')
   await desk.waitFor('.parcel-list')
@@ -580,6 +582,21 @@ try {
   check('the spike gathers receipts by month, with a sum', amounts.includes('128.00') && amounts.includes('342.50') && /\d/.test(sums), `${sums} / ${amounts}`)
   await shot(desk, 'pc-spike')
   await desk.key('Escape')
+
+  // A quarter of an hour on (moved forward here), the copied code's letter goes to the bin.
+  await desk.key('Escape')
+  await toInbox()
+  await desk.evaluate(`(() => {
+    const key = 'doar:copied-codes:demo'
+    const codes = JSON.parse(localStorage.getItem(key) ?? '{}')
+    for (const id of Object.keys(codes)) codes[id] = Date.now() - 1000
+    localStorage.setItem(key, JSON.stringify(codes))
+    window.__doarCodes()
+  })()`)
+  await desk.waitFor(`!!document.querySelector('.toast-text')`)
+  const binned = await toast(desk)
+  check('a quarter of an hour after its code was copied, the letter goes to the bin', binned.startsWith('קוד שהעתקתם הועבר לאשפה') && (await desk.count('.queue-ticket')) === 0, binned)
+  check('and it is not binned twice', (await desk.evaluate<string>(`localStorage.getItem('doar:copied-codes:demo')`)) === '{}')
 
   const strays = await desk.evaluate<{ place: string; message: string }[]>('window.__doarDemo.reports')
   check('no fault was reported along the way', strays.length === 0, strays.map((report) => `${report.place}: ${report.message}`).join(' | ').slice(0, 400))

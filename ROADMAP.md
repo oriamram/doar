@@ -415,6 +415,13 @@ Sums are now read in any common currency (signs, words, codes in capitals), with
 and cents written either way, and a receipt's total is read from what the reader sees
 (`letterText`), on the receipt's card and for every row of the spike.
 
+**Copied codes go to the bin (15 November 2026).** Asked for by the owner: once a one-time
+code is copied, its letter can go. Copying a code (queue ticket, list row, the card in the
+letter) marks its letter on that device; a quarter of an hour later the app moves it to the
+bin, with the usual undo note ("קוד שהעתקתם הועבר לאשפה"). A starred letter stays. It runs
+while the app is open, or the next time it opens; nothing on the server. On by default,
+with a switch in Settings ("קוד שהעתקתי עובר לאשפה").
+
 **The server (done once, for phases 0 to 3).** Migration `20261113100000_post_office.sql`
 and `postman` version 4 are live: fault reports, shared preferences, held and registered
 mail, sender marks (express and refused), opening hours, notes, one-click unsubscribe,

@@ -32,7 +32,7 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | A letter the server brought back | Stands first in the inbox under the heading "חזרו אליך", with a red slip |
 | An express sender | A small red express strip beside the name |
 | Opening hours for notifications | Two clocks, the week's days as round stamps, and "סגור בשבת" |
-| A one-time code | A queue ticket ("פתק תור"): pale ticket paper torn at both ends, the digits in large typewriter type, a stub that copies them. Fresh for 15 minutes on the counter at the top of the inbox; faded after |
+| A one-time code | A queue ticket ("פתק תור"): pale ticket paper torn at both ends, the digits in large typewriter type, a stub that copies them. Fresh for 15 minutes on the counter at the top of the inbox; faded after. Once copied, its letter goes to the bin 15 minutes later |
 | A parcel | A kraft delivery slip, "הודעה על דבר דואר", filled in like a form: carrier, status, number; "2 חבילות בדרך" is a kraft strip on the counter |
 | A receipt | Thermal paper torn off its roll (a zigzag end), the sum at its edge; all of them stand on the receipts spike, "דוקרן הקבלות" (form 16), and the button on the paper, "כל הקבלות", goes there |
 | An invitation | A card with the day torn off a calendar (red month band, large day) |

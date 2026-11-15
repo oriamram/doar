@@ -24,6 +24,8 @@ export type Settings = {
   notKinds: Record<string, string[]>
   /** Senders you said you know, so the inspector's soft notes about them are put away. */
   trusted: string[]
+  /** A one-time code's letter goes to the bin a quarter of an hour after its code was copied. */
+  binCopiedCodes: boolean
 }
 
 const DEFAULTS: Settings = {
@@ -38,6 +40,7 @@ const DEFAULTS: Settings = {
   letterSize: 'regular',
   notKinds: {},
   trusted: [],
+  binCopiedCodes: true,
 }
 
 /**

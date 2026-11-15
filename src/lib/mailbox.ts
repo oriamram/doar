@@ -3,7 +3,7 @@ import type { ComposeDraft, Contact, Label, Message, Thread } from '../types'
 import { shortName } from './addresses'
 import { eraseAccount, signOut } from './auth'
 import { draftFromMessage, replyDraft } from './compose'
-import { isDemo } from './demo'
+import { isDemo, storageKey } from './demo'
 import { harvestRecipients, rememberContacts } from './contacts'
 import { formatDay, formatWhen } from './format'
 import * as api from './gmail'
@@ -852,7 +852,7 @@ function archive(ids: string[]) {
   )
 }
 
-function trash(ids: string[], options: { quiet?: boolean } = {}) {
+function trash(ids: string[], options: { quiet?: boolean; say?: (n: number) => string } = {}) {
   const originals = lookup(ids)
   if (originals.length === 0) return
   settleReturned(ids)
@@ -868,10 +868,70 @@ function trash(ids: string[], options: { quiet?: boolean } = {}) {
   if (options.quiet) return
   // Gmail takes a deleted letter out of the inbox and doesn't put it back by itself.
   const wasInInbox = new Set(originals.filter((thread) => thread.labelIds.includes('INBOX')).map((thread) => thread.id))
-  undoable(many(ids, 'המכתב הועבר לאשפה', (n) => `${n} מכתבים הועברו לאשפה`), before, originals, () =>
+  const said = options.say ? options.say(ids.length) : many(ids, 'המכתב הועבר לאשפה', (n) => `${n} מכתבים הועברו לאשפה`)
+  undoable(said, before, originals, () =>
     ids.map((id) => api.untrashThread(id).then(() => (wasInInbox.has(id) ? api.modifyThread(id, ['INBOX'], []) : undefined))),
   )
 }
+
+// ---------- One-time codes that were copied ----------
+
+/** Letters whose code was copied, and when each goes to the bin (kept on this device). */
+const COPIED_KEY = storageKey('doar:copied-codes')
+const CODE_BIN_MS = 15 * 60_000
+
+function copiedCodes(): Record<string, number> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COPIED_KEY) ?? '{}') as Record<string, number>
+    return saved && typeof saved === 'object' ? saved : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveCopiedCodes(codes: Record<string, number>) {
+  try {
+    localStorage.setItem(COPIED_KEY, JSON.stringify(codes))
+  } catch {
+    // Not remembered; the letter simply stays.
+  }
+}
+
+/**
+ * A one-time code was copied: it has done its job. A quarter of an hour later its letter goes
+ * to the bin (Gmail keeps it there 30 days). Returns whether that was arranged now, so the
+ * note that says "copied" can also say this, once.
+ */
+function codeCopied(threadId: string): boolean {
+  if (!getSettings().binCopiedCodes) return false
+  const codes = copiedCodes()
+  if (codes[threadId]) return false
+  codes[threadId] = Date.now() + CODE_BIN_MS
+  saveCopiedCodes(codes)
+  return true
+}
+
+/** Bin the letters whose code was copied a quarter of an hour ago or more. Runs while the app is open. */
+function binCopiedCodes() {
+  if (!navigator.onLine) return
+  const codes = copiedCodes()
+  const now = Date.now()
+  const due = Object.keys(codes).filter((id) => codes[id]! <= now)
+  if (due.length === 0) return
+  for (const id of due) delete codes[id]
+  saveCopiedCodes(codes)
+  if (!getSettings().binCopiedCodes) return
+  // A letter marked with a star was kept on purpose; one already in the bin needs nothing.
+  const known = lookup(due)
+  const binning = known.filter((thread) => !thread.starred && !thread.labelIds.includes('TRASH')).map((thread) => thread.id)
+  if (binning.length) trash(binning, { say: (n) => (n === 1 ? 'קוד שהעתקתם הועבר לאשפה' : `${n} קודים שהעתקתם הועברו לאשפה`) })
+  // Letters this screen has not loaded (filed, or further down) go straight through Gmail.
+  const unseen = due.filter((id) => !known.some((thread) => thread.id === id))
+  if (unseen.length) settle(unseen.map((id) => api.trashThread(id)))
+}
+
+// The screen checks cannot wait a quarter of an hour; in the demo they call this themselves.
+if (isDemo) (window as Window & { __doarCodes?: () => void }).__doarCodes = binCopiedCodes
 
 /** Take mail out of the trash and back into the inbox. */
 function untrash(ids: string[]) {
@@ -1419,6 +1479,10 @@ function start() {
   }
   const stopLaunch = onLaunch(handleLaunch, onMail)
 
+  // Copied codes come due while the app is open, or the next time it opens.
+  const codeTimer = setInterval(binCopiedCodes, 30_000)
+  const firstCodes = setTimeout(binCopiedCodes, 8_000)
+
   const poll = setInterval(() => {
     if (!navigator.onLine || document.hidden) return
     void load({ quiet: true })
@@ -1448,6 +1512,8 @@ function start() {
     stopLaunch()
     clearTimeout(sendTimer)
     clearInterval(poll)
+    clearInterval(codeTimer)
+    clearTimeout(firstCodes)
     document.removeEventListener('visibilitychange', onVisible)
     window.removeEventListener('online', onOnline)
     window.removeEventListener('offline', onOffline)
@@ -1519,6 +1585,7 @@ async function forgetEverything() {
 export const mailbox = {
   /** The current state, for code that runs outside rendering (keyboard shortcuts). */
   state: () => state,
+  codeCopied,
   start,
   stop,
   show,

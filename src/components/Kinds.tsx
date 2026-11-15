@@ -11,9 +11,9 @@ import { useNow } from '../lib/useNow'
 import type { Contact, Message, Thread } from '../types'
 import { CalendarIcon, CopyIcon, ParcelIcon, SpikeIcon } from './icons'
 
-async function copyCode(code: string) {
-  if (await copyText(code)) toast('הקוד הועתק')
-  else toast('ההעתקה לא הצליחה במכשיר הזה.', { tone: 'error' })
+async function copyCode(code: string, threadId: string) {
+  if (!(await copyText(code))) return toast('ההעתקה לא הצליחה במכשיר הזה.', { tone: 'error' })
+  toast(mailbox.codeCopied(threadId) ? 'הקוד הועתק. בעוד רבע שעה המכתב יעבור לאשפה.' : 'הקוד הועתק')
 }
 
 // ---------- In the list ----------
@@ -50,9 +50,9 @@ export function KindLine({ shape, date }: { shape: Shape; date: string }) {
 }
 
 /** The copy button beside a code's letter in the list. */
-export function CodeCopy({ code }: { code: string }) {
+export function CodeCopy({ code, threadId }: { code: string; threadId: string }) {
   return (
-    <button type="button" className="row-copy" onClick={() => void copyCode(code)} aria-label={`העתקת הקוד ${code}`} title="העתקת הקוד">
+    <button type="button" className="row-copy" onClick={() => void copyCode(code, threadId)} aria-label={`העתקת הקוד ${code}`} title="העתקת הקוד">
       <CopyIcon />
       העתקה
     </button>
@@ -78,7 +78,7 @@ export function QueueTicket({ thread, code, now }: { thread: Thread; code: strin
         type="button"
         className="qt-copy"
         onClick={() => {
-          void copyCode(code)
+          void copyCode(code, thread.id)
           if (thread.unread) mailbox.setRead([thread.id], true)
         }}
       >
@@ -232,7 +232,7 @@ export function KindCard({ message, shape, onNot }: CardProps) {
             </span>
             <span className="kind-sub">{fresh ? `התקבל ${formatAgo(message.date, new Date(now))}` : `התקבל ${formatAgo(message.date, new Date(now))}. קודים כאלה תקפים לרוב דקות ספורות.`}</span>
           </span>
-          <button type="button" className="kind-action" onClick={() => void copyCode(shape.code)}>
+          <button type="button" className="kind-action" onClick={() => void copyCode(shape.code, message.threadId)}>
             <CopyIcon />
             העתקה
           </button>
