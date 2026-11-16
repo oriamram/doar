@@ -31,6 +31,24 @@ const ART: Record<string, () => ReactNode> = {
       </span>
     </span>
   ),
+  widget: () => (
+    <span className="a-widget">
+      <span className="a-widget-edge" />
+      <b>דואר</b>
+      <span className="a-widget-row" data-new>
+        <i />
+        נועה
+      </span>
+      <span className="a-widget-row" data-new>
+        <i />
+        חברת החשמל
+      </span>
+      <span className="a-widget-row">
+        <i />
+        אבי
+      </span>
+    </span>
+  ),
   ticket: () => (
     <span className="a-ticket">
       <span className="a-stub">

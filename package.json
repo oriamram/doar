@@ -14,7 +14,8 @@
     "sync": "npm run build && cap sync android",
     "android:live": "node scripts/android-live.mjs",
     "android:install": "npm run sync && cd android && .\\gradlew.bat installDebug",
-    "android:pair": "node scripts/android-pair.mjs"
+    "android:pair": "node scripts/android-pair.mjs",
+    "widget": "node scripts/build-widget.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",

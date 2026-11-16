@@ -1,0 +1,28 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'app.doar.widget'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'app.doar.widget'
+        // Android 12: lists inside a widget without a service, and sizes the widget picks from.
+        minSdk 31
+        targetSdk 36
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Signed with this PC's debug key, so a new version installs over the old one.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

@@ -30,6 +30,22 @@ Why Edge: it shows notifications even when it is closed. Chrome works too, but o
 The first time you click an email address on a web page, Windows asks which app should
 open it. Choose Doar, and from then on such links open a new letter.
 
+### 3. Phone: the widget on the home screen (5 minutes)
+
+The newest letters on your home screen. Do it on the phone, in Chrome.
+
+1. Open Doar, ☰, **הגדרות**, down to **ווידג׳ט במסך הבית**.
+2. Tap **הורדת אפליקציית הווידג׳ט**. When the file has downloaded, tap it to open it.
+3. Android asks whether Chrome may install apps: tap **הגדרות**, allow it, go back, tap
+   **התקנה**. If Play Protect warns that it doesn't know the app, tap **פרטים נוספים**,
+   then **להתקין בכל זאת** (it is Doar's own small app; it only shows the list).
+   On a Samsung, if it says the installation was blocked, **Auto Blocker** is on: in the
+   phone's Settings, **אבטחה ופרטיות**, **Auto Blocker**, switch it off, install, then
+   switch it back on.
+4. Back in Doar's settings, tap **חיבור הווידג׳ט**. The phone offers to put the widget on
+   the home screen: tap **הוספה**. Hold it and drag a corner to make it as big as you like.
+5. If the letters don't show within a minute, tap the arrow ↻ on the widget once.
+
 ## Done
 
 - **Test emails (12 November 2026):** a regular letter and a scheduled one were sent to
@@ -40,7 +56,7 @@ open it. Choose Doar, and from then on such links open a new letter.
 
 ## Optional
 
-### 3. Make the site update by itself on every change (3 minutes)
+### 4. Make the site update by itself on every change (3 minutes)
 
 Right now each update is deployed by hand.
 
@@ -48,7 +64,7 @@ Right now each update is deployed by hand.
 2. Click **Connect Git Repository**, choose GitHub, and allow Vercel to see `oriamram/doar`.
 3. Tell Claude it's done.
 
-### 4. Notifications within seconds instead of within a minute
+### 5. Notifications within seconds instead of within a minute
 
 Today Doar's server looks for new mail once a minute. Gmail can tell it at once instead:
 
@@ -57,32 +73,32 @@ Today Doar's server looks for new mail once a minute. Gmail can tell it at once 
 3. On the topic, **Permissions**, **Add principal**: `gmail-api-push@system.gserviceaccount.com`, role **Pub/Sub Publisher**.
 4. Tell Claude. The rest Claude builds.
 
-### 5. Suggestions from your Google Contacts
+### 6. Suggestions from your Google Contacts
 
 Today the "To" box suggests people from your mail. To use your contacts too:
 
 1. Open https://console.cloud.google.com/apis/library/people.googleapis.com and click **Enable**.
 2. Tell Claude. You'll sign in to Doar once more to approve the new permission.
 
-### 6. Gmail settings inside Doar (vacation auto-reply, your Gmail signature)
+### 7. Gmail settings inside Doar (vacation auto-reply, your Gmail signature)
 
 Needs one more Google permission. Say "add Gmail settings"; you'll sign in once more.
 (Automatic labels are already built in and need no extra permission: menu, **תיוג אוטומטי**.)
 
-### 7. AI features (summaries, suggested replies, smarter bundles)
+### 8. AI features (summaries, suggested replies, smarter bundles)
 
 1. Get an API key at https://console.anthropic.com.
 2. In Supabase, open **Edge Functions**, **Secrets**, add `ANTHROPIC_API_KEY` with the key.
    Don't paste the key in chat.
 3. Tell Claude what you want first.
 
-### 8. A fully native Android app
+### 9. A fully native Android app
 
 Only worth it if notifications through Chrome turn out unreliable on your phone. The
 project already has the Android shell (Capacitor); native notifications need a Firebase
 project, which takes you about ten minutes to create. Tell Claude and you'll get the steps.
 
-### 9. Your own address
+### 10. Your own address
 
 Buy a domain, add it in Vercel (**Settings**, **Domains**), and tell Claude, who adds it
 to Supabase's allowed addresses.

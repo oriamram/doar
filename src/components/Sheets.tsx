@@ -10,6 +10,7 @@ import { updateSettings, useSettings, type Settings } from '../lib/settings'
 import { playSound } from '../lib/sound'
 import { toast } from '../lib/toast'
 import { labelLeaf } from '../lib/views'
+import { canHaveWidget, WIDGET_APP } from '../lib/widget'
 import type { Thread } from '../types'
 import { CloseIcon, InstallIcon, LogoutIcon } from './icons'
 import { LabelTape } from './Postal'
@@ -84,12 +85,17 @@ const SCOPES: { id: NotifyScope; label: string }[] = [
   { id: 'primary', label: 'רק אישיים' },
 ]
 
-export function SettingsSheet({ onClose }: { onClose: () => void }) {
+/** `toWidget`: opened by the home-screen widget, so its section is brought into view. */
+export function SettingsSheet({ onClose, toWidget = false }: { onClose: () => void; toWidget?: boolean }) {
   const settings = useSettings()
   const { me, server } = useMailbox()
   const push = usePush()
   const install = useInstall()
   const [reporting, setReporting] = useState(false)
+
+  useEffect(() => {
+    if (toWidget) document.getElementById('widget-settings')?.scrollIntoView({ block: 'start' })
+  }, [toWidget])
 
   const sendReport = async () => {
     setReporting(true)
@@ -197,6 +203,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           </div>
         </fieldset>
       )}
+
+      <WidgetSetting />
 
       <fieldset className="setting-group">
         <legend>מראה</legend>
@@ -369,6 +377,62 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
       </fieldset>
     </Sheet>
+  )
+}
+
+/** The home-screen widget on an Android phone: get the app, connect it, see what is connected. */
+function WidgetSetting() {
+  const { server } = useMailbox()
+  const [busy, setBusy] = useState(false)
+  const phone = canHaveWidget()
+  const widgets = server?.widgets ?? []
+
+  const connect = async () => {
+    setBusy(true)
+    await mailbox.connectWidget()
+    setBusy(false)
+  }
+
+  return (
+    <fieldset className="setting-group" id="widget-settings">
+      <legend>ווידג׳ט במסך הבית</legend>
+      <p className="setting-note">
+        המכתבים האחרונים על מסך הבית של טלפון אנדרואיד. הם מתעדכנים כל רבע שעה, ולחיצה על מכתב פותחת אותו בדואר.
+      </p>
+      {phone ? (
+        <>
+          <div className="setting">
+            <button className="pill-btn" onClick={() => window.location.assign(WIDGET_APP)}>
+              הורדת אפליקציית הווידג׳ט
+            </button>
+            <span className="setting-note">פעם אחת. כשהקובץ יורד, פותחים אותו ומאשרים את ההתקנה.</span>
+          </div>
+          <div className="setting">
+            <button className="pill-btn" disabled={busy} onClick={() => void connect()}>
+              {busy ? 'מחברים…' : 'חיבור הווידג׳ט'}
+            </button>
+            <span className="setting-note">אחרי ההתקנה. הטלפון יציע להניח את הווידג׳ט במסך הבית.</span>
+          </div>
+        </>
+      ) : (
+        <p className="setting-note">מחברים אותו מהטלפון: פותחים שם את דואר, ההגדרות, „ווידג׳ט במסך הבית”.</p>
+      )}
+      {widgets.length > 0 && (
+        <ul className="widget-list">
+          {widgets.map((widget) => (
+            <li key={widget.id}>
+              <span>
+                <b>{widget.device || 'טלפון'}</b>
+                <span className="setting-note">{widget.lastUsedAt ? `התעדכן ${formatAgo(widget.lastUsedAt)}` : 'עוד לא התעדכן'}</span>
+              </span>
+              <button className="pill-btn" onClick={() => void mailbox.disconnectWidget(widget.id)}>
+                ניתוק
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </fieldset>
   )
 }
 

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">דואר · ווידג׳ט</string>
+    <string name="widget_name">דואר</string>
+    <string name="widget_description">המכתבים האחרונים בדואר הנכנס, ומי כתב לך.</string>
+    <string name="title">דואר</string>
+    <string name="refresh">לרענן</string>
+    <string name="compose">מכתב חדש</string>
+    <string name="unlinked">לא מחובר</string>
+    <string name="loading">מביאים את המכתבים…</string>
+    <string name="reauth">צריך להיכנס שוב לדואר</string>
+    <string name="refreshing">מרעננים…</string>
+    <string name="offline">אין חיבור · %1$s</string>
+    <string name="count_none">אין חדשים</string>
+    <string name="count_more">100+ חדשים</string>
+    <plurals name="count">
+        <item quantity="one">חדש אחד</item>
+        <item quantity="two">%1$d חדשים</item>
+        <item quantity="other">%1$d חדשים</item>
+    </plurals>
+    <string name="new_letter">חדש:</string>
+    <string name="code">קוד %1$s</string>
+    <string name="empty_unlinked">כדי לראות כאן את המכתבים, מחברים את הווידג׳ט בהגדרות של דואר. לחיצה כאן פותחת אותן.</string>
+    <string name="empty_loading">מביאים את המכתבים…</string>
+    <string name="empty_offline">אין חיבור כרגע. לחיצה על החץ מנסה שוב.</string>
+    <string name="offline_none">אין חיבור כרגע</string>
+    <string name="empty_none">התיבה ריקה. אין מכתבים בדואר הנכנס.</string>
+    <string name="connect_done">הווידג׳ט מחובר. המכתבים יופיעו בו עוד רגע.</string>
+    <string name="connect_place">הווידג׳ט מחובר. אשרו כדי להניח אותו במסך הבית.</string>
+    <string name="connect_bad">הקישור לא שלם. נסו שוב מההגדרות של דואר.</string>
+    <string name="sample_from_1">נועה כהן</string>
+    <string name="sample_subject_1">שבת אצלנו? תגידו עד חמישי</string>
+    <string name="sample_from_2">חברת החשמל</string>
+    <string name="sample_subject_2">החשבון לחודש נובמבר מוכן</string>
+    <string name="sample_from_3">יואב לוי</string>
+    <string name="sample_subject_3">התמונות מהטיול</string>
+</resources>

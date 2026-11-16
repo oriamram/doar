@@ -429,6 +429,60 @@
   text-align: center;
 }
 
+/* The home-screen widget: a sheet of paper with an airmail edge, the newest letters ruled under its name. */
+.a-widget {
+  display: flex;
+  flex-direction: column;
+  width: 86px;
+  padding: 0 8px 5px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 8px 12px -8px rgba(0, 0, 0, 0.5);
+}
+
+.a-widget-edge {
+  height: 4px;
+  margin: 0 -8px 4px;
+  background: repeating-linear-gradient(-55deg, var(--ink-red) 0 5px, var(--sheet) 5px 10px, var(--ink-blue) 10px 15px, var(--sheet) 15px 20px);
+}
+
+.a-widget b {
+  color: var(--ink-red);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.a-widget-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-block: 2px;
+  border-top: 1px solid var(--ink-rule);
+  font-size: 9px;
+  font-weight: 300;
+  white-space: nowrap;
+}
+
+.a-widget-row[data-new] {
+  font-weight: 700;
+}
+
+.a-widget-row i {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.a-widget-row[data-new] i {
+  background: var(--ink-red);
+}
+
 /* A queue ticket: torn at both ends, the digits in typewriter type, a stub that copies. */
 .a-ticket {
   --paper: var(--ticket);

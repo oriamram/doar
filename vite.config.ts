@@ -33,8 +33,8 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        // The privacy page is its own page, not a screen of the app.
-        navigateFallbackDenylist: [/^\/privacy/],
+        // The privacy page is its own page, not a screen of the app; the widget app is a file to download.
+        navigateFallbackDenylist: [/^\/privacy/, /\.apk$/],
         // Keep the textures and the font on the device too, so the app opens whole when offline.
         globPatterns: ['**/*.{js,css,html,svg,ttf}'],
         // Notifications, opening the right letter from them, and "share to Doar" (public/sw-extra.js).

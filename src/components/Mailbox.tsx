@@ -31,7 +31,7 @@ import { ThreadView } from './ThreadView'
 import { Toasts } from './Toasts'
 
 type Sheet =
-  | { kind: 'settings' }
+  | { kind: 'settings'; widget?: boolean }
   | { kind: 'shortcuts' }
   | { kind: 'labels'; ids: string[] }
   | { kind: 'manage-labels' }
@@ -83,15 +83,19 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
   }, [])
 
   // The note at the top of the inbox that offers the guide asks for it this way,
-  // and a receipt's card asks for the receipts spike.
+  // and a receipt's card asks for the receipts spike. The home-screen widget, not yet
+  // connected, opens Doar at its place in Settings.
   useEffect(() => {
     const openGuide = () => setGuide(true)
     const openSpike = () => setSheet({ kind: 'spike' })
+    const openWidget = () => setSheet({ kind: 'settings', widget: true })
     window.addEventListener('doar:guide', openGuide)
     window.addEventListener('doar:spike', openSpike)
+    window.addEventListener('doar:settings', openWidget)
     return () => {
       window.removeEventListener('doar:guide', openGuide)
       window.removeEventListener('doar:spike', openSpike)
+      window.removeEventListener('doar:settings', openWidget)
     }
   }, [])
 
@@ -341,7 +345,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       {state.flight && <SendFlight to={state.flight.to} />}
       {palette && <Palette entries={places()} onClose={() => setPalette(false)} onSearch={(query) => mailbox.show({ kind: 'search', query })} />}
       {guide && <Guide onClose={() => setGuide(false)} onTry={goFromGuide} places={guidePlaces()} busy={!!sheet} />}
-      {sheet?.kind === 'settings' && <SettingsSheet onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'settings' && <SettingsSheet toWidget={sheet.widget} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'shortcuts' && <ShortcutsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'labels' && (
         <LabelSheet ids={sheet.ids} onClose={() => setSheet(null)} onRules={(from, labelId) => setSheet({ kind: 'rules', from, labelId })} />

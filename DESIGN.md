@@ -123,6 +123,16 @@ The guide exists so that nobody has to guess what a name means. It keeps four ru
 A new feature is not finished until it has its line in `src/lib/guide.ts` (and, if it is
 a main one, its picture in `src/components/GuideArt.tsx`).
 
+## The home-screen widget (Android)
+
+A sheet of Doar's paper on the home screen: the airmail edge along its top, "דואר" in red
+ink, and under it how many letters are new and when it last looked. The letters are ruled
+lines: who wrote, when, and the subject; an unread one has a drop of red wax and a darker
+name, a one-time code in an unread letter is written out in red. ↻ looks now, the pen
+writes a new letter, a letter opens in Doar. At night the paper dims, as in the app. Made
+small, it shows only the number of new letters. The system's own font: a widget cannot
+carry Doar's.
+
 ## Tried and rejected
 
 - A button named after a place that does something else. The receipt's button said "לדוקרן"

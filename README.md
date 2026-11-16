@@ -119,6 +119,8 @@ supabase/
   migrations/
 scripts/               Checks, icon builder, Android helpers
 android/               Native Android shell (Capacitor)
+widget/                The home-screen widget for Android: a small app of its own (plain Java).
+                       `npm run widget` builds it into public/doar-widget.apk
 ```
 
 ## Where things are written down

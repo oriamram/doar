@@ -14,6 +14,8 @@ export type LaunchIntent =
   | { kind: 'compose'; draft: ComposeDraft }
   | { kind: 'share' }
   | { kind: 'scheduled' }
+  /** The home-screen widget asked to be connected: open its place in Settings. */
+  | { kind: 'widget' }
 
 const SHARE_CACHE = 'doar-share'
 
@@ -50,6 +52,7 @@ export function readIntent(address: string): LaunchIntent | null {
   const thread = params.get('thread')
   if (thread) return { kind: 'thread', id: thread }
   if (params.get('view') === 'scheduled') return { kind: 'scheduled' }
+  if (params.has('widget')) return { kind: 'widget' }
   if (params.has('share')) return { kind: 'share' }
   const mailto = params.get('mailto')
   if (mailto) return { kind: 'compose', draft: draftFromMailto(mailto) }

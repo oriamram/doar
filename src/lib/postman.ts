@@ -53,6 +53,12 @@ export type Note = { threadId: string; text: string; updatedAt: string }
 
 export type Device = { device: string; lastOkAt: string | null }
 
+/** A widget on a phone's home screen, connected to your mail (the app in widget/). */
+export type Widget = { id: string; device: string; createdAt: string; lastUsedAt: string | null }
+
+type WidgetRow = { id: string; device: string; created_at: string; last_used_at: string | null }
+const fromWidget = (row: WidgetRow): Widget => ({ id: row.id, device: row.device, createdAt: row.created_at, lastUsedAt: row.last_used_at })
+
 export type { Hours }
 
 export type ServerStatus = {
@@ -72,6 +78,7 @@ export type ServerStatus = {
   marks: SenderMark[]
   notes: Note[]
   lastReport: { at: string; place: string; message: string } | null
+  widgets: Widget[]
 }
 
 type Row = {
@@ -161,6 +168,7 @@ type StatusAnswer = {
   marks?: SenderMark[]
   notes?: { thread_id: string; text: string; updated_at: string }[]
   last_report?: { at: string; place: string; message: string } | null
+  widgets?: WidgetRow[]
 }
 
 export async function serverStatus(): Promise<ServerStatus> {
@@ -178,8 +186,15 @@ export async function serverStatus(): Promise<ServerStatus> {
     marks: status.marks ?? [],
     notes: (status.notes ?? []).map((row) => ({ threadId: row.thread_id, text: row.text, updatedAt: row.updated_at })),
     lastReport: status.last_report ?? null,
+    widgets: (status.widgets ?? []).map(fromWidget),
   }
 }
+
+/** A key for a new home-screen widget; the server keeps only its fingerprint. */
+export const widgetCreate = (device: string) =>
+  call<{ key: string; widget: WidgetRow }>({ action: 'widget-key-create', device }).then((answer) => ({ key: answer.key, widget: fromWidget(answer.widget) }))
+
+export const widgetDelete = (id: string) => call<{ ok: true }>({ action: 'widget-key-delete', id })
 
 export const pushKey = () => call<{ publicKey: string }>({ action: 'push-key' }).then((answer) => answer.publicKey)
 

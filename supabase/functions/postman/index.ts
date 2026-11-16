@@ -38,6 +38,11 @@
 //   POST { action: "unsubscribe", message_id }              { done, mailto, url }
 //   POST { action: "prefs-set", patch }                     { prefs }
 //   POST { action: "report", place, message, detail, version, device }
+//   POST { action: "widget-key-create", device }            { key, widget }  connects a home-screen widget
+//   POST { action: "widget-key-delete", id }                { ok }
+//
+// Called by the home-screen widget on an Android phone, with the key it was given (see widget.ts):
+//   POST { action: "widget", key }                          { at, unread, more, letters }
 //
 // Called by the service worker when a button on a notification is pressed, with the
 // signed ticket that came inside that notification (no session needed):
@@ -54,8 +59,10 @@ import { findCode, formatCode } from './codes.ts'
 import { isOpen, validHours } from './hours.ts'
 import { replyState, validDays, validDue } from './reminders.ts'
 import { labelsFor, matches, normalizeMatch, senderAddress, type Rule } from './rules.ts'
+import { clip, decodeWords, plain, senderName } from './text.ts'
 import { readTicket, signTicket } from './tickets.ts'
 import { createVapidKeys, sendPush, type PushResult, type VapidKeys } from './webpush.ts'
+import { newWidgetKey, validWidgetKey, widgetKeyHash, widgetLetter, widgetQuery } from './widget.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -206,53 +213,6 @@ async function pushTo(userId: string, payload: Record<string, unknown>): Promise
   }
   return results.map(({ subscription, result }) => ({ ...result, device: subscription.device }))
 }
-
-/** Turn "=?UTF-8?B?…?=" in a mail header back into text. */
-function decodeWords(value: string): string {
-  return value.replace(/=\?([^?]+)\?([bBqQ])\?([^?]*)\?=(\s+(?==\?))?/g, (_match, charset: string, kind: string, text: string) => {
-    try {
-      let bytes: Uint8Array
-      if (kind.toLowerCase() === 'b') {
-        bytes = Uint8Array.from(atob(text), (char) => char.charCodeAt(0))
-      } else {
-        const out: number[] = []
-        for (let i = 0; i < text.length; i++) {
-          if (text[i] === '_') out.push(32)
-          else if (text[i] === '=' && i + 2 < text.length) {
-            out.push(parseInt(text.slice(i + 1, i + 3), 16))
-            i += 2
-          } else out.push(text.charCodeAt(i))
-        }
-        bytes = new Uint8Array(out)
-      }
-      return new TextDecoder(charset).decode(bytes)
-    } catch {
-      return text
-    }
-  })
-}
-
-function senderName(from: string): string {
-  const decoded = decodeWords(from).trim()
-  const match = decoded.match(/^"?([^"<]*)"?\s*<([^>]+)>/)
-  const name = match?.[1]?.trim()
-  if (name) return name
-  const email = (match?.[2] ?? decoded).trim()
-  return email.split('@')[0] || email
-}
-
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
-
-/** Gmail's preview text comes with HTML entities. */
-function plain(text: string): string {
-  return text
-    .replace(/&#(\d+);/g, (_m, code: string) => String.fromCodePoint(Number(code)))
-    .replace(/&([a-z]+);/g, (match, name: string) => ENTITIES[name] ?? match)
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
 
 type MessageRef = { id: string; threadId: string; labelIds?: string[] }
 
@@ -841,7 +801,7 @@ async function fromApp(userId: string, body: any): Promise<Response> {
   switch (body.action) {
     case 'status': {
       const recently = new Date(Date.now() - 2 * DAY).toISOString()
-      const [{ data: watch }, { data: subscriptions }, scheduled, { data: rules }, { data: prefs }, { data: reminders }, { data: marks }, { data: notes }, { data: reports }] =
+      const [{ data: watch }, { data: subscriptions }, scheduled, { data: rules }, { data: prefs }, { data: reminders }, { data: marks }, { data: notes }, { data: reports }, { data: widgets }] =
         await Promise.all([
           admin.from('mail_watch').select('scope, hours, updated_at').eq('user_id', userId).maybeSingle(),
           admin.from('push_subscriptions').select('endpoint, device, last_ok_at').eq('user_id', userId).order('created_at'),
@@ -858,6 +818,7 @@ async function fromApp(userId: string, body: any): Promise<Response> {
           admin.from('sender_marks').select('id, match, mark').eq('user_id', userId).order('created_at'),
           admin.from('notes').select('thread_id, text, updated_at').eq('user_id', userId).order('updated_at', { ascending: false }).limit(500),
           admin.from('client_reports').select('at, place, message').eq('user_id', userId).order('at', { ascending: false }).limit(1),
+          admin.from('widget_keys').select('id, device, created_at, last_used_at').eq('user_id', userId).order('created_at'),
         ])
       return json({
         scope: watch?.scope ?? 'important',
@@ -872,6 +833,7 @@ async function fromApp(userId: string, body: any): Promise<Response> {
         marks: marks ?? [],
         notes: notes ?? [],
         last_report: reports?.[0] ?? null,
+        widgets: widgets ?? [],
       })
     }
 
@@ -885,6 +847,25 @@ async function fromApp(userId: string, body: any): Promise<Response> {
       const { error } = await admin.from('user_prefs').upsert({ user_id: userId, data, updated_at: now() }, { onConflict: 'user_id' })
       if (error) return json({ error: 'Could not save preferences' }, 500)
       return json({ prefs: data })
+    }
+
+    case 'widget-key-create': {
+      const { count } = await admin.from('widget_keys').select('id', { count: 'exact', head: true }).eq('user_id', userId)
+      if ((count ?? 0) >= 10) return json({ error: 'too_many' }, 409)
+      const key = newWidgetKey()
+      const { data: widget, error } = await admin
+        .from('widget_keys')
+        .insert({ user_id: userId, key_hash: await widgetKeyHash(key), device: String(body.device ?? '').slice(0, 60) })
+        .select('id, device, created_at, last_used_at')
+        .single()
+      if (error) return json({ error: 'Could not save the widget' }, 500)
+      return json({ key, widget })
+    }
+
+    case 'widget-key-delete': {
+      if (typeof body.id !== 'string') return json({ error: 'bad_id' }, 400)
+      await admin.from('widget_keys').delete().eq('user_id', userId).eq('id', body.id)
+      return json({ ok: true })
     }
 
     case 'report': {
@@ -1194,6 +1175,45 @@ async function fromApp(userId: string, body: any): Promise<Response> {
   return json({ error: 'Unknown action' }, 400)
 }
 
+/** The home-screen widget asks what is in the inbox (see widget.ts). */
+// deno-lint-ignore no-explicit-any
+async function forWidget(body: any): Promise<Response> {
+  if (!validWidgetKey(body.key)) return json({ error: 'unknown_widget' }, 403)
+  const { data: row } = await admin.from('widget_keys').select('id, user_id, last_used_at').eq('key_hash', await widgetKeyHash(body.key)).maybeSingle()
+  if (!row) return json({ error: 'unknown_widget' }, 403)
+  let token: string
+  try {
+    token = await googleToken(row.user_id)
+  } catch (error) {
+    if (error instanceof Reauth) return json({ error: 'reauth' }, 401)
+    throw error
+  }
+  const { data: prefs } = await admin.from('user_prefs').select('data').eq('user_id', row.user_id).maybeSingle()
+  const bundles = prefs?.data?.bundles !== false
+  const search = (unreadOnly: boolean, max: number, fields: string) =>
+    gmail(token, `/threads?maxResults=${max}&q=${encodeURIComponent(widgetQuery(bundles, unreadOnly))}&fields=${encodeURIComponent(fields)}`)
+  const [list, unread] = await Promise.all([search(false, 12, 'threads/id'), search(true, 100, 'threads/id,nextPageToken')])
+  if (list.status === 401 || unread.status === 401) return json({ error: 'reauth' }, 401)
+  // With `fields`, Gmail answers an empty search with 204 and no body.
+  const found = (answer: { status: number }) => answer.status === 200 || answer.status === 204
+  if (!found(list) || !found(unread)) return json({ error: 'gmail' }, 502)
+  const ids: string[] = (list.body?.threads ?? []).map((thread: { id: string }) => thread.id)
+  const threads = await Promise.all(
+    ids.map((id) =>
+      gmail(
+        token,
+        `/threads/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&fields=${encodeURIComponent('id,messages(labelIds,internalDate,snippet,payload/headers)')}`,
+      ),
+    ),
+  )
+  const letters = threads.flatMap((thread) => (thread.status === 200 && thread.body ? [widgetLetter(thread.body)] : [])).filter((letter) => letter !== null)
+  // Once a quarter of an hour is enough to say "last seen" in Settings.
+  if (!row.last_used_at || Date.parse(row.last_used_at) < Date.now() - 15 * 60_000) {
+    await admin.from('widget_keys').update({ last_used_at: now() }).eq('id', row.id)
+  }
+  return json({ at: Date.now(), unread: (unread.body?.threads ?? []).length, more: !!unread.body?.nextPageToken, letters })
+}
+
 /** A button on a notification was pressed. The signed ticket inside the notification says for whom and on what. */
 // deno-lint-ignore no-explicit-any
 async function fromTicket(body: any): Promise<Response> {
@@ -1250,6 +1270,8 @@ Deno.serve(async (req) => {
   try {
     // A button on a notification (carries its own proof).
     if (body.action === 'ticket') return await fromTicket(body)
+    // The home-screen widget (carries its own key).
+    if (body.action === 'widget') return await forWidget(body)
 
     // The database's timer.
     const cronSecret = req.headers.get('x-cron-secret')

@@ -284,6 +284,7 @@ try {
   check('a fault report is sent', sent.version.length > 10 && sent.device.includes('מחשב'), JSON.stringify(sent).slice(0, 120))
   const others = reports.filter((report) => report !== sent)
   check('no fault was reported by itself along the way', others.length === 0, others.map((report) => `${report.place}: ${report.message}`).join(' | ').slice(0, 400))
+  check('on a PC, Settings say the widget is connected from the phone', (await pc.text('#widget-settings')).includes('מהטלפון'))
   await shot(pc, 'pc-settings')
   await pc.key('Escape')
 
@@ -852,6 +853,33 @@ try {
   await wide.waitFor(`!document.querySelector('.guide-book')`)
   check('nothing went wrong in the guide on a PC', wide.errors.length === 0, wide.errors.join(' | ').slice(0, 300))
   wide.close()
+
+  // ================= The home-screen widget, from an Android phone =================
+  const droid = await browser.open(`${SITE}/?demo=fast`, PHONE)
+  await droid.waitFor('.thread-row', 25_000)
+  await droid.evaluate(`localStorage.setItem('doar:settings:demo', JSON.stringify({ tipsDone: ['demo', 'guide', 'install', 'push'] }))`)
+  await droid.cdp.send('Emulation.setUserAgentOverride', {
+    userAgent: 'Mozilla/5.0 (Linux; Android 16; SM-S948B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36',
+  })
+  // What the widget opens when it is not connected yet.
+  await droid.goto(`${SITE}/?demo=fast&widget`)
+  await droid.waitFor('#widget-settings', 25_000)
+  await sleep(400)
+  check(
+    'the widget link opens Settings at the widget',
+    await droid.evaluate<boolean>(`(() => { const r = document.getElementById('widget-settings').getBoundingClientRect(); return r.top >= -2 && r.top < innerHeight / 2 })()`),
+  )
+  await droid.clickText('חיבור הווידג׳ט', '.pill-btn')
+  await droid.waitFor('.widget-list li', 6000)
+  check('connecting lists the widget under the phone', (await droid.text('.widget-list li')).includes('טלפון'), await droid.text('.widget-list li'))
+  await shot(droid, 'phone-widget')
+  await droid.clickText('ניתוק', '.widget-list .pill-btn')
+  await droid.waitFor(`!document.querySelector('.widget-list li')`, 6000)
+  check('disconnecting takes it off the list', true)
+  const apk = await droid.evaluate<number>(`fetch('/doar-widget.apk', { method: 'HEAD' }).then((r) => (r.ok ? Number(r.headers.get('content-length') ?? 1) : 0))`)
+  check('the widget app is there to download', apk > 0, String(apk))
+  check('nothing went wrong while connecting the widget', droid.errors.length === 0, droid.errors.join(' | ').slice(0, 300))
+  droid.close()
 
   // ================= The front door =================
   const door = await browser.open(SITE, PHONE)

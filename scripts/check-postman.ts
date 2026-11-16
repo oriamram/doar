@@ -1,5 +1,5 @@
-// Checks the pure parts of Doar's server: one-time codes, opening hours, reminders
-// and notification tickets (supabase/functions/postman/*.ts).
+// Checks the pure parts of Doar's server: one-time codes, opening hours, reminders,
+// notification tickets and the home-screen widget (supabase/functions/postman/*.ts).
 //
 //   node --experimental-strip-types scripts/check-postman.ts
 
@@ -7,6 +7,7 @@ import { findCode, formatCode } from '../supabase/functions/postman/codes.ts'
 import { isOpen, localTime, sunsetMinutes, validHours, type Hours } from '../supabase/functions/postman/hours.ts'
 import { replyState, validDays, validDue } from '../supabase/functions/postman/reminders.ts'
 import { readTicket, signTicket } from '../supabase/functions/postman/tickets.ts'
+import { newWidgetKey, validWidgetKey, widgetKeyHash, widgetLetter, widgetQuery } from '../supabase/functions/postman/widget.ts'
 
 let failed = false
 function check(name: string, got: unknown, want: unknown) {
@@ -118,5 +119,52 @@ const forged = `${Buffer.from(JSON.stringify({ u: 'someone-else', t: 'thread-1',
 check('a ticket whose contents were changed is refused', await readTicket(forged, secret, now), null)
 check('a ticket with a cut signature is refused', await readTicket(`${body}.${signature!.slice(0, 10)}`, secret, now), null)
 check('nonsense is refused as a ticket', await readTicket('hello', secret, now), null)
+
+// ---------- The home-screen widget ----------
+
+const head = (from: string, subject?: string) => ({ headers: [{ name: 'From', value: from }, ...(subject === undefined ? [] : [{ name: 'Subject', value: subject }])] })
+check(
+  'a conversation as the widget shows it',
+  widgetLetter({
+    id: 't1',
+    messages: [
+      { labelIds: ['INBOX'], internalDate: '1000', snippet: 'שלום', payload: head('"Dana Levi" <dana@example.com>', 'פגישה ביום שלישי') },
+      { labelIds: ['SENT'], internalDate: '2000', snippet: 'מתאים לי', payload: head('Me <me@example.com>', 'Re: פגישה ביום שלישי') },
+      { labelIds: ['INBOX', 'UNREAD', 'STARRED'], internalDate: '3000', snippet: 'אז ב&quot;10&quot;?', payload: head('Dana Levi <dana@example.com>') },
+    ],
+  }),
+  { thread: 't1', from: 'Dana Levi', subject: 'פגישה ביום שלישי', preview: 'אז ב"10"?', at: 3000, unread: true, starred: true, count: 3, code: null },
+)
+check(
+  'my own last answer: the time is of the letter I got, the name is theirs',
+  widgetLetter({
+    id: 't2',
+    messages: [
+      { labelIds: ['INBOX'], internalDate: '1000', snippet: 'a', payload: head('=?UTF-8?B?16nXmdeo?= <shir@example.com>', 'שאלה') },
+      { labelIds: ['SENT'], internalDate: '2000', snippet: 'b', payload: head('me@example.com') },
+    ],
+  })?.from,
+  'שיר',
+)
+check(
+  'an unread code is written out',
+  widgetLetter({ id: 't3', messages: [{ labelIds: ['INBOX', 'UNREAD'], internalDate: '1', snippet: 'Your code is 482913', payload: head('Bank <no-reply@bank.example>', 'Your verification code') }] })?.code,
+  '482 913',
+)
+check(
+  'a code already read is not',
+  widgetLetter({ id: 't4', messages: [{ labelIds: ['INBOX'], internalDate: '1', snippet: 'Your code is 482913', payload: head('Bank <no-reply@bank.example>', 'Your verification code') }] })?.code,
+  null,
+)
+check('a letter with no subject', widgetLetter({ id: 't5', messages: [{ labelIds: ['INBOX'], payload: head('a@b.example') }] })?.subject, '(בלי נושא)')
+check('an empty conversation has no row', widgetLetter({ id: 't6', messages: [] }), null)
+check('with bundles, the widget shows the desk', widgetQuery(true), 'in:inbox -category:updates -category:promotions -category:social -category:forums')
+check('without bundles, the whole inbox', widgetQuery(false), 'in:inbox')
+check('the unread count asks for unread', widgetQuery(false, true), 'in:inbox is:unread')
+const widgetKey = newWidgetKey()
+check('a widget key is 43 link-safe characters', validWidgetKey(widgetKey), true)
+check('two widget keys differ', widgetKey === newWidgetKey(), false)
+check('a short key is refused', validWidgetKey('abc'), false)
+check('a key is kept as its SHA-256', await widgetKeyHash('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
 
 if (failed) process.exit(1)

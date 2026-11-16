@@ -14,10 +14,11 @@ import { onLaunch, takeShared, type LaunchIntent } from './launch'
 import { tapHaptic } from './platform'
 import * as postman from './postman'
 import { forgetPush, syncPush } from './push'
-import { report } from './report'
+import { deviceName, report } from './report'
 import { applyShared, getSettings, updateSettings } from './settings'
 import { playSound } from './sound'
 import { dismissToast, toast } from './toast'
+import { widgetLink } from './widget'
 import {
   belongsInView,
   BUNDLE_CATEGORIES,
@@ -99,6 +100,7 @@ export type ServerInfo = {
   lookedAt: string | null
   devices: postman.Device[]
   lastReport: postman.ServerStatus['lastReport']
+  widgets: postman.Widget[]
 }
 
 const EMPTY: ReadonlySet<string> = new Set()
@@ -1272,7 +1274,7 @@ async function refreshServer() {
       marks: status.marks,
       notes: Object.fromEntries(status.notes.map((note) => [note.threadId, note.text])),
       hours: status.hours,
-      server: { reachable: true, askedAt: Date.now(), lookedAt: status.lookedAt, devices: status.devices, lastReport: status.lastReport },
+      server: { reachable: true, askedAt: Date.now(), lookedAt: status.lookedAt, devices: status.devices, lastReport: status.lastReport, widgets: status.widgets },
     })
     watchSends()
     void syncPush(status)
@@ -1436,6 +1438,39 @@ async function removeRule(id: string) {
   }
 }
 
+// ---------- The home-screen widget ----------
+
+/**
+ * Connect a widget on this phone: the server makes a key, and the link hands it to the
+ * widget app (widget/ConnectActivity). Without the app installed, the link downloads it.
+ */
+async function connectWidget(): Promise<boolean> {
+  try {
+    const { key, widget } = await postman.widgetCreate(deviceName())
+    if (state.server) set({ server: { ...state.server, widgets: [...state.server.widgets, widget] } })
+    if (isDemo) {
+      toast('בהדגמה אין ווידג׳ט אמיתי. בתיבה שלך הקישור עובר לאפליקציית הווידג׳ט.')
+      return true
+    }
+    window.location.href = widgetLink(key, window.location.origin)
+    return true
+  } catch (error) {
+    const many = error instanceof postman.PostmanError && error.code === 'too_many'
+    toast(many ? 'כבר מחוברים עשרה ווידג׳טים. נתקו אחד שלא בשימוש.' : 'לא הצלחנו לחבר את הווידג׳ט. בדקו את החיבור ונסו שוב.', { tone: 'error' })
+    return false
+  }
+}
+
+async function disconnectWidget(id: string) {
+  try {
+    await postman.widgetDelete(id)
+    if (state.server) set({ server: { ...state.server, widgets: state.server.widgets.filter((widget) => widget.id !== id) } })
+    toast('הווידג׳ט נותק. הוא יבקש להתחבר שוב בפעם הבאה שיתעדכן.')
+  } catch {
+    toast('הווידג׳ט לא נותק. בדקו את החיבור ונסו שוב.', { tone: 'error' })
+  }
+}
+
 // ---------- Opened from outside ----------
 
 /** A tapped notification, a mail link, the icon's shortcut, or a share from another app. */
@@ -1456,6 +1491,10 @@ function handleLaunch(intent: LaunchIntent) {
       break
     case 'share':
       void takeShared().then((draft) => draft && write(draft))
+      break
+    case 'widget':
+      // On opening, this runs before the desk listens; a moment later it does.
+      setTimeout(() => window.dispatchEvent(new CustomEvent('doar:settings', { detail: 'widget' })), 0)
       break
   }
 }
@@ -1640,6 +1679,8 @@ export const mailbox = {
   addRule,
   removeRule,
   forgetEverything,
+  connectWidget,
+  disconnectWidget,
   endFlight: () => set({ flight: null }),
   signOut: leave,
 }

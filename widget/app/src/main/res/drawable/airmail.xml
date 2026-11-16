@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The red and blue edge of an airmail envelope, along the top of the sheet. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/airmail_tile"
+    android:tileMode="repeat" />

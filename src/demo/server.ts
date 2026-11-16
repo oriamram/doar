@@ -613,6 +613,9 @@ type Answer = { data: any } | { error: string }
 const ok = (data: unknown = { ok: true }): Answer => ({ data })
 const no = (error: string): Answer => ({ error })
 
+/** Widgets "connected" in the demo: rows only, no phone and no key that works. */
+const widgets: { id: string; device: string; created_at: string; last_used_at: string | null }[] = []
+
 /** The demo's answer to what the app asks Doar's server (see supabase/functions/postman/index.ts). */
 export async function demoPostman(body: Record<string, any>): Promise<Answer> {
   await wait()
@@ -632,7 +635,18 @@ export async function demoPostman(body: Record<string, any>): Promise<Answer> {
         marks: server.marks,
         notes: [...server.notes].map(([thread_id, note]) => ({ thread_id, ...note })),
         last_report: null,
+        widgets,
       })
+    }
+    case 'widget-key-create': {
+      const widget = { id: `widget-${widgets.length + 1}`, device: String(body.device ?? ''), created_at: stamp(), last_used_at: null }
+      widgets.push(widget)
+      return ok({ key: 'demo-key-that-opens-nothing-000000000000000', widget })
+    }
+    case 'widget-key-delete': {
+      const at = widgets.findIndex((widget) => widget.id === body.id)
+      if (at >= 0) widgets.splice(at, 1)
+      return ok()
     }
     case 'prefs-set': {
       const data: Record<string, unknown> = { ...server.prefs, ...body.patch }

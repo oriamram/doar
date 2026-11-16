@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sheet">#DFD5BF</color>
+    <color name="ink">#1F2A3A</color>
+    <color name="ink_muted">#474033</color>
+    <color name="ink_faded">#524A3D</color>
+    <color name="ink_red">#96321F</color>
+    <color name="ink_rule">#40503C1E</color>
+    <color name="press">#1F503C1E</color>
+</resources>

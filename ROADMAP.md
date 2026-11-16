@@ -106,7 +106,7 @@ Theme and sounds stay per device.
 and that a real new letter gets its label from the timer. Ask the user whether
 notifications appear on the phone's screen.
 
-Needs the user: the answer about phone notifications; optionally NEXT-STEPS item 3
+Needs the user: the answer about phone notifications; optionally NEXT-STEPS item 4
 (automatic deploys).
 
 ## Phase 1: the postman, mail at the right time
@@ -155,7 +155,7 @@ hours.
 - `mail_watch` gets `hours jsonb`, `tz text`, `held_threads text[]` (ids only; the
   summary reads the headers again at opening time, so no mail text is stored).
 
-**1.6 Notifications within seconds** (optional, NEXT-STEPS item 4): Gmail push through
+**1.6 Notifications within seconds** (optional, NEXT-STEPS item 5): Gmail push through
 Pub/Sub instead of the once-a-minute look.
 
 Checks: unit checks for due times, opening hours and code patterns
@@ -272,7 +272,7 @@ keyboard and pointer events.
 
 ## Phase 4: the clerk (AI, optional)
 
-Needs the user: an Anthropic API key entered in Supabase (NEXT-STEPS item 7) and a
+Needs the user: an Anthropic API key entered in Supabase (NEXT-STEPS item 8) and a
 monthly limit set in the Anthropic console.
 
 Rules: the clerk reads and writes drafts. It never sends, files or deletes. It works
@@ -414,6 +414,17 @@ fetched is put away. (2) No sum was read: it was in kronur ("884 kr"), and only 
 Sums are now read in any common currency (signs, words, codes in capitals), with thousands
 and cents written either way, and a receipt's total is read from what the reader sees
 (`letterText`), on the receipt's card and for every row of the spike.
+
+**The home-screen widget (16 November 2026).** The owner wanted to see mail from the
+phone's home screen. Doar is a web app, and Android gives widgets only to installed apps, so
+the widget is a small app of its own (`widget/`, plain Java, about 450 KB), downloaded from
+Settings. It has no sign-in: "חיבור הווידג׳ט" makes a random key on the server (which keeps
+only its SHA-256) and hands it to the widget app through a link; with it the widget can ask
+the server for one thing, the newest letters in the inbox as Doar's desk shows them (who,
+subject, when, unread, a one-time code). It looks every quarter of an hour (Android's
+shortest), and ↻ looks at once. A tap on a letter opens it in Doar as installed from
+Chrome. Settings list the connected widgets, each can be disconnected. Checked on an Android
+emulator against the real mailbox, then the test key was deleted.
 
 **Opening the mail as cards (16 November 2026).** The owner found the bundle step confusing
 ("do I have to decide all of them?") and asked for it "Tinder style". Every new letter is

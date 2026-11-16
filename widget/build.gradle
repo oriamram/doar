@@ -1,0 +1,11 @@
+// The home-screen widget for Android: a small app of its own, apart from the Capacitor
+// shell in android/. Plain Java, no libraries. See README.md in this folder.
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+    }
+}
