@@ -1381,6 +1381,9 @@
   z-index: 1;
   display: flex;
   min-height: 0;
+  /* The card moves on a layer of its own, painted once: the finger only slides the layer
+     and the stamps only fade, so nothing on the card is painted again while it moves. */
+  will-change: transform;
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
@@ -1504,6 +1507,7 @@
 
 /* The word stamped on the card as it is pulled to one side. */
 .ritual-stamp {
+  will-change: opacity;
   position: absolute;
   top: 74px;
   z-index: 2;

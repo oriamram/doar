@@ -421,6 +421,10 @@ now a card, bundled ones too (with their bundle's tag): swipe left to file, righ
 read and keep, press to open the letter in full (Back returns to the cards). A letter is no
 longer marked read just by being shown. Undo on "filed" brings the card back on top. Keys
 on a PC: ← and →, Enter to open, Esc.
+The same day the owner found it laggy on the phone. A trace with a dragged card showed the
+browser painting the whole card again for every frame (its paper texture, blend and shadow);
+the card now moves on a layer of its own and its stamps only fade. Painting during a drag
+went from about 350 ms to 40 ms, and after letting go from about 410 ms to 85 ms.
 
 **Copied codes go to the bin (15 November 2026).** Asked for by the owner: once a one-time
 code is copied, its letter can go. Copying a code (queue ticket, list row, the card in the
