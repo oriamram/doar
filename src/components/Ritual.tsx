@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDrag } from '@use-gesture/react'
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { shortName } from '../lib/addresses'
-import { countLetters, formatWhen } from '../lib/format'
-import { peekMessages } from '../lib/gmail'
+import { countLetters, formatListDate, formatWhen } from '../lib/format'
+import { loadMessages, peekMessages } from '../lib/gmail'
+import { threadShape } from '../lib/kinds'
 import { useBackLayer } from '../lib/layers'
 import { mailbox, useMailbox } from '../lib/mailbox'
 import { tapHaptic } from '../lib/platform'
-import { ritualSize, type RitualItem } from '../lib/ritual'
+import type { RitualItem } from '../lib/ritual'
+import { useSettings } from '../lib/settings'
 import { playSound } from '../lib/sound'
 import { BUNDLE_TITLES } from '../lib/views'
-import type { Contact, Thread } from '../types'
-import { ArchiveIcon, CheckIcon, CloseIcon, HoldIcon, MailOpenIcon, ReplyIcon, TrashIcon } from './icons'
+import type { Contact, Message, Thread } from '../types'
+import { ArchiveIcon, BackIcon, CheckIcon, CloseIcon, HoldIcon, ReplyIcon, TrashIcon } from './icons'
+import { KindLine, KindTag } from './Kinds'
 import { SenderStamp } from './Postal'
 import { ThreadView } from './ThreadView'
 
@@ -26,15 +31,25 @@ type Props = {
   busy: boolean
 }
 
+/** What can be decided about a letter. */
+type Answer = 'file' | 'read' | 'bin' | 'later' | 'reply'
+
+/** Fraction of the card's width a swipe must pass to count. */
+const THRESHOLD = 0.28
+
 /**
- * Opening the mail: one letter at a time, already open, with its four answers under
- * the thumb. A letter that leaves the inbox (filed, binned, held, returned) makes way
- * for the next by itself. After the last one, the desk is clear.
+ * Opening the mail: the new letters as a pile of cards, one on top. Swipe the top card left
+ * to file it, right to mark it read and keep it; press it to read the whole letter. A letter
+ * that leaves the inbox (filed, binned, held) makes way for the next by itself, and its undo
+ * note brings the card back. After the last one, the desk is clear.
  */
 export function Ritual({ queue, onClose, onHold, onPerson, onRegister, busy }: Props) {
   const { threads, bundles, reminders } = useMailbox()
-  // How far the reader has come by hand ("keep" moves on without anything leaving the inbox).
+  const { notKinds } = useSettings()
+  // How far the reader has come by hand ("read" moves on without anything leaving the inbox).
   const [passed, setPassed] = useState(0)
+  // The letter opened in full, if any. A new top card is a card again, not an open letter.
+  const [openId, setOpenId] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   useBackLayer(true, onClose)
 
@@ -44,64 +59,92 @@ export function Ritual({ queue, onClose, onHold, onPerson, onRegister, busy }: P
     for (const thread of [...(threads ?? []), ...bundles.flatMap((bundle) => bundle.threads)]) all.set(thread.id, thread)
     return all
   }, [threads, bundles])
-  const inInbox = (id: string) => byId.get(id)?.labelIds.includes('INBOX') ?? false
-  // A stop is done when its letter left the inbox (filed, binned, held, returned), or its bundle was filed or read.
-  const isDone = (stop: RitualItem) => (stop.kind === 'letter' ? !inInbox(stop.id) : stop.ids.every((id) => !inInbox(id) || !byId.get(id)!.unread))
+  // A card is done when its letter left the inbox (filed, binned, held).
+  const isDone = (item: RitualItem) => !(byId.get(item.id)?.labelIds.includes('INBOX') ?? false)
   let index = passed
   while (index < queue.length && isDone(queue[index]!)) index++
   const item = queue[index]
-  const current = item?.kind === 'letter' ? byId.get(item.id) : undefined
-  const waiting = item?.kind === 'bundle' ? item.ids.filter(inInbox) : []
-  const next = () => {
-    tapHaptic()
-    setPassed(index + 1)
-  }
+  const current = item ? byId.get(item.id) : undefined
+  const after = queue.slice(index + 1).filter((other) => !isDone(other))
+  const behind = after[0] ? byId.get(after[0].id) : undefined
+  const left = current ? after.length + 1 : 0
 
-  // A letter shown is a letter read; each one starts at its top.
   const currentId = current?.id
+  const reading = !!currentId && openId === currentId
+  const setReading = (open: boolean) => setOpenId(open && currentId ? currentId : null)
+  useBackLayer(reading, () => setOpenId(null))
+  // A letter opened in full is a letter read; it starts at its top.
   useEffect(() => {
-    if (!currentId) return
+    if (!reading || !currentId) return
     mailbox.setRead([currentId], true)
     scroller.current?.scrollTo({ top: 0 })
-  }, [currentId])
+  }, [reading, currentId])
 
-  const done = index >= queue.length
-  const left = ritualSize(queue.slice(index))
-  const total = ritualSize(queue)
+  const answer = (what: Answer) => {
+    if (!current) return
+    const id = current.id
+    tapHaptic()
+    switch (what) {
+      case 'file':
+        mailbox.setRead([id], true)
+        mailbox.archive([id])
+        break
+      case 'read':
+        mailbox.setRead([id], true)
+        setPassed(index + 1)
+        break
+      case 'bin':
+        mailbox.trash([id])
+        break
+      case 'later':
+        onHold([id])
+        break
+      case 'reply': {
+        // The reply needs the letter itself: it opens, and the writing form opens over it.
+        setReading(true)
+        const reply = (messages: Message[] | null | undefined) => {
+          const latest = messages?.findLast((message) => !message.isDraft)
+          if (latest) mailbox.reply(latest, 'reply')
+        }
+        const known = peekMessages(current)
+        if (known) reply(known)
+        else void loadMessages(current).then(reply, () => {})
+        break
+      }
+    }
+  }
 
-  // The ritual's own keys: r, e, b, # and Escape.
+  // The ritual's own keys: ← files, → read, Enter opens, r e b # space, and Escape.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (busy || event.ctrlKey || event.metaKey || event.altKey) return
       if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"]')) return
-      if (event.key === 'Escape') return onClose()
+      if (event.key === 'Escape') return reading ? setReading(false) : onClose()
       if (!current) return
-      const latest = peekMessages(current)?.findLast((message) => !message.isDraft)
-      if (event.key === 'r' && latest) mailbox.reply(latest, 'reply')
-      else if (event.key === 'e') mailbox.archive([current.id])
-      else if (event.key === 'b') onHold([current.id])
-      else if (event.key === '#' || event.key === 'Delete') mailbox.trash([current.id])
-      else if (event.key === ' ') setPassed(index + 1)
+      const keys: Record<string, Answer> = { ArrowLeft: 'file', e: 'file', ArrowRight: 'read', ' ': 'read', '#': 'bin', Delete: 'bin', b: 'later', r: 'reply' }
+      if (event.key === 'Enter' && !reading) setReading(true)
+      else if (keys[event.key]) answer(keys[event.key]!)
       else return
       event.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [busy, current, index, onClose, onHold])
+  })
 
-  if (done) return <ClearDesk opened={total} returning={reminders.filter((reminder) => reminder.status === 'waiting' && reminder.kind === 'hold').map((reminder) => reminder.dueAt)} onClose={onClose} />
-
-  const reply = () => {
-    const latest = current && peekMessages(current)?.findLast((message) => !message.isDraft)
-    if (latest) mailbox.reply(latest, 'reply')
-  }
+  if (!current) return <ClearDesk opened={queue.length} returning={reminders.filter((reminder) => reminder.status === 'waiting' && reminder.kind === 'hold').map((reminder) => reminder.dueAt)} onClose={onClose} />
 
   return (
     <div className="ritual" role="dialog" aria-modal="true" aria-label="פתיחת הדואר">
       <header className="ritual-bar">
-        <button className="icon-btn" onClick={onClose} aria-label="לסיים את פתיחת הדואר" title="לסיים (Esc)">
-          <CloseIcon />
-        </button>
+        {reading ? (
+          <button className="icon-btn" onClick={() => setReading(false)} aria-label="חזרה לכרטיסים" title="חזרה לכרטיסים (Esc)">
+            <BackIcon />
+          </button>
+        ) : (
+          <button className="icon-btn" onClick={onClose} aria-label="לסיים את פתיחת הדואר" title="לסיים (Esc)">
+            <CloseIcon />
+          </button>
+        )}
         <span className="ritual-title">פתיחת הדואר</span>
         <span className="ritual-count" aria-live="polite">
           {left === 1 ? 'נשאר מכתב אחד' : `נשארו ${left} מכתבים`}
@@ -114,83 +157,143 @@ export function Ritual({ queue, onClose, onHold, onPerson, onRegister, busy }: P
         </span>
       </header>
 
-      <div className="ritual-desk" ref={scroller}>
-        {current && <ThreadView key={current.id} thread={current} bare onBack={onClose} onLabels={() => {}} onHold={() => onHold([current.id])} onRegister={(messageId) => onRegister(current.id, messageId)} onPerson={onPerson} />}
-        {item?.kind === 'bundle' && (
-          <div className="ritual-bundle">
-            <span className="bundle-tag">{BUNDLE_TITLES[item.category]}</span>
-            <h2>{countLetters(waiting.length)} בצרור</h2>
-            <ul>
-              {waiting.slice(0, 8).map((id) => {
-                const thread = byId.get(id)!
-                return (
-                  <li key={id}>
-                    <SenderStamp contact={thread.from} />
-                    <span className="ritual-bundle-text">
-                      <strong className="ellipsis" dir="auto">
-                        {shortName(thread.from)}
-                      </strong>
-                      <span className="ellipsis" dir="auto">
-                        {thread.subject}
-                      </span>
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-            {waiting.length > 8 && <p className="muted">ועוד {waiting.length - 8}.</p>}
+      {reading ? (
+        <div className="ritual-desk" ref={scroller}>
+          <ThreadView key={current.id} thread={current} bare onBack={() => setReading(false)} onLabels={() => {}} onHold={() => onHold([current.id])} onRegister={(messageId) => onRegister(current.id, messageId)} onPerson={onPerson} />
+        </div>
+      ) : (
+        <div className="ritual-stack">
+          <div className="ritual-pile-cards">
+            {behind && <LetterCard key={`behind-${behind.id}`} thread={behind} bundle={after[0]!.bundle} notKinds={notKinds} under />}
+            <SwipeCard key={current.id} onAnswer={answer} onOpen={() => setReading(true)}>
+              <LetterCard thread={current} bundle={item!.bundle} notKinds={notKinds} />
+            </SwipeCard>
           </div>
-        )}
-      </div>
+          <p className="ritual-hint">החליקו שמאלה לתיוק, ימינה לנקרא. לחיצה על המכתב פותחת אותו.</p>
+        </div>
+      )}
 
+      {/* Laid out left to right like the swipes: filing on the left, "read" on the right. */}
       <div className="ritual-tickets">
-        {current && (
-          <>
-            <button className="ticket ticket-main" onClick={reply}>
-              <ReplyIcon />
-              השב
-            </button>
-            <button className="ticket" onClick={() => mailbox.archive([current.id])}>
-              <ArchiveIcon />
-              לתיוק
-            </button>
-            <button className="ticket" onClick={() => onHold([current.id])}>
-              <HoldIcon />
-              אחר כך
-            </button>
-            <button className="ticket" onClick={() => mailbox.trash([current.id])}>
-              <TrashIcon />
-              לפח
-            </button>
-            <button className="ticket ticket-keep" onClick={next} title="להשאיר בדואר הנכנס ולהמשיך (רווח)">
-              <CheckIcon />
-              להשאיר
-            </button>
-          </>
-        )}
-        {item?.kind === 'bundle' && (
-          <>
-            <button className="ticket ticket-main" onClick={() => mailbox.archive(waiting)}>
-              <ArchiveIcon />
-              לתייק הכל
-            </button>
-            <button className="ticket" onClick={() => mailbox.setRead(waiting, true)}>
-              <MailOpenIcon />
-              נקרא
-            </button>
-            <button
-              className="ticket"
-              onClick={() => {
-                mailbox.show({ kind: 'bundle', category: item.category })
-                onClose()
-              }}
-            >
-              לפתוח את הצרור
-            </button>
-          </>
-        )}
+        <button className="ticket ticket-file" onClick={() => answer('file')} title="לתיוק (←)">
+          <ArchiveIcon />
+          לתיוק
+        </button>
+        <button className="ticket" onClick={() => answer('bin')} title="לפח (#)">
+          <TrashIcon />
+          לפח
+        </button>
+        <button className="ticket" onClick={() => answer('later')} title="אחר כך (b)">
+          <HoldIcon />
+          אחר כך
+        </button>
+        <button className="ticket" onClick={() => answer('reply')} title="השב (r)">
+          <ReplyIcon />
+          השב
+        </button>
+        <button className="ticket ticket-main" onClick={() => answer('read')} title="נקרא, נשאר בדואר הנכנס (→)">
+          <CheckIcon />
+          נקרא
+        </button>
       </div>
     </div>
+  )
+}
+
+type SwipeProps = { onAnswer: (what: Answer) => void; onOpen: () => void; children: ReactNode }
+
+/** The top card: it follows the finger (or the mouse), tilts, and flies off when let go far enough. */
+function SwipeCard({ onAnswer, onOpen, children }: SwipeProps) {
+  const card = useRef<HTMLDivElement>(null)
+  const still = useReducedMotion()
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const rotate = useTransform(x, [-300, 300], [-14, 14])
+  const fileStamp = useTransform(x, [-110, -20], [1, 0])
+  const readStamp = useTransform(x, [20, 110], [0, 1])
+  const armed = useRef<'file' | 'read' | null>(null)
+
+  const bind = useDrag(
+    ({ down, tap, movement: [mx, my], velocity: [vx], direction: [dx] }) => {
+      if (tap) return onOpen()
+      const width = card.current?.offsetWidth ?? 320
+      const side = mx < 0 ? 'file' : 'read'
+      const past = Math.abs(mx) > width * THRESHOLD
+      if (down) {
+        x.set(mx)
+        y.set(my * 0.25)
+        const now = past ? side : null
+        if (now !== armed.current) {
+          armed.current = now
+          if (now) tapHaptic()
+        }
+        return
+      }
+      armed.current = null
+      const flung = vx > 0.5 && Math.sign(dx) === Math.sign(mx) && Math.abs(mx) > 30
+      if (past || flung) {
+        playSound('paper')
+        const away = Math.sign(mx) * (window.innerWidth + width)
+        if (still) return onAnswer(side)
+        void animate(x, away, { duration: 0.22, ease: 'easeIn' }).then(() => onAnswer(side))
+        return
+      }
+      void animate(x, 0, { type: 'spring', stiffness: 520, damping: 34 })
+      void animate(y, 0, { type: 'spring', stiffness: 520, damping: 34 })
+    },
+    { filterTaps: true },
+  )
+
+  return (
+    <motion.div
+      ref={card}
+      className="ritual-card-holder"
+      style={{ x, y, rotate, touchAction: 'pan-y' }}
+      {...(bind() as object)}
+      role="button"
+      tabIndex={0}
+      aria-label="המכתב העליון: החליקו שמאלה לתיוק, ימינה לנקרא, או לחצו כדי לפתוח"
+    >
+      {children}
+      <motion.span className="rubber ritual-stamp ritual-stamp--file" style={{ opacity: fileStamp }} aria-hidden="true">
+        לתיוק
+      </motion.span>
+      <motion.span className="rubber ritual-stamp ritual-stamp--read" style={{ opacity: readStamp }} aria-hidden="true">
+        נקרא
+      </motion.span>
+    </motion.div>
+  )
+}
+
+type CardProps = { thread: Thread; bundle?: RitualItem['bundle']; notKinds: Record<string, string[]>; under?: boolean }
+
+/** A letter as a card: who, what, and its first words. */
+function LetterCard({ thread, bundle, notKinds, under }: CardProps) {
+  const shape = threadShape(thread, notKinds)
+  return (
+    <article className="ritual-card" data-under={under || undefined} data-kind={shape.kind} aria-hidden={under || undefined}>
+      <header className="ritual-card-head">
+        <SenderStamp contact={thread.from} size="lg" />
+        <span className="ritual-card-who">
+          <strong className="ellipsis" dir="auto">
+            {shortName(thread.from)}
+          </strong>
+          <span className="ritual-card-date">{formatListDate(thread.date)}</span>
+        </span>
+        {bundle && <span className="bundle-tag">{BUNDLE_TITLES[bundle]}</span>}
+      </header>
+      <h2 className="ritual-card-subject" dir="auto">
+        {thread.subject || '(בלי נושא)'}
+      </h2>
+      {(shape.kind === 'code' || shape.kind === 'parcel') && <KindLine shape={shape} date={thread.date} />}
+      {(shape.kind === 'receipt' || shape.kind === 'invitation') && <KindTag shape={shape} />}
+      {shape.kind !== 'code' && thread.snippet && (
+        <p className="ritual-card-words" dir="auto">
+          {thread.snippet}
+        </p>
+      )}
+      {thread.messageCount > 1 && <span className="ritual-card-more">{countLetters(thread.messageCount)} בשיחה</span>}
+    </article>
   )
 }
 

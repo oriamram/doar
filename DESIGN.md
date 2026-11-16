@@ -41,7 +41,7 @@ Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
 | A checked sender | A small red wax seal beside the address: whole when Gmail verified the sender, split in two when something is wrong; the reasons stand on a strip at the head of the letter (red for serious, amber for "worth a look") |
 | The address book | A stamp album, "אלבום הבולים": stamps mounted in rows on a ruled page; a sender's card is form 17 |
 | Unread mail waiting to be opened | A manila strip tied with twine at the top of the inbox: "הדוור הביא 8 מכתבים · לפתוח אחד־אחד" |
-| Opening the mail | The whole desk, one open letter at a time; the pile that is left shows as paper edges in the bar; five ticket stubs under the thumb (reply, file, later, bin, keep) |
+| Opening the mail | A pile of cards on the whole desk, one letter each (bundled letters too, with their bundle's kraft tag), the next showing under the top one. The top card follows the finger and tilts: swiped left it is filed (a blue "לתיוק" stamp shows as it goes), right it is marked read and stays (a green "נקרא"); pressed, it opens as the full letter. Five ticket stubs under the thumb, laid out left to right like the swipes: file, bin, later, reply, read. The pile that is left shows as paper edges in the bar |
 | The clear desk | The one long moment in the app (1.2 s, skipped with reduced motion): the lamp warms, and a round red date stamp, "אין דואר", lands on a green leather blotter |
 | A note on a letter | A yellow slip under a steel paperclip, a little crooked; a yellow corner at the letter's edge in the list |
 | Going anywhere (Ctrl+K) | "לאן?": a paper card with one line to type on; the chosen line is inked |

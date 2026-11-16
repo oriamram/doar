@@ -415,6 +415,13 @@ Sums are now read in any common currency (signs, words, codes in capitals), with
 and cents written either way, and a receipt's total is read from what the reader sees
 (`letterText`), on the receipt's card and for every row of the spike.
 
+**Opening the mail as cards (16 November 2026).** The owner found the bundle step confusing
+("do I have to decide all of them?") and asked for it "Tinder style". Every new letter is
+now a card, bundled ones too (with their bundle's tag): swipe left to file, right to mark
+read and keep, press to open the letter in full (Back returns to the cards). A letter is no
+longer marked read just by being shown. Undo on "filed" brings the card back on top. Keys
+on a PC: ← and →, Enter to open, Esc.
+
 **Copied codes go to the bin (15 November 2026).** Asked for by the owner: once a one-time
 code is copied, its letter can go. Copying a code (queue ticket, list row, the card in the
 letter) marks its letter on that device; a quarter of an hour later the app moves it to the

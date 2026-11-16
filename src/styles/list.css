@@ -1350,64 +1350,194 @@
   margin-top: 6px;
 }
 
-/* A bundle as one decision. */
-.ritual-bundle {
-  max-width: 560px;
-  margin: 14px auto 0;
-  padding: 18px 18px 14px;
-  border-radius: 2px;
-  background: var(--sheet);
+/* The pile of cards: the top letter, and the next one showing under it. */
+.ritual-stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 16px 4px;
+  overflow: hidden;
+}
+
+.ritual-pile-cards {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 520px;
+  max-height: 100%;
+  min-height: 0;
+}
+
+/* Both cards stand in the same place; the one under is smaller and set back. */
+.ritual-pile-cards > * {
+  grid-area: 1 / 1;
+  min-height: 0;
+}
+
+.ritual-card-holder {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 0;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ritual-card-holder:active {
+  cursor: grabbing;
+}
+
+.ritual-card-holder:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.ritual-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-height: min(52dvh, 430px);
+  max-height: 100%;
+  overflow: hidden;
+  padding: 18px 18px 16px;
+  border-radius: 3px;
+  background-color: var(--sheet);
+  background-image: url('/paper.svg');
+  background-size: 360px;
+  background-blend-mode: multiply;
   color: var(--ink);
   box-shadow: var(--edge-fresh), var(--shadow-lift);
 }
 
-@media (max-width: 600px) {
-  .ritual-bundle {
-    margin-inline: 14px;
-  }
+/* The airmail edge of a fresh letter, along the top. */
+.ritual-card::before {
+  content: '';
+  flex: none;
+  height: 5px;
+  margin: -18px -18px 6px;
+  background: repeating-linear-gradient(-45deg, var(--ink-red) 0 10px, transparent 10px 16px, var(--ink-blue) 16px 26px, transparent 26px 32px);
+  border-radius: 3px 3px 0 0;
 }
 
-.ritual-bundle h2 {
-  margin: 8px 0 12px;
-  font-size: 21px;
-  font-weight: 800;
+.ritual-card[data-under] {
+  scale: 0.94;
+  translate: 0 14px;
+  filter: brightness(0.93);
+  box-shadow: var(--edge-aged), var(--shadow-rest);
+  pointer-events: none;
 }
 
-.ritual-bundle ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ritual-bundle li {
+.ritual-card-head {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 7px 0;
 }
 
-.ritual-bundle li + li {
-  border-top: 1px dashed var(--ink-rule);
-}
-
-.ritual-bundle-text {
+.ritual-card-who {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  font-size: 14px;
+}
+
+.ritual-card-who strong {
+  font-size: 18px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.ritual-card-date {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-faded);
+}
+
+.ritual-card-head .bundle-tag {
+  align-self: flex-start;
+}
+
+.ritual-card-subject {
+  margin: 4px 0 0;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.ritual-card .kind-line {
+  flex: none;
+}
+
+.ritual-card .code-digits {
+  font-size: 2rem;
+}
+
+.ritual-card .kind-tag {
+  align-self: flex-start;
+}
+
+.ritual-card-words {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1.6;
   color: var(--ink-muted);
+  text-align: right;
+  overflow-wrap: anywhere;
+  -webkit-mask-image: linear-gradient(to bottom, #000 75%, transparent);
+  mask-image: linear-gradient(to bottom, #000 75%, transparent);
 }
 
-.ritual-bundle-text strong {
-  font-size: 15.5px;
-  color: var(--ink);
+.ritual-card-more {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink-faded);
 }
 
-/* The four answers, under the thumb. */
+/* The word stamped on the card as it is pulled to one side. */
+.ritual-stamp {
+  position: absolute;
+  top: 74px;
+  z-index: 2;
+  font-size: 26px;
+  pointer-events: none;
+  background: rgba(253, 249, 240, 0.7);
+}
+
+.ritual-stamp--file {
+  right: 22px;
+  color: var(--airmail);
+  rotate: 10deg;
+}
+
+.ritual-stamp--read {
+  left: 22px;
+  color: #2f6b3c;
+  rotate: -10deg;
+}
+
+.ritual-hint {
+  flex: none;
+  margin: 18px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* The five answers, under the thumb. Laid out left to right like the swipes:
+   filing at the left, "read" at the right. */
 .ritual-tickets {
   flex: none;
   display: flex;
+  direction: ltr;
   gap: 8px;
   width: 100%;
   max-width: 760px;
@@ -1431,8 +1561,8 @@
   color: var(--sheet);
 }
 
-.ritual-tickets .ticket-keep {
-  color: var(--ink-muted);
+.ritual-tickets .ticket-file {
+  color: var(--ink-blue);
 }
 
 @media (min-width: 600px) {

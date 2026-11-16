@@ -603,7 +603,7 @@ try {
   check('nothing went wrong at the desk', desk.errors.length === 0, desk.errors.join(' | ').slice(0, 300))
   desk.close()
 
-  // ================= Opening the mail, one letter at a time (a phone, from a fresh start) =================
+  // ================= Opening the mail, one card at a time (a phone, from a fresh start) =================
   const rite = await browser.open(`${SITE}/?demo=fast`, PHONE)
   await start(rite)
   await rite.waitFor('.postman-strip')
@@ -611,25 +611,49 @@ try {
   check('with unread mail, the postman offers to open it one by one', (await rite.text('.postman-strip')).includes('הדוור הביא 8 מכתבים'), await rite.text('.postman-strip'))
   await shot(rite, 'phone-postman')
   await rite.click('.postman-strip')
-  await rite.waitFor('.ritual .letter iframe')
-  const riteSubject = () => rite.text('.ritual .thread-subject')
+  await rite.waitFor('.ritual-card-holder')
+  await sleep(400)
+  const riteSubject = () => rite.text('.ritual-card-holder .ritual-card-subject')
   const riteLeft = () => rite.text('.ritual-count')
   const ticket = (name: string) => rite.clickText(name, '.ritual-tickets .ticket')
-  const nextLetter = async (after: string) => rite.waitFor(`(document.querySelector('.ritual .thread-subject')?.textContent ?? '') !== ${JSON.stringify(after)} || !!document.querySelector('.ritual-bundle, .clear-desk')`)
-  check('the first letter is from a person, and already open', (await riteSubject()) === 'אישור פגישה ביום שלישי' && (await riteLeft()).includes('8'), `${await riteSubject()} · ${await riteLeft()}`)
-  check('a letter in the ritual has no bar of its own', (await rite.evaluate<string>(`getComputedStyle(document.querySelector('.ritual .reader-bar')).display`)) === 'none')
+  const nextLetter = async (after: string) => rite.waitFor(`(document.querySelector('.ritual-card-holder .ritual-card-subject')?.textContent ?? '') !== ${JSON.stringify(after)} || !!document.querySelector('.clear-desk')`)
+  check('the first card is a letter from a person, still unread', (await riteSubject()) === 'אישור פגישה ביום שלישי' && (await riteLeft()).includes('8') && (await rite.count('.thread-row')) >= 0, `${await riteSubject()} · ${await riteLeft()}`)
+  check('the next card shows under it', (await rite.count('.ritual-card[data-under]')) === 1)
   await shot(rite, 'phone-ritual')
 
+  // A swipe to the left files the letter.
   let shown = await riteSubject()
-  await ticket('לתיוק')
+  await rite.drag('.ritual-card-holder', -260, 6, 0, 16)
   await nextLetter(shown)
-  check('filing a letter brings the next one', (await riteLeft()).includes('7') && (await riteSubject()) !== shown, `${await riteSubject()} · ${await riteLeft()}`)
+  check('swiping a card to the left files it and brings the next', (await riteLeft()).includes('7') && (await riteSubject()) !== shown && (await toast(rite)) === 'המכתב תויק', `${await riteSubject()} · ${await riteLeft()} · ${await toast(rite)}`)
 
+  // Undo brings the card back.
+  await rite.clickText('ביטול', '.toast-action')
+  await rite.waitFor(`(document.querySelector('.ritual-card-holder .ritual-card-subject')?.textContent ?? '') === ${JSON.stringify(shown)}`)
+  check('undo brings the filed card back on top', (await riteLeft()).includes('8'))
+
+  // A swipe that is not far enough puts the card back.
+  await rite.drag('.ritual-card-holder', -40, 0, 0, 6)
+  await sleep(500)
+  check('a short swipe changes nothing', (await riteSubject()) === shown && (await riteLeft()).includes('8'))
+
+  // Pressing the card opens the whole letter; Back returns to the card.
+  await rite.click('.ritual-card-holder')
+  await rite.waitFor('.ritual .letter iframe')
+  check('pressing a card opens the whole letter, with no bar of its own', (await rite.text('.ritual .thread-subject')) === shown && (await rite.evaluate<string>(`getComputedStyle(document.querySelector('.ritual .reader-bar')).display`)) === 'none')
+  await rite.click('.ritual-bar .icon-btn')
+  await rite.waitFor('.ritual-card-holder')
+  check('and the arrow goes back to the cards', (await riteSubject()) === shown)
+
+  await rite.drag('.ritual-card-holder', -260, 6, 0, 16)
+  await nextLetter(shown)
+
+  // A swipe to the right marks it read and keeps it in the inbox.
   shown = await riteSubject()
   const kept = shown
-  await ticket('להשאיר')
+  await rite.drag('.ritual-card-holder', 260, 6, 0, 16)
   await nextLetter(shown)
-  check('"keep" moves on and leaves the letter in the inbox', (await riteLeft()).includes('6'), await riteLeft())
+  check('swiping a card to the right marks it read and moves on', (await riteLeft()).includes('6'), await riteLeft())
 
   shown = await riteSubject()
   await ticket('אחר כך')
@@ -643,17 +667,17 @@ try {
   await nextLetter(shown)
   check('"bin" bins the letter and moves on', (await riteLeft()).includes('4'), await riteLeft())
 
-  // The rest: file the letters, then each bundle as one decision, until the desk is clear.
-  let sawBundle = false
+  // The rest: bundled letters are cards of their own, each with its bundle's tag.
+  let sawBundled = false
   for (let step = 0; step < 20 && !(await rite.count('.clear-desk')); step++) {
-    if (await rite.count('.ritual-bundle')) {
-      if (!sawBundle) await shot(rite, 'phone-ritual-bundle')
-      sawBundle = true
-      await ticket('לתייק הכל')
-    } else await ticket('לתיוק')
+    if (!sawBundled && (await rite.count('.ritual-card-holder .bundle-tag'))) {
+      sawBundled = true
+      await shot(rite, 'phone-ritual-bundled')
+    }
+    await ticket('לתיוק')
     await sleep(350)
   }
-  check('a bundle is one decision', sawBundle)
+  check('a letter from a bundle is a card of its own, with its bundle’s tag', sawBundled)
   await rite.waitFor('.clear-desk')
   await sleep(1500)
   const clear = await rite.text('.clear-text')
