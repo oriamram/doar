@@ -62,6 +62,7 @@ check('thousands with commas', findAmount('סך הכל 48,500 ש״ח'), { value:
 check('a percentage is not money', findAmount('50% הנחה על הכל'), null)
 check('"tennis 50" is not fifty shekels', findAmount('tennis 50 at the club'), null)
 check('a year is not money', findAmount('בתוקף עד 30.11.2026'), null)
+check('a year just before a sign is not the sum (an app store renewal)', findAmount('iCloud+ with 200 GB of storage (Monthly) Renews 9 November 2026 ₪11.90 Billing and Payment'), { value: 11.9, currency: '₪' })
 check('kronur, with the total after its fees', findAmount('Price 795 kr Transaction fee 89 kr Thereof VAT 24% 17 kr VAT total: 17 kr Total: 884 kr'), { value: 884, currency: 'kr' })
 check('a currency code in capitals', findAmount('Price\n795 ISK *'), { value: 795, currency: 'ISK' })
 check('the same letters in small type are a word', findAmount('give it 300 try, or 20 ron'), null)

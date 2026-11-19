@@ -110,6 +110,8 @@ src/
     postman.ts         The app's side of Doar's server
     settings.ts        Preferences; some follow you to every device
     report.ts          Fault reports (never mail text)
+    subscriptions.ts   Subscriptions found in receipts: what each costs, when it charges next
+    rates.ts           Today's exchange rates, to add up sums in several currencies
     guide.ts           The guide's lines: every feature, its name and what the name means ("?guide" opens it)
   demo/                The made-up mailbox behind "?demo"
   styles/              The writing desk (see DESIGN.md)

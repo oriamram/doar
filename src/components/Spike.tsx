@@ -33,7 +33,7 @@ function byMonth(rows: Row[]): Month[] {
 }
 
 /** The receipts spike: every receipt and invoice of the last year, by month, with monthly sums. */
-export function SpikeSheet({ onClose }: { onClose: () => void }) {
+export function SpikeSheet({ onClose, onSubscriptions }: { onClose: () => void; onSubscriptions?: () => void }) {
   const { notKinds } = useSettings()
   const [rows, setRows] = useState<Row[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -116,6 +116,11 @@ export function SpikeSheet({ onClose }: { onClose: () => void }) {
           </ul>
         </section>
       ))}
+      {onSubscriptions && rows && rows.length > 0 && (
+        <button type="button" className="pill-btn spike-subs" onClick={onSubscriptions}>
+          מה מתוכן מנויים?
+        </button>
+      )}
       {rows && rows.length > 0 && <p className="muted spike-note">הסכומים נקראים מהמכתבים עצמם ויכולים לטעות. זה ריכוז לנוחות, לא הנהלת חשבונות.</p>}
     </Sheet>
   )

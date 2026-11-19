@@ -10,7 +10,7 @@
 // write"), not the order things were built in.
 
 /** A place in the app that a row's button can take the reader to. */
-export type Try = 'settings' | 'album' | 'spike' | 'files' | 'rules' | 'labels' | 'palette' | 'compose' | 'search' | 'ritual' | 'theme'
+export type Try = 'settings' | 'album' | 'spike' | 'subscriptions' | 'files' | 'rules' | 'labels' | 'palette' | 'compose' | 'search' | 'ritual' | 'theme'
 
 export type Entry = {
   /** Also the name of its picture (see GuideArt.tsx). */
@@ -42,6 +42,7 @@ export const TRY_LABELS: Record<Try, string> = {
   settings: 'לפתוח את ההגדרות',
   album: 'לפתוח את האלבום',
   spike: 'לפתוח את הדוקרן',
+  subscriptions: 'לפתוח את המנויים',
   files: 'לפתוח את המגירה',
   rules: 'לפתוח את התיוג האוטומטי',
   labels: 'לפתוח את רשימת התוויות',
@@ -341,6 +342,14 @@ export const GUIDE: Chapter[] = [
         how: 'באנדרואיד: בהגדרות מורידים את אפליקציית הווידג׳ט ולוחצים „חיבור הווידג׳ט”. הוא מתעדכן כל רבע שעה, והחץ שבפינה מרענן מיד.',
         why: 'רואים מי כתב בלי לפתוח את דואר.',
         try: 'settings',
+      },
+      {
+        id: 'subscriptions',
+        name: 'מנויים',
+        plain: 'כל מה שמחייב אותך שוב ושוב, ומה זה עולה.',
+        how: 'בתפריט. נאסף מהקבלות: כמה שילמתם בשנה, כמה כל חודש ומתי החיוב הבא. לחיצה על מנוי מראה את הקבלות שלו.',
+        why: 'רואים במקום אחד על מה משלמים, ומה כבר מיותר.',
+        try: 'subscriptions',
       },
       {
         id: 'offline',

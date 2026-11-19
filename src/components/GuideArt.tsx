@@ -49,6 +49,17 @@ const ART: Record<string, () => ReactNode> = {
       </span>
     </span>
   ),
+  subscriptions: () => (
+    <span className="a-pass">
+      <b>מנוי</b>
+      <span className="a-pass-holes">
+        {[1, 1, 0, 1, 1, 1].map((paid, index) => (
+          <i key={index} data-paid={paid || undefined} />
+        ))}
+      </span>
+      <span className="a-pass-sum">39.90 ₪</span>
+    </span>
+  ),
   ticket: () => (
     <span className="a-ticket">
       <span className="a-stub">

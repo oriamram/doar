@@ -26,6 +26,7 @@ import { Logo } from './Postal'
 import { SendFlight } from './SendFlight'
 import { HoldSheet, LabelSheet, RegisterSheet, RulesSheet, SettingsSheet, ShortcutsSheet } from './Sheets'
 import { SpikeSheet } from './Spike'
+import { SubscriptionsSheet } from './Subscriptions'
 import { ThreadList } from './ThreadList'
 import { ThreadView } from './ThreadView'
 import { Toasts } from './Toasts'
@@ -41,6 +42,7 @@ type Sheet =
   | { kind: 'person'; contact: Contact }
   | { kind: 'album' }
   | { kind: 'spike' }
+  | { kind: 'subscriptions' }
   | { kind: 'files' }
   | null
 
@@ -227,7 +229,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
   // Where the guide's rows can take the reader. A form opens over the guide, which waits
   // under it; anything that is not a form (writing, searching, opening the mail) needs the desk.
   const guidePlaces = (): Set<Try> => {
-    const open = new Set<Try>(['settings', 'album', 'spike', 'files', 'rules', 'labels', 'compose', 'search', 'theme'])
+    const open = new Set<Try>(['settings', 'album', 'spike', 'subscriptions', 'files', 'rules', 'labels', 'compose', 'search', 'theme'])
     if (canDrag) open.add('palette')
     if (ritualSize(waitingMail()) > 0) open.add('ritual')
     return open
@@ -237,6 +239,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       case 'settings':
       case 'album':
       case 'spike':
+      case 'subscriptions':
       case 'files':
       case 'rules':
         return setSheet({ kind: place })
@@ -267,6 +270,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       ...(ritualSize(queue) > 0 ? [act('ritual', 'פתיחת הדואר, אחד־אחד', 'טקס הדוור ritual', () => (mailbox.close(), setRitual(queue)))] : []),
       act('album', 'אלבום הבולים', 'אנשים כתובות contacts', () => setSheet({ kind: 'album' })),
       act('spike', 'דוקרן הקבלות', 'קבלות חשבוניות receipts', () => setSheet({ kind: 'spike' })),
+      act('subscriptions', 'מנויים', 'מנויים הוראות קבע חיובים subscriptions', () => setSheet({ kind: 'subscriptions' })),
       act('files', 'מגירת הקבצים', 'קבצים מצורפים files attachments', () => setSheet({ kind: 'files' })),
       act('rules', 'תיוג אוטומטי', 'כללים rules מיון', () => setSheet({ kind: 'rules' })),
       act('labels', 'ניהול תוויות', 'labels צבע', () => setSheet({ kind: 'manage-labels' })),
@@ -293,6 +297,7 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
         onManageLabels={() => setSheet({ kind: 'manage-labels' })}
         onAlbum={() => setSheet({ kind: 'album' })}
         onSpike={() => setSheet({ kind: 'spike' })}
+        onSubscriptions={() => setSheet({ kind: 'subscriptions' })}
         onFiles={() => setSheet({ kind: 'files' })}
       />
 
@@ -375,7 +380,8 @@ export function Mailbox({ email, name }: { email: string; name: string }) {
       {sheet?.kind === 'rules' && <RulesSheet from={sheet.from} labelId={sheet.labelId} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'person' && <SenderCard contact={sheet.contact} onClose={() => setSheet(null)} onRules={(from) => setSheet({ kind: 'rules', from })} />}
       {sheet?.kind === 'album' && <StampAlbum onClose={() => setSheet(null)} onPerson={(contact) => setSheet({ kind: 'person', contact })} />}
-      {sheet?.kind === 'spike' && <SpikeSheet onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'spike' && <SpikeSheet onClose={() => setSheet(null)} onSubscriptions={() => setSheet({ kind: 'subscriptions' })} />}
+      {sheet?.kind === 'subscriptions' && <SubscriptionsSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'files' && <FilesDrawer onClose={() => setSheet(null)} />}
       <Toasts />
     </div>

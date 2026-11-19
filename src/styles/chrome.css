@@ -1504,6 +1504,231 @@
   outline-offset: -2px;
 }
 
+/* Subscriptions: a ledger's two sums on top, then a monthly pass for each subscription,
+   punched through for every month it charged (the desk shows through the hole). */
+.subs-ledger {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.subs-ledger > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.subs-ledger-label {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.subs-ledger strong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.7ch;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.subs-ledger small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.7ch;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.subs-sum {
+  white-space: nowrap;
+}
+
+.subs-list {
+  display: grid;
+  /* A card is never wider than the form, however long its plan's name. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.subs-card {
+  padding: 4px 12px 10px;
+  border-radius: 6px;
+  background: var(--manila);
+  color: var(--ink);
+  box-shadow: var(--shadow-rest);
+}
+
+/* One that stopped charging: the pass is old, its ink faded. */
+.subs-card[data-ended] {
+  background: var(--sheet-aged);
+  box-shadow: inset 0 0 0 1px var(--ink-rule);
+}
+
+.subs-card[data-ended] .subs-head,
+.subs-card[data-ended] .subs-line {
+  opacity: 0.75;
+}
+
+.subs-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 4px 0;
+  text-align: start;
+}
+
+.subs-what {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+
+.subs-what strong {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.subs-price {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subs-price small {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.subs-punches {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 6px;
+}
+
+.subs-punches i {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--ink-rule);
+}
+
+.subs-punches i[data-paid] {
+  border: none;
+  background: var(--desk-deep);
+  /* The hole's upper rim casts a shadow in; its lower rim catches the light. */
+  box-shadow:
+    inset 0 1.5px 2px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 253, 246, 0.55);
+}
+
+.subs-line {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.subs-receipts {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--ink-rule);
+}
+
+.subs-receipts ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subs-receipts li button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 40px;
+  font-size: 14px;
+  text-align: start;
+}
+
+.subs-receipt-sum {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.subs-why {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.subs-not {
+  min-height: 32px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--ink-red);
+}
+
+.subs-title {
+  margin: 4px 0 8px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.subs-hint {
+  margin-top: -4px;
+}
+
+.subs-others {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.subs-others li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 4px;
+  border-bottom: 1px dashed var(--ink-rule);
+}
+
+.subs-others li > span {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.subs-others small {
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.spike-subs {
+  margin: 4px 0 10px;
+}
+
 /* The spike: receipts by month, each month with its sum. */
 .spike-month {
   margin-bottom: 18px;

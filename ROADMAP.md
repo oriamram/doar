@@ -415,6 +415,21 @@ Sums are now read in any common currency (signs, words, codes in capitals), with
 and cents written either way, and a receipt's total is read from what the reader sees
 (`letterText`), on the receipt's card and for every row of the spike.
 
+**Subscriptions (19 November 2026).** The owner wanted one place for every subscription: what
+they spent in the last year, what it costs a month, its receipts. "מנויים" (in the menu, in
+"לאן?", and from the receipts spike) reads the receipts of the last thirteen months and finds
+the subscriptions three ways: the letter says so (a plan, "subscription", "renews",
+"monthly", or a billing period such as "Nov 12–Dec 12, 2026"), or the same sender charged
+at a steady pace with about the same sum (three times or more), or the owner said so ("זה
+מנוי" / "זה לא מנוי", kept for every device). For each: its plan and its own price (before
+credits, as Stripe lists it), its period, the next charge, what it cost in the year, and its
+receipts. Sums in several currencies are added up in shekels at the European Central Bank's
+rate of the day (api.frankfurter.dev, asked only for the rates). Built after reading the
+real receipts: Stripe receipts (two senders) and an app store's renewal (one receipt only),
+none of which a repeat-only rule would have found. Found on the way: a sum after a year
+("Renews 9 November 2026 ₪11.90") was read as 2026 ₪; a sign with a number right after it
+now belongs to that number.
+
 **The home-screen widget (16 November 2026).** The owner wanted to see mail from the
 phone's home screen. Doar is a web app, and Android gives widgets only to installed apps, so
 the widget is a small app of its own (`widget/`, plain Java, about 450 KB), downloaded from

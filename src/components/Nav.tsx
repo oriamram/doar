@@ -24,6 +24,7 @@ import {
   SendIcon,
   SettingsIcon,
   SpamIcon,
+  RenewIcon,
   SpikeIcon,
   StarIcon,
   TagIcon,
@@ -45,6 +46,7 @@ type Props = {
   onManageLabels: () => void
   onAlbum: () => void
   onSpike: () => void
+  onSubscriptions: () => void
   onFiles: () => void
 }
 
@@ -88,7 +90,7 @@ function savedMore(): boolean {
 }
 
 /** Folders and labels: a sidebar on wide screens, a drawer on phones. */
-export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, onManageLabels, onAlbum, onSpike, onFiles }: Props) {
+export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, onManageLabels, onAlbum, onSpike, onSubscriptions, onFiles }: Props) {
   const { view, unread, draftCount, labels, me, scheduled, rules, reminders } = useMailbox()
   const keeping = (kind: 'hold' | 'reply') => reminders.filter((reminder) => reminder.kind === kind && reminder.status !== 'returned').length
   // Folders that exist only while something is in them.
@@ -297,6 +299,16 @@ export function Nav({ open, onClose, onSettings, onShortcuts, onGuide, onRules, 
           >
             <SpikeIcon />
             <span className="nav-name">דוקרן הקבלות</span>
+          </button>
+          <button
+            className="nav-item"
+            onClick={() => {
+              onSubscriptions()
+              onClose()
+            }}
+          >
+            <RenewIcon />
+            <span className="nav-name">מנויים</span>
           </button>
           <button
             className="nav-item"

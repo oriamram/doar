@@ -81,6 +81,13 @@ const bank = { name: 'בנק הדוגמה', email: 'no-reply@bank-dugma.example'
 const courier = { name: 'שליחויות זריז', email: 'updates@zariz-delivery.example' }
 const globalPost = { name: 'Global Post', email: 'tracking@globalpost.example' }
 const books = { name: 'חנות הספרים', email: 'orders@sfarim-shop.example' }
+// Subscriptions (made up): a monthly app billed through a payment service, a streaming
+// service in Hebrew, a yearly plan, one that stopped, and a gym that only ever writes "Receipt".
+const notely = { name: 'Notely, Inc.', email: 'invoice+statements@mail.notely.example' }
+const streamPlus = { name: 'סטרים פלוס בע״מ', email: 'billing@stream-plus.example' }
+const cloudbox = { name: 'Cloudbox', email: 'billing@cloudbox.example' }
+const flowworks = { name: 'Flowworks Inc.', email: 'invoice+statements@automate.example' }
+const gym = { name: 'Gym Hayarkon', email: 'pay@gym-hayarkon.example' }
 const electric = { name: 'חברת החשמל לדוגמה', email: 'bills@hashmal-dugma.example' }
 const cloud = { name: 'ענן הקבצים', email: 'security@anan-files.example' }
 const shoes = { name: 'חנות הנעליים', email: 'news@naalayim.example' }
@@ -185,6 +192,72 @@ const L_BILLS = 'Label_1'
 const L_WORK = 'Label_2'
 const L_FAMILY = 'Label_3'
 const L_HOME = 'Label_4'
+
+/** Receipts of subscriptions over the last year, all already filed. "ago" is in days here. */
+function subscriptionReceipts(): Spec[] {
+  const DAYS = 1440
+  const when = (days: number) => new Date(Date.now() - days * DAYS * 60_000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const stripe = (days: number, number: string, lines: string[], total: string) => ({
+    thread: `t-notely-${number}`,
+    from: notely,
+    subject: `Your receipt from Notely, Inc. #${number}`,
+    ago: days * DAYS,
+    html: ltr(
+      `Receipt from Notely, Inc. ${total}`,
+      `Receipt #${number}`,
+      `${when(days)}–${when(days - 30)}, 2026`,
+      ...lines,
+      `Total ${total}`,
+      `Amount paid ${total}`,
+    ),
+    labels: [UPDATES],
+  })
+  const stream = (days: number) => ({
+    thread: `t-stream-${days}`,
+    from: streamPlus,
+    subject: 'חשבונית מס קבלה - מנוי חודשי',
+    ago: days * DAYS,
+    html: rtl('תודה שאתם איתנו!', 'מנוי פרימיום חודשי', '<b>סה״כ לתשלום: 39.90 ש״ח</b>', 'החיוב בוצע בכרטיס המסתיים ב־4417.'),
+    labels: [UPDATES],
+  })
+  const gymReceipt = (days: number) => ({
+    thread: `t-gym-${days}`,
+    from: gym,
+    subject: 'Receipt',
+    ago: days * DAYS,
+    html: ltr('Thank you for training with us.', '<b>Total ₪180.00</b>'),
+    labels: [UPDATES],
+  })
+  return [
+    stripe(100, '1001-2001', ['Notely Solo Qty 1 $20.00'], '$20.00'),
+    stripe(70, '1001-2002', ['Notely Solo Qty 1 $20.00'], '$20.00'),
+    stripe(40, '1001-2003', ['Notely Solo Qty 1 $20.00'], '$20.00'),
+    stripe(10, '1001-2004', ['Notely Team Qty 1 $50.00', 'Unused time on Notely Solo Qty 1 -$7.50'], '$42.50'),
+    stream(75),
+    stream(45),
+    stream(15),
+    {
+      thread: 't-cloudbox',
+      from: cloudbox,
+      subject: 'Your Cloudbox receipt',
+      ago: 300 * DAYS,
+      html: ltr('Cloudbox Plus, 2 TB (Yearly)', 'Renews next year', '<b>Total €48.00</b>'),
+      labels: [UPDATES],
+    },
+    {
+      thread: 't-flowworks',
+      from: flowworks,
+      subject: 'Your receipt from Flowworks Inc. #3001',
+      ago: 186 * DAYS,
+      html: ltr('Receipt from Flowworks Inc. $10.59', 'May 16–Jun 16, 2026', 'Automate Core plan - monthly subscription Qty 1 $10.59', 'Total $10.59', 'Amount paid $10.59'),
+      labels: [UPDATES],
+    },
+    gymReceipt(95),
+    gymReceipt(64),
+    gymReceipt(34),
+    gymReceipt(4),
+  ]
+}
 
 const rtl = (...lines: string[]) => `<div dir="rtl">${lines.join('<br>')}</div>`
 const ltr = (...lines: string[]) => `<div dir="ltr">${lines.join('<br>')}</div>`
@@ -501,6 +574,7 @@ function specs(): Spec[] {
       labels: [UPDATES],
       files: [{ filename: 'Receipt-Northern-Glacier-National-Park-booking-7H2K-99413-ZX.pdf', mimeType: 'application/pdf', data: tinyPdf(['Receipt', 'Total: $64.00']) }],
     },
+    ...subscriptionReceipts(),
     {
       // Already filed. A web page pasted into an email: it must fit the letter, and its sum is in kronur.
       thread: 't-parking',

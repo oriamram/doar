@@ -483,6 +483,51 @@
   background: var(--ink-red);
 }
 
+/* Subscriptions: a monthly pass with a hole punched for each month paid. */
+.a-pass {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 84px;
+  padding: 6px 8px 7px;
+  border-radius: 6px;
+  background: var(--manila);
+  color: var(--ink);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 8px 12px -8px rgba(0, 0, 0, 0.5);
+}
+
+.a-pass b {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink-red);
+}
+
+.a-pass-holes {
+  display: flex;
+  gap: 4px;
+}
+
+.a-pass-holes i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px dashed var(--ink-faded);
+}
+
+.a-pass-holes i[data-paid] {
+  border: none;
+  background: var(--desk-deep);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.a-pass-sum {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
 /* A queue ticket: torn at both ends, the digits in typewriter type, a stub that copies. */
 .a-ticket {
   --paper: var(--ticket);

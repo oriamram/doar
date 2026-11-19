@@ -26,6 +26,8 @@ export type Settings = {
   trusted: string[]
   /** A one-time code's letter goes to the bin a quarter of an hour after its code was copied. */
   binCopiedCodes: boolean
+  /** Corrections to the subscriptions: senders you said are one ("add") or are not ("drop"), by site. */
+  subscriptions: { add: string[]; drop: string[] }
 }
 
 const DEFAULTS: Settings = {
@@ -41,6 +43,7 @@ const DEFAULTS: Settings = {
   notKinds: {},
   trusted: [],
   binCopiedCodes: true,
+  subscriptions: { add: [], drop: [] },
 }
 
 /**
@@ -48,7 +51,7 @@ const DEFAULTS: Settings = {
  * them when it starts. The rest (day or night, sounds, which tips were put away)
  * belong to the device they were chosen on.
  */
-const SHARED = ['signature', 'undoSendSeconds', 'bundles', 'remoteImages', 'notKinds', 'trusted', 'hebrewDate'] as const
+const SHARED = ['signature', 'undoSendSeconds', 'bundles', 'remoteImages', 'notKinds', 'trusted', 'hebrewDate', 'subscriptions'] as const
 type SharedKey = (typeof SHARED)[number]
 
 const KEY = storageKey('doar:settings')

@@ -297,6 +297,13 @@ export const SpikeIcon = () => (
   </Icon>
 )
 
+/** Subscriptions: a coin inside the arrow that comes round again. */
+export const RenewIcon = () => (
+  <Icon>
+    <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 3.5v4h-4M12 9v6M10 10.5h3a1.2 1.2 0 0 1 0 2.4h-2a1.2 1.2 0 0 0 0 2.4h3" />
+  </Icon>
+)
+
 /** A calendar leaf. */
 export const CalendarIcon = () => (
   <Icon>

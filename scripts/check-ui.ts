@@ -582,6 +582,30 @@ try {
   const amounts = (await desk.texts('.spike-amount')).join(' | ')
   check('the spike gathers receipts by month, with a sum', amounts.includes('128.00') && amounts.includes('342.50') && /\d/.test(sums), `${sums} / ${amounts}`)
   await shot(desk, 'pc-spike')
+  // Subscriptions, from the spike: found in the receipts, added up, and corrected both ways.
+  await desk.clickText('מה מתוכן מנויים?', '.spike-subs')
+  await desk.waitFor('.subs-ledger')
+  await desk.waitFor(`!document.querySelector('.subs-ledger').textContent.includes('עוד קוראים')`, 30_000)
+  const subscribed = await desk.texts('.subs-card .subs-what strong')
+  check(
+    'subscriptions are found by their words, by their pace and by a billing period',
+    ['Notely', 'סטרים פלוס', 'Gym Hayarkon', 'Cloudbox', 'Automate'].every((name) => subscribed.includes(name)) && !subscribed.includes('חנות הספרים'),
+    subscribed.join(' | '),
+  )
+  const ledger = await desk.text('.subs-ledger')
+  check('the year and the month are added up, in shekels about', /בערך [\d,]+ ₪/.test(ledger) && ledger.includes('$') && ledger.includes('5 מנויים פעילים'), ledger)
+  check('one that stopped charging is set apart', (await desk.text('.subs-list[aria-label="מנויים שנראה שהסתיימו"]')).includes('Automate'))
+  check('the next charge of a monthly one is a month after the last', (await desk.text('.subs-card:has(.subs-what strong) .subs-line')).includes('החיוב הבא'))
+  await desk.clickText('Gym Hayarkon', '.subs-what strong')
+  await desk.waitFor('.subs-receipts')
+  check('a subscription shows its receipts', (await desk.count('.subs-receipts li')) === 4, String(await desk.count('.subs-receipts li')))
+  await desk.clickText('זה לא מנוי', '.subs-not')
+  await desk.waitFor(`![...document.querySelectorAll('.subs-what strong')].some((name) => name.textContent === 'Gym Hayarkon')`)
+  await desk.clickText('זה מנוי', '.subs-others .pill-btn')
+  await desk.waitFor(`[...document.querySelectorAll('.subs-what strong')].some((name) => name.textContent === 'Gym Hayarkon')`)
+  await desk.waitFor(`JSON.stringify(window.__doarDemo.prefs?.subscriptions ?? null).includes('gym-hayarkon.example')`, 8000)
+  check('"זה לא מנוי" takes it out, "זה מנוי" brings it back, for every device', true)
+  await shot(desk, 'pc-subscriptions')
   await desk.key('Escape')
 
   // A quarter of an hour on (moved forward here), the copied code's letter goes to the bin.
@@ -774,6 +798,13 @@ try {
   check('a receipt with a very long subject does not push the spike off the screen', await formFits(), (await book.texts('.spike-what strong')).join(' | ').slice(0, 80))
   await shot(book, 'phone-spike')
   await closeForm()
+  await openFromMenu('מנויים')
+  await book.waitFor(`document.querySelectorAll('.subs-card').length >= 5`, 20_000)
+  await book.waitFor(`!document.querySelector('.subs-ledger').textContent.includes('עוד קוראים')`, 30_000)
+  await sleep(400)
+  check('subscriptions fit the phone, however long a plan', await formFits())
+  await shot(book, 'phone-subscriptions')
+  await closeForm()
   await openFromMenu('מגירת הקבצים')
   await book.waitFor(`document.querySelectorAll('.drawer-file').length >= 4`, 12_000)
   const widths = await book.evaluate<number[]>(`(() => {
@@ -802,8 +833,26 @@ try {
   await book.waitFor(`[...document.querySelectorAll('.spike-amount')].some((cell) => cell.textContent.includes('884'))`, 15_000)
   const kronur = (await book.texts('.spike-amount')).find((sum) => sum.includes('884')) ?? ''
   check('a sum in another currency is read from the letter itself, fees included', kronur.includes('884 kr'), kronur)
-  const month = await book.text('.spike-sum')
-  check('a month adds up each currency by itself', month.includes('470.50') && month.includes('$64.00') && month.includes('884 kr'), month)
+  // The newest month's own rows, added up here per currency, against what its header says.
+  // (Which receipts fall in it depends on the day the check runs, so the sums are not fixed.)
+  const month = await book.evaluate<{ header: string; rows: Record<string, number> }>(`(() => {
+    const section = document.querySelector('.spike-month')
+    const rows = {}
+    for (const cell of section.querySelectorAll('.spike-amount')) {
+      const text = cell.textContent.replace(/[⁦⁩]/g, '')
+      const value = Number(text.replace(/[^0-9.]/g, ''))
+      const currency = text.includes('₪') ? '₪' : text.includes('$') ? '$' : text.includes('kr') ? 'kr' : text.includes('€') ? '€' : '?'
+      if (value) rows[currency] = Math.round(((rows[currency] ?? 0) + value) * 100) / 100
+    }
+    return { header: section.querySelector('.spike-sum').textContent.replace(/[⁦⁩]/g, ''), rows }
+  })()`)
+  const headed = (currency: string, value: number) =>
+    month.header.includes(currency === '₪' ? `${value.toLocaleString('en-US', { minimumFractionDigits: 2 })} ₪` : currency === 'kr' ? `${value} kr` : `${currency}${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}`)
+  check(
+    'a month adds up each currency by itself',
+    Object.keys(month.rows).length >= 2 && Object.entries(month.rows).every(([currency, value]) => headed(currency, value)),
+    `${month.header} / ${JSON.stringify(month.rows)}`,
+  )
   await book.clickText('P2 - Receipt', '.spike-month li button')
   await book.waitFor('.letter iframe')
   await book.waitFor(`document.querySelector('.letter iframe').contentDocument?.documentElement.classList.contains('doar-tight')`, 10_000)

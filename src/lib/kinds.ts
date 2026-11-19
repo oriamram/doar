@@ -131,7 +131,8 @@ const WORD = `(?:${[...Object.keys(WORDS), ...CODES].sort((a, b) => b.length - a
 /** Thousands divided by a comma, a dot or a thin space; decimals after a dot or a comma. */
 const NUMBER = String.raw`\d{1,3}(?:[.,   ]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?`
 const AMOUNT = new RegExp(
-  String.raw`(?:(?<s1>${SIGN}|(?<![\p{L}\d])${WORD})\s?(?<n1>${NUMBER})(?![\d%])|(?<![\d.,])(?<n2>${NUMBER})\s?(?<s2>${SIGN}|${WORD}(?![\p{L}\d])))`,
+  // A sign with a number right after it belongs to that number: "2026 ₪11.90" is 11.90, not 2026.
+  String.raw`(?:(?<s1>${SIGN}|(?<![\p{L}\d])${WORD})\s?(?<n1>${NUMBER})(?![\d%])|(?<![\d.,])(?<n2>${NUMBER})\s?(?<s2>${SIGN}(?!\d)|${WORD}(?![\p{L}\d])))`,
   'giu',
 )
 const TOTAL =
