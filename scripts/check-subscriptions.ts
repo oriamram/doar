@@ -45,6 +45,10 @@ const brand = readCharge(
 )!
 check('a brand billed by the company behind it is called by the brand', brand.name, 'Automate')
 check('a plan without its notes in brackets and after a dash', brand.plan, 'Automate Core plan')
+const longLine = readCharge(
+  letter('Flowworks Inc.', 'invoice+statements@automate.example', 'Your receipt from Flowworks Inc.', stripe('$10.59', 'May 16–Jun 16, 2026', 'Automate Core plan (10000 credits / month) - monthly subscription (organization ID: 1234567) Qty 1 $10.59'), 180),
+)!
+check('a plan line with long notes is still read, and names the brand', [longLine.plan, longLine.name], ['Automate Core plan', 'Automate'])
 
 const store = readCharge(
   letter(
@@ -56,6 +60,7 @@ const store = readCharge(
   ),
 )!
 check('an app store renewal: the plan, monthly, in shekels', [store.plan, store.period, store.amount], ['iCloud+ with 200 GB of storage', 'month', { value: 11.9, currency: '₪' }])
+check('an app store: called by its name, the plan apart', store.name, 'Apple')
 
 const hebrew = readCharge(letter('סטרים פלוס בע"מ', 'billing@stream-plus.co.il', 'חשבונית מס קבלה - מנוי חודשי', 'תודה! חויב מנוי פרימיום חודשי. סה"כ לתשלום: 39.90 ש"ח', 20))!
 check('a Hebrew monthly subscription', [hebrew.period, hebrew.recurring, hebrew.amount, hebrew.name, hebrew.key], ['month', true, { value: 39.9, currency: '₪' }, 'סטרים פלוס', 'stream-plus.co.il'])

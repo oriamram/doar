@@ -44,7 +44,8 @@ const MONTH = String.raw`(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*
 /** A billing period as Stripe and others write it: "Nov 12–Dec 12, 2026", "Dec 28, 2025 – Jan 28, 2026". */
 const RANGE = new RegExp(String.raw`\b${MONTH}\s(\d{1,2})(?:,\s(\d{4}))?\s?[–—-]\s?${MONTH}\s(\d{1,2}),\s(\d{4})`, 'i')
 /** The line that follows a period on such receipts: the plan, its quantity and its price. */
-const LINE_AFTER = /^\s*(.{2,80}?)\s+Qty\s+\d+\s+(\S+(?:\s?\S+)?)/i
+// Up to 200 characters: some plans carry notes ("(10000 credits / month) - monthly subscription (organization ID: …)").
+const LINE_AFTER = /^\s*(.{2,200}?)\s+Qty\s+\d+\s+(\S+(?:\s?\S+)?)/i
 
 const MONTHLY = /\((?:monthly|חודשי)\)|\bmonthly\b|\bper\s+month\b|\/\s?(?:mo|month)\b|\bevery\s+month\b|חודשי(?:ת)?(?![א-ת])|לחודש(?![א-ת])|כל\s+חודש/i
 // "\b" does not see Hebrew letters as letters; "(?![א-ת])" ends a Hebrew word instead.
@@ -143,7 +144,8 @@ export function readCharge(letter: Letter): Charge | null {
     thread: letter.thread,
     at: letter.at,
     key: store ? `${site}/${plan!.toLowerCase()}` : site,
-    name: store ? `${name} · ${plan}` : name,
+    // An app store's plans are told apart by the plan written under the name, not in it.
+    name,
     amount,
     price,
     plan,
