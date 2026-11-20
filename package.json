@@ -10,9 +10,12 @@
   ],
   "scripts": {
     "dev:doar": "npm run dev -w doar",
+    "dev:notes": "npm run dev -w notes",
     "build": "npm run build --workspaces --if-present",
     "check": "npm run check --workspaces --if-present && npm run lint:shared",
-    "lint:shared": "oxlint supabase tools packages"
+    "lint:shared": "oxlint supabase tools packages",
+    "deploy:doar": "node tools/vercel.mjs doar deploy --prod --yes",
+    "deploy:notes": "node tools/vercel.mjs notes deploy --prod --yes"
   },
   "devDependencies": {
     "oxlint": "^1.90.0"

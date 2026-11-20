@@ -4,14 +4,54 @@
     {
       "name": "doar-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "doar"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "doar"
+      ],
       "port": 5173
     },
     {
       "name": "doar-built",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview", "-w", "doar", "--", "--port", "4173", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "-w",
+        "doar",
+        "--",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
       "port": 4173
+    },
+    {
+      "name": "notes-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "notes"
+      ],
+      "port": 5174
+    },
+    {
+      "name": "notes-built",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "-w",
+        "notes",
+        "--",
+        "--port",
+        "4174",
+        "--strictPort"
+      ],
+      "port": 4174
     }
   ]
 }

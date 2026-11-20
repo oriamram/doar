@@ -1,0 +1,460 @@
+/* פתקיות: notes on the desk.
+
+   The desk, its light, the fonts and the colors are the ones every app shares
+   (packages/desk). What is this app's own is small: a note is the yellow slip that Doar
+   clips to a letter (the same paper, the same ink), new notes are torn off a pad, and a
+   note taken in hand comes up over the dimmed desk to be written on. */
+
+@import '@doar/desk/tokens.css';
+@import '@doar/desk/base.css';
+
+:root {
+  /* The slip's paper and the ink on it. Yellow in both themes, dimmer at night. */
+  --slip: linear-gradient(175deg, #f8e9a6, #f1dc86);
+  --slip-ink: #33301f;
+  --slip-ink-soft: #5c5328;
+  --slip-edge: rgba(120, 95, 20, 0.12);
+  --slip-rule: rgba(90, 70, 10, 0.35);
+  /* The pad: the sheets under the top one, the lines between them, and the glue that binds them. */
+  --pad-sheet: #e9d47c;
+  --pad-line: rgba(110, 85, 15, 0.42);
+  --pad-glue: #b3913a;
+  /* The desk behind a note in hand: darker than behind Doar's forms, because what lies on it is the same yellow. */
+  --hand-dim: rgba(40, 30, 14, 0.58);
+}
+
+:root[data-theme='dark'] {
+  --slip: linear-gradient(175deg, #dccb88, #cfbb6c);
+  --slip-ink-soft: #4c4520;
+  --pad-sheet: #c2ad5f;
+  --pad-glue: #94782e;
+  --hand-dim: rgba(4, 6, 10, 0.66);
+}
+
+/* ---------- The desk ---------- */
+
+.desk {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: max(20px, calc(env(safe-area-inset-top) + 12px)) 22px calc(26px + env(safe-area-inset-bottom));
+}
+
+.top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 18px;
+}
+
+.top h1 {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.top-count {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.slips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slips > li {
+  min-width: 0;
+}
+
+.empty {
+  max-width: 36ch;
+  margin: 26px 2px 0;
+  font-size: 15.5px;
+  color: var(--text-muted);
+}
+
+.where {
+  margin-top: auto;
+  padding-top: 34px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.where-problem {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ---------- A note: a square slip, lying a little crooked ---------- */
+
+.slip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 14px 14px 9px;
+  overflow: hidden;
+  /* One corner curls up, as on the slip Doar clips to a letter. */
+  border-radius: 1px 1px 12px 1px;
+  background: var(--slip);
+  color: var(--slip-ink);
+  box-shadow:
+    inset 0 0 0 1px var(--slip-edge),
+    var(--shadow-rest);
+  rotate: var(--tilt, 0deg);
+  transition:
+    rotate 0.18s var(--ease-out),
+    translate 0.18s var(--ease-out),
+    box-shadow 0.18s;
+}
+
+/* Reached for, a slip straightens and lifts off the desk; pressed, it lies flat. */
+@media (hover: hover) {
+  button.slip:hover {
+    rotate: 0deg;
+    translate: 0 -3px;
+    box-shadow:
+      inset 0 0 0 1px var(--slip-edge),
+      var(--shadow-lift);
+  }
+}
+
+button.slip:active {
+  translate: 0 0;
+  box-shadow:
+    inset 0 0 0 1px var(--slip-edge),
+    var(--shadow-press);
+}
+
+.slip-text {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: start;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* A long note runs off the slip's end: its last line fades instead of being cut through. */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 1.4em), transparent);
+  mask-image: linear-gradient(#000 calc(100% - 1.4em), transparent);
+}
+
+.slip-day {
+  align-self: flex-end;
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--slip-ink-soft);
+}
+
+/* ---------- The pad that new notes are torn from ---------- */
+
+.pad {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 24px 12px 12px;
+  border-radius: 2px 2px 3px 3px;
+  background: var(--slip);
+  color: var(--slip-ink);
+  /* The sheets under the top one show as three edges, and the whole pad throws a longer shadow than a slip. */
+  box-shadow:
+    inset 0 0 0 1px var(--slip-edge),
+    0 1px 0 var(--pad-line),
+    0 3px 0 var(--pad-sheet),
+    0 4px 0 var(--pad-line),
+    0 6px 0 var(--pad-sheet),
+    0 7px 0 var(--pad-line),
+    0 8px 3px rgba(0, 0, 0, 0.16),
+    var(--shadow-lift);
+  transition:
+    translate 0.1s,
+    rotate 0.2s;
+}
+
+.pad:active {
+  translate: 0 2px;
+}
+
+/* The strip of glue along the top edge that holds the sheets together. */
+.pad-glue {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 13px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(var(--pad-glue), color-mix(in srgb, var(--pad-glue) 84%, #000));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.pad-plus {
+  width: 34px;
+  height: 34px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.pad-label {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* ---------- A note in hand: over the dimmed desk, with the pen on it ---------- */
+
+.in-hand {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: max(9vh, calc(env(safe-area-inset-top) + 16px)) 16px 16px;
+  overflow-y: auto;
+  background: var(--hand-dim);
+  animation: dim-in 0.16s ease-out;
+}
+
+.slip-open {
+  width: min(460px, 100%);
+  aspect-ratio: auto;
+  padding: 18px 18px 8px;
+  overflow: visible;
+  rotate: 0deg;
+  box-shadow:
+    inset 0 0 0 1px var(--slip-edge),
+    var(--shadow-float);
+  animation: take 0.22s var(--ease-out);
+}
+
+.slip-paper {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-height: 9.5em;
+  max-height: min(56vh, 30em);
+  /* Where the browser can, the paper grows with what is written on it. */
+  field-sizing: content;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font-size: 17px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.slip-paper::placeholder {
+  color: var(--slip-ink-soft);
+  opacity: 0.85;
+}
+
+.slip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 20px;
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--slip-rule);
+}
+
+.slip-actions button {
+  min-height: 42px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--slip-ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.slip-actions .slip-done {
+  color: var(--ink-blue);
+}
+
+.slip-actions button:focus-visible {
+  outline-color: var(--slip-ink);
+}
+
+.slip-when {
+  margin-inline-start: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--slip-ink-soft);
+}
+
+@keyframes take {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+    rotate: -2deg;
+    scale: 0.97;
+  }
+}
+
+@keyframes dim-in {
+  from {
+    background: transparent;
+  }
+}
+
+/* With the phone's keyboard up there is little room: the note starts at the top. */
+@media (max-height: 520px) {
+  .in-hand {
+    padding-top: calc(env(safe-area-inset-top) + 10px);
+  }
+
+  .slip-paper {
+    min-height: 6em;
+  }
+}
+
+/* ---------- "The note was thrown away": a receipt torn off at the top, with a way back ---------- */
+
+.receipts {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(26px + env(safe-area-inset-bottom));
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25)) drop-shadow(0 12px 22px rgba(0, 0, 0, 0.28));
+}
+
+.receipt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(460px, 100%);
+  min-height: 50px;
+  padding: 12px 16px 10px;
+  background: var(--sheet);
+  color: var(--ink);
+  font-weight: 600;
+  pointer-events: auto;
+  /* The torn edge: half-circles bitten out along the top. */
+  -webkit-mask: radial-gradient(circle at 6px 0, transparent 3.2px, #000 3.7px) 0 0 / 12px 100%;
+  mask: radial-gradient(circle at 6px 0, transparent 3.2px, #000 3.7px) 0 0 / 12px 100%;
+  animation: receipt-in 0.26s var(--ease-out);
+}
+
+.receipt-action {
+  flex: none;
+  min-height: 40px;
+  padding: 0 4px;
+  font-weight: 900;
+  color: var(--ink-red);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Time left to bring the note back, running out along the bottom. */
+.receipt-timer {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--ink-red);
+  transform-origin: right;
+  animation: timer-run linear both;
+}
+
+@keyframes timer-run {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes receipt-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+/* ---------- Phones: two slips across, and the pad under the thumb ---------- */
+
+@media (max-width: 767px) {
+  .desk {
+    padding-inline: 14px;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .top h1 {
+    font-size: 27px;
+  }
+
+  .slips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  /* The pad leaves the row of slips and waits at the bottom of the screen, a small pad lying crooked. */
+  .pad-cell {
+    display: contents;
+  }
+
+  .pad {
+    position: fixed;
+    inset-inline-end: 16px;
+    bottom: calc(22px + env(safe-area-inset-bottom));
+    z-index: 5;
+    flex-direction: row;
+    gap: 8px;
+    width: auto;
+    aspect-ratio: auto;
+    min-height: 58px;
+    padding: 17px 20px 7px 18px;
+    rotate: -2deg;
+  }
+
+  .pad-glue {
+    height: 9px;
+  }
+
+  .pad-plus {
+    width: 22px;
+    height: 22px;
+    stroke-width: 2;
+  }
+
+  .receipts {
+    bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slip,
+  .pad {
+    transition: none;
+  }
+
+  .in-hand,
+  .slip-open,
+  .receipt {
+    animation: none;
+  }
+}
