@@ -25,11 +25,11 @@ widget opens Doar there.
 ## Building
 
 ```bash
-npm run widget
+npm run widget          # in apps/doar (from the repo's root: npm run widget -w doar)
 ```
 
 Builds a release APK signed with this PC's debug key (so a newer build installs over the
-older one) and copies it to `public/doar-widget.apk`, which the next deploy serves.
+older one) and copies it to `apps/doar/public/doar-widget.apk`, which the next deploy serves.
 Needs the Android SDK (`ANDROID_HOME`) and a JDK 17 or newer.
 
 ## Checking on an emulator

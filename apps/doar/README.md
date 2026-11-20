@@ -2,26 +2,30 @@
 
 A calmer, faster client for Gmail. It runs on PC and Android from one codebase.
 
+Doar is one of the apps in this repo (see the README at the repo's root): the look it
+shares with the others is in `packages/desk`, and its server is `supabase/` at the root.
+Everything below is run **inside this folder** (`apps/doar`), unless it says otherwise;
+from the root, the same scripts are `npm run <script> -w doar`.
+
 - **App:** React + TypeScript + Vite
 - **PC:** installable web app (PWA)
 - **Android:** native app built with [Capacitor](https://capacitorjs.com)
 - **Gestures:** `@use-gesture/react` + Motion, with haptics through `@capacitor/haptics`
 - **Gmail:** Gmail REST API, called straight from the device
-- **Backend:** Supabase: Google sign-in, plus the `google-token` Edge Function that keeps the Google refresh token server-side and hands the app short-lived access tokens
-- **Planned:** compose/reply, search, push notifications, Claude-powered AI features
+- **Backend:** Supabase: Google sign-in, the `google-token` Edge Function that keeps the Google refresh token server-side and hands the app short-lived access tokens, and the `postman` Edge Function (notifications, sending later, held and registered mail, the home-screen widget)
 
 ## Setup
 
-1. Copy `.env.example` to `.env.local` and fill in the Supabase URL and publishable key.
-2. Supabase: apply `supabase/migrations/`, deploy `supabase/functions/google-token` (with JWT verification off; it checks the session itself), and add the Edge Function secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+1. Copy `.env.example` to `.env.local` (both in this folder) and fill in the Supabase URL and publishable key.
+2. Supabase (the `supabase/` folder at the repo's root): apply `supabase/migrations/`, deploy `supabase/functions/google-token` (with JWT verification off; it checks the session itself), and add the Edge Function secrets `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 3. Google Cloud: enable the Gmail API, and create a **Web application** OAuth client with the redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`. While the app is in "Testing", add yourself as a test user.
 4. Supabase Auth: enable the Google provider with that client, and allow the redirect URLs `http://localhost:5173` and `app.doar.mail://auth`.
 
 ## Run it on PC
 
 ```bash
-npm install
-npm run dev
+npm install      # at the repo's root, once: it installs every app
+npm run dev      # here
 ```
 
 Open http://localhost:5173.
@@ -97,9 +101,16 @@ node --experimental-strip-types scripts/check-push-e2e.ts    # notifications, en
 ```
 
 `SITE=http://localhost:5173 npm run check:ui` checks the dev server instead, and
-`SHOTS=some/folder` saves pictures of the screens it visits.
+`SHOTS=some/folder` saves pictures of the screens it visits. To compare the pictures of
+two runs dot for dot (before and after a change that should not show), give both runs
+the same `CLOCK=2026-11-20T10:00:05`: every page then believes it was opened at that
+moment, and a picture is taken only once the screen has come to rest.
+
+Deploying: `npm run deploy:doar` at the repo's root (see the README there).
 
 ## Project layout
+
+Inside `apps/doar`:
 
 ```
 src/
@@ -114,19 +125,27 @@ src/
     rates.ts           Today's exchange rates, to add up sums in several currencies
     guide.ts           The guide's lines: every feature, its name and what the name means ("?guide" opens it)
   demo/                The made-up mailbox behind "?demo"
-  styles/              The writing desk (see DESIGN.md)
-supabase/
-  functions/postman/   Doar's server: notifications, sending later, held and registered mail, sender marks
-  functions/google-token/
-  migrations/
+  styles/              The mail's own paper objects; the desk itself comes from packages/desk
 scripts/               Checks, icon builder, Android helpers
 android/               Native Android shell (Capacitor)
 widget/                The home-screen widget for Android: a small app of its own (plain Java).
                        `npm run widget` builds it into public/doar-widget.apk
 ```
 
+At the repo's root:
+
+```
+supabase/
+  functions/postman/   Doar's server: notifications, sending later, held and registered mail, sender marks, the widget
+  functions/google-token/
+  migrations/
+packages/desk/         The look every app shares (fonts, tokens, the desk and its light)
+packages/core/         What every app does the same way (keeping the installed app up to date)
+tools/browser.ts       The hidden browser that the screen checks drive
+```
+
 ## Where things are written down
 
-- `DESIGN.md`: the design system and its rules.
-- `ROADMAP.md`: what is being built, in phases, and what is already live.
-- `NEXT-STEPS.md`: things only the owner can do (accounts, keys, devices).
+- `DESIGN.md` (at the repo's root): the design system and its rules.
+- `ROADMAP.md` (here): what is being built, in phases, and what is already live.
+- `NEXT-STEPS.md` (at the repo's root): things only the owner can do (accounts, keys, devices).

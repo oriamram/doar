@@ -415,6 +415,16 @@ Sums are now read in any common currency (signs, words, codes in capitals), with
 and cents written either way, and a receipt's total is read from what the reader sees
 (`letterText`), on the receipt's card and for every row of the spike.
 
+**One repo for several apps (20 November 2026).** The owner wants more apps beside the
+mail (notes first, then a calendar), sharing its look, its server and the way things are
+done here. The repo became an npm workspace: Doar moved as it was to `apps/doar`, the
+desk's look and the self-update moved to `packages/desk` and `packages/core`, the server
+stayed at the root (`supabase/`), and a first, most basic notes app stands beside it
+(`apps/notes`, https://pitkiyot-phi.vercel.app, notes kept on the device, no sign-in
+yet). Each app is its own Vercel project built from its folder. Nothing in Doar changed
+for whoever uses it: the same address, the same files in the build, and its screens were
+compared dot for dot with pictures taken before the move.
+
 **Subscriptions (19 November 2026).** The owner wanted one place for every subscription: what
 they spent in the last year, what it costs a month, its receipts. "מנויים" (in the menu, in
 "לאן?", and from the receipts spike) reads the receipts of the last thirteen months and finds

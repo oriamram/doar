@@ -1,7 +1,8 @@
-# Doar: what needs you
+# What needs you
 
-Things only you can do (your phone, your PC, your accounts). The first two take about
-five minutes together and turn Doar into a real app on both devices.
+Things only you can do (your phone, your PC, your accounts), for Doar and for the apps
+beside it. The first two take about five minutes together and turn Doar into a real app
+on both devices.
 
 ## Do these once
 
@@ -56,13 +57,16 @@ The newest letters on your home screen. Do it on the phone, in Chrome.
 
 ## Optional
 
-### 4. Make the site update by itself on every change (3 minutes)
+### 4. Make the sites update by themselves on every change (5 minutes)
 
-Right now each update is deployed by hand.
+Right now each update is deployed by hand. There are two sites now (Doar, and the notes
+app), each a project of its own on Vercel, both built from the same GitHub repository.
 
 1. Open https://vercel.com, the **doar** project, **Settings**, **Git**.
 2. Click **Connect Git Repository**, choose GitHub, and allow Vercel to see `oriamram/doar`.
-3. Tell Claude it's done.
+3. Do the same in the **pitkiyot** project (the notes app), with the same repository.
+4. Tell Claude it's done. (Each project already knows which folder is its own:
+   `apps/doar` and `apps/notes`. Nothing else to set.)
 
 ### 5. Notifications within seconds instead of within a minute
 
@@ -103,17 +107,29 @@ project, which takes you about ten minutes to create. Tell Claude and you'll get
 Buy a domain, add it in Vercel (**Settings**, **Domains**), and tell Claude, who adds it
 to Supabase's allowed addresses.
 
+### 11. The notes app ("פתקיות") as an app of its own
+
+It is at https://pitkiyot-phi.vercel.app, in its most basic form (notes are kept on the
+device they were written on; there is no sign-in yet). To have it beside Doar:
+
+1. **Phone:** open the address in **Chrome**, then ⋮, **הוספה למסך הבית** (or **התקנת האפליקציה**).
+2. **PC:** open the address in **Edge**, then the install icon at the end of the address bar.
+
+When the notes get sign-in and the shared server (with the app's real plan), one step
+will be yours: in Supabase, **Authentication**, **URL Configuration**, **Redirect URLs**,
+add `https://pitkiyot-phi.vercel.app/**`. Claude will say when.
+
 ## What comes next
 
-The full plan is in ROADMAP.md (and as a page with pictures that Claude published for
+Doar's full plan is in apps/doar/ROADMAP.md (and as a page with pictures that Claude published for
 you). Phases 0 to 3 were approved on 13 November 2026 and need nothing more from you:
 you confirmed that notifications show on the phone, and allowed two test emails to your
 own address.
 
-Phases 0, 1 and 2 are live (two small leftovers of phase 2 are noted in ROADMAP.md).
+Phases 0, 1 and 2 are live (two small leftovers of phase 2 are noted in the roadmap).
 Phase 3 is live in its main parts (opening the
 mail one by one, notes, Ctrl+K, right click, dragging, the files drawer, reading with no
-connection); what is not built yet is listed in ROADMAP.md under "Progress", and none of
+connection); what is not built yet is listed in the roadmap under "Progress", and none of
 it needs anything from you except saying which of them you want.
 
 Every feature and every name is explained inside Doar, one line each with a picture: menu,

@@ -4,6 +4,11 @@ Doar ("דואר", mail) is a Gmail client that looks and behaves like a writing 
 post office. This file records what the design is made of and the rules it keeps, so
 new screens stay in the same world.
 
+The same desk holds the other apps in this repo (the notes, "פתקיות", so far): they
+keep the same rules, tokens and voice, and add their own objects at the end of this
+file. What every app shares is code too: `packages/desk` (fonts, tokens, the desk and
+its light).
+
 ## The idea
 
 Everything sits on a **desk lit by a lamp**. Mail is real paper on it:
@@ -133,6 +138,22 @@ name, a one-time code in an unread letter is written out in red. ↻ looks now, 
 writes a new letter, a letter opens in Doar. At night the paper dims, as in the app. Made
 small, it shows only the number of new letters. The system's own font: a widget cannot
 carry Doar's.
+
+## The notes app ("פתקיות")
+
+The same desk, with notes on it instead of mail. It has few objects, and the first is
+borrowed: a note is the yellow slip that Doar clips to a letter.
+
+| Thing in the app | Object on the desk |
+| --- | --- |
+| A note | A square yellow slip, lying a little crooked (each note has its own small tilt, always the same), one corner curled; its day is typed at the bottom ("היום", "אתמול", "12.11"). A long note fades at the slip's end |
+| New note | The pad the slips are torn from ("פתק חדש"): a stack with a strip of glue along its top and the edges of the sheets under it. It lies first among the slips on a PC, straight, because it is heavy; on a phone it waits at the bottom, under the thumb |
+| A note being read or written | The slip in hand: larger, straight, over the dimmed desk (darker than behind Doar's forms, because what lies behind is the same yellow), the pen already at the end of what is written. Nothing to save: "סיום" puts it back |
+| Throwing a note away | "לפח" on the slip in hand; a receipt torn off at the top says "הפתק נזרק." and offers "ביטול" for six seconds |
+| Its icon | The slip on an airmail-blue card, lit from the top left like the red card under Doar's envelope: red is the mail, blue is the notes |
+
+Rules it adds: a slip is never wider than its place, whatever is written on it; an empty
+slip is not kept; yellow paper is yellow at night too, only dimmer, with the same dark ink.
 
 ## Tried and rejected
 
