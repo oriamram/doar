@@ -1,0 +1,7 @@
+{
+  "name": "@doar/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "What every app on the desk does the same way. Plain TypeScript, used as source (no build step)."
+}

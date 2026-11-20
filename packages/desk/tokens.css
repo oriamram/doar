@@ -1,0 +1,163 @@
+/* The desk: what every app on it is made of.
+
+   Everything sits on a desk lit by a lamp, and what the apps show is real paper on
+   it. Paper stays cream in both themes (dimmer at night), so it is always inked with
+   the same dark ink; text written straight on the desk uses the --text colors instead.
+
+   Rules the design keeps (see DESIGN.md):
+   - Text sits on plain paper: texture stays under 3% contrast, age shows at edges.
+   - Small text keeps at least 4.5:1 contrast on whatever it's written on.
+   - Things you can press look pressable; everything pressable is at least 40px.
+   - Motion answers an action and ends within half a second.
+
+   This file: the fonts, and the colors, shadows and easings as tokens, for day and
+   for night (an app sets data-theme="dark" on <html> for night). base.css is the desk
+   itself. */
+
+/* Discovery FS ships in three weights. Each face covers a range, so any
+   font-weight in the CSS lands on the nearest one: 100–449 Light,
+   450–749 Demibold, 750+ Black. */
+@font-face {
+  font-family: 'Discovery';
+  src: url('./fonts/Discovery_Fs-Light.ttf') format('truetype');
+  font-weight: 100 449;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Discovery';
+  src: url('./fonts/Discovery_Fs-Demibold.ttf') format('truetype');
+  font-weight: 450 749;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Discovery';
+  src: url('./fonts/Discovery_Fs-Black.ttf') format('truetype');
+  font-weight: 750 1000;
+  font-display: swap;
+}
+
+/* ---------- Tokens ---------- */
+
+:root {
+  /* The desk, and text written straight on it. */
+  --desk: #d7cdbc;
+  --desk-deep: #cbc0ad;
+  --desk-raised: #e3dbcc;
+  --text: #1f2a3a;
+  --text-muted: #554c3f;
+  --text-soft: #5c5343;
+  --rule: rgba(31, 42, 58, 0.16);
+  --accent: #98331f;
+  --on-accent: #fbf6ea;
+  --airmail: #24407a;
+
+  /* Paper: envelopes, letters, tags, forms. */
+  --sheet: #fdf9f0;
+  --sheet-aged: #f0e7d3;
+  --sheet-letter: #fffcf3;
+  --sheet-lining: #e2d8c3;
+  --stamp-paper: #fffdf7;
+  --manila: #ecd9a8;
+  --kraft: #d2b78c;
+  /* A queue ticket's paper, and the thermal paper of a receipt. */
+  --ticket: #f3f6ec;
+  --thermal: #fdfcf8;
+
+  /* Ink on paper. */
+  --ink: #1f2a3a;
+  --ink-muted: #574f42;
+  --ink-faded: #645b4d;
+  --ink-rule: rgba(80, 60, 30, 0.2);
+  --ink-red: #a63a26;
+  --ink-blue: #24407a;
+
+  /* Stickers and metal. */
+  --label-blue: #24407a;
+  --cream: #fbf6ea;
+  --twine: #b08d57;
+  --twine-light: #dcc391;
+
+  /* Light on the desk: warm from the lamp above, falling off at the edges. */
+  --lamp: rgba(255, 247, 228, 0.2);
+  --vignette: rgba(70, 48, 18, 0.15);
+  --grain: 0.05;
+  --dim: rgba(40, 30, 14, 0.42);
+
+  /* Paper edges: a hairline, and the slight darkening paper gets at its border. */
+  --edge-fresh: inset 0 0 0 1px rgba(90, 65, 30, 0.07), inset 0 0 14px rgba(140, 100, 40, 0.06);
+  --edge-aged: inset 0 0 0 1px rgba(90, 65, 30, 0.1), inset 0 0 24px rgba(140, 100, 40, 0.17);
+
+  /* Paper on the desk: lying flat, lifted (new mail, hover), and pressed. */
+  --shadow-rest: 0 1px 1px rgba(70, 50, 25, 0.1), 0 2px 5px rgba(70, 50, 25, 0.08),
+    0 10px 16px -12px rgba(70, 50, 25, 0.4);
+  --shadow-lift: 0 1px 1px rgba(70, 50, 25, 0.12), 0 4px 10px rgba(70, 50, 25, 0.12),
+    0 18px 26px -16px rgba(70, 50, 25, 0.5);
+  --shadow-press: 0 1px 1px rgba(70, 50, 25, 0.14), 0 1px 3px rgba(70, 50, 25, 0.12);
+  --shadow-float: 0 2px 4px rgba(50, 35, 15, 0.16), 0 14px 34px rgba(50, 35, 15, 0.3);
+
+  /* One easing for things that arrive, one for things that leave. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.25, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.8, 0.4);
+
+  /* Headings and text both use Discovery; headings get its Black weight. */
+  --sans: 'Discovery', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Typewriter, for addresses, dates and form numbers; Hebrew in it falls back to Discovery. */
+  --mono: 'Courier Prime', 'Discovery', ui-monospace, monospace;
+
+  color-scheme: light;
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--desk);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Night: a dark desk under a warm lamp. The paper is the same paper, dimmer,
+   so a screen full of letters doesn't glare in a dark room. */
+:root[data-theme='dark'] {
+  --desk: #131922;
+  --desk-deep: #0e131a;
+  --desk-raised: #1d2531;
+  --text: #ece4d3;
+  --text-muted: #aca392;
+  --text-soft: #8b93a3;
+  --rule: rgba(236, 228, 211, 0.13);
+  --accent: #e07a5f;
+  --on-accent: #131922;
+  --airmail: #6d8fd6;
+
+  --sheet: #dfd5bf;
+  --sheet-aged: #cbbfa6;
+  --sheet-letter: #e6dcc7;
+  --sheet-lining: #bfb39a;
+  --stamp-paper: #efe7d5;
+  --manila: #d6c18c;
+  --kraft: #bfa277;
+  --ticket: #d6dbca;
+  --thermal: #e6e1d3;
+
+  --ink-muted: #474033;
+  --ink-faded: #524a3d;
+  --ink-red: #96321f;
+  --ink-blue: #223c73;
+
+  --label-blue: #2b4b8f;
+
+  --lamp: rgba(255, 205, 140, 0.08);
+  --vignette: rgba(0, 0, 0, 0.36);
+  --grain: 0.04;
+  --dim: rgba(4, 6, 10, 0.62);
+
+  --shadow-rest: 0 1px 1px rgba(0, 0, 0, 0.4), 0 3px 6px rgba(0, 0, 0, 0.25),
+    0 12px 18px -12px rgba(0, 0, 0, 0.7);
+  --shadow-lift: 0 1px 1px rgba(0, 0, 0, 0.45), 0 6px 12px rgba(0, 0, 0, 0.3),
+    0 20px 28px -16px rgba(0, 0, 0, 0.8);
+  --shadow-press: 0 1px 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-float: 0 2px 4px rgba(0, 0, 0, 0.4), 0 16px 40px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}

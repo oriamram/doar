@@ -90,7 +90,7 @@ icon, and the Android launcher icons. It carries no text, so it reads the same i
 9. **One light source:** top, slightly left. Shadows fall down; lifted paper has a
    longer shadow than paper lying flat.
 
-## Tokens (see `src/styles/base.css`)
+## Tokens (see `packages/desk/tokens.css`)
 
 - Desk: `--desk`, `--desk-deep`, `--desk-raised`; text on it: `--text`, `--text-muted`, `--text-soft`.
 - Paper: `--sheet` (fresh), `--sheet-aged` (read), `--sheet-letter`, `--sheet-lining`,
