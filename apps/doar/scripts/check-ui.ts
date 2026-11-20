@@ -7,7 +7,7 @@
 //
 // SITE=http://localhost:5173 checks the dev server instead. SHOTS=some/folder saves pictures.
 
-import { launch, PC, PHONE, sleep, type Page } from './lib/browser.ts'
+import { launch, PC, PHONE, sleep, type Page } from '../../../tools/browser.ts'
 
 const SITE = process.env.SITE ?? 'http://localhost:4173'
 const SHOTS = process.env.SHOTS
@@ -311,8 +311,9 @@ try {
   await desk.click('.qt-copy')
   await desk.waitFor(`!!document.querySelector('.toast-text')`)
   check('one press copies it, and says its letter will go to the bin', (await toast(desk)).startsWith('הקוד הועתק. בעוד רבע שעה') && (await desk.evaluate<string>('window.__copied')) === '482913', `${await toast(desk)}: ${await desk.evaluate<string>('window.__copied')}`)
-  const codeDue = await desk.evaluate<number>(`Object.values(JSON.parse(localStorage.getItem('doar:copied-codes:demo') ?? '{}'))[0] ?? 0`)
-  check('the letter is due in the bin a quarter of an hour from now', Math.abs(codeDue - Date.now() - 15 * 60_000) < 60_000, String(codeDue - Date.now()))
+  // Measured on the page's own clock (a run with CLOCK set has its own idea of "now").
+  const codeDue = await desk.evaluate<number>(`(Object.values(JSON.parse(localStorage.getItem('doar:copied-codes:demo') ?? '{}'))[0] ?? 0) - Date.now()`)
+  check('the letter is due in the bin a quarter of an hour from now', Math.abs(codeDue - 15 * 60_000) < 60_000, String(codeDue))
   check('parcels on their way are counted', (await desk.text('.parcel-strip-head')).includes('2 חבילות בדרך'), await desk.text('.parcel-strip-head'))
   await desk.click('.parcel-strip-head')
   await desk.waitFor('.parcel-list')

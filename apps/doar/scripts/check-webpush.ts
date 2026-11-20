@@ -3,7 +3,7 @@
 //
 //   node --experimental-strip-types scripts/check-webpush.ts
 
-import { b64url, createVapidKeys, encrypt, fromB64url, vapidHeader } from '../supabase/functions/postman/webpush.ts'
+import { b64url, createVapidKeys, encrypt, fromB64url, vapidHeader } from '../../../supabase/functions/postman/webpush.ts'
 
 const decoder = new TextDecoder()
 const encoder = new TextEncoder()

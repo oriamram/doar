@@ -4,13 +4,13 @@
     {
       "name": "doar-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": ["run", "dev", "-w", "doar"],
       "port": 5173
     },
     {
       "name": "doar-built",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview", "--", "--port", "4173", "--strictPort"],
+      "runtimeArgs": ["run", "preview", "-w", "doar", "--", "--port", "4173", "--strictPort"],
       "port": 4173
     }
   ]

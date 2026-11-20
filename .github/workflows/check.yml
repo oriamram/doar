@@ -1,6 +1,6 @@
-# Runs Doar's checks on every push: types, lint, and the checks of the server's
-# pure parts (sorting rules, notification encryption, codes, hours, tickets).
-# The screen checks need a browser and are run before each deploy (npm run check:ui).
+# Runs every app's checks on every push: types, lint, and the checks of the pure parts
+# (for Doar: sorting rules, notification encryption, codes, hours, tickets, kinds of mail).
+# The screen checks need a browser and are run before each deploy (npm run check:ui in an app's folder).
 name: check
 on:
   push:

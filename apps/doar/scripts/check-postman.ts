@@ -3,11 +3,11 @@
 //
 //   node --experimental-strip-types scripts/check-postman.ts
 
-import { findCode, formatCode } from '../supabase/functions/postman/codes.ts'
-import { isOpen, localTime, sunsetMinutes, validHours, type Hours } from '../supabase/functions/postman/hours.ts'
-import { replyState, validDays, validDue } from '../supabase/functions/postman/reminders.ts'
-import { readTicket, signTicket } from '../supabase/functions/postman/tickets.ts'
-import { newWidgetKey, validWidgetKey, widgetKeyHash, widgetLetter, widgetQuery } from '../supabase/functions/postman/widget.ts'
+import { findCode, formatCode } from '../../../supabase/functions/postman/codes.ts'
+import { isOpen, localTime, sunsetMinutes, validHours, type Hours } from '../../../supabase/functions/postman/hours.ts'
+import { replyState, validDays, validDue } from '../../../supabase/functions/postman/reminders.ts'
+import { readTicket, signTicket } from '../../../supabase/functions/postman/tickets.ts'
+import { newWidgetKey, validWidgetKey, widgetKeyHash, widgetLetter, widgetQuery } from '../../../supabase/functions/postman/widget.ts'
 
 let failed = false
 function check(name: string, got: unknown, want: unknown) {

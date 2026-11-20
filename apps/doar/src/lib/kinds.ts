@@ -4,7 +4,7 @@
 // letter. Detection goes from the surest sign to the weakest, and anything unsure stays
 // a plain letter. Pure functions, checked by scripts/check-kinds.ts.
 
-import { findCode } from '../../supabase/functions/postman/codes.ts'
+import { findCode } from '../../../../supabase/functions/postman/codes.ts'
 
 export type Kind = 'code' | 'parcel' | 'receipt' | 'invitation' | 'leaflet' | 'letter'
 

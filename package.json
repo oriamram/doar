@@ -1,44 +1,20 @@
 {
-  "name": "doar",
+  "name": "doar-apps",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
+  "description": "The apps on the desk (Doar, the mail, first), the look and the code they share, and the one server behind them.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "check": "tsc -b && oxlint && node --experimental-strip-types scripts/check-rules.ts && node --experimental-strip-types scripts/check-webpush.ts && node --experimental-strip-types scripts/check-postman.ts && node --experimental-strip-types scripts/check-kinds.ts && node --experimental-strip-types scripts/check-subscriptions.ts && node --experimental-strip-types scripts/check-inspector.ts && node --experimental-strip-types scripts/check-guide.ts",
-    "check:ui": "node --experimental-strip-types scripts/check-ui.ts",
-    "preview": "vite preview",
-    "android": "npm run build && cap sync android && cap open android",
-    "sync": "npm run build && cap sync android",
-    "android:live": "node scripts/android-live.mjs",
-    "android:install": "npm run sync && cd android && .\\gradlew.bat installDebug",
-    "android:pair": "node scripts/android-pair.mjs",
-    "widget": "node scripts/build-widget.mjs"
-  },
-  "dependencies": {
-    "@capacitor/android": "^8.6.0",
-    "@capacitor/app": "^8.1.2",
-    "@capacitor/browser": "^8.0.5",
-    "@capacitor/core": "^8.6.0",
-    "@capacitor/haptics": "^8.0.2",
-    "@supabase/supabase-js": "^2.119.0",
-    "@use-gesture/react": "^10.3.1",
-    "dompurify": "^3.4.17",
-    "motion": "^14.12.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "dev:doar": "npm run dev -w doar",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run check --workspaces --if-present && npm run lint:shared",
+    "lint:shared": "oxlint supabase tools"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.6.0",
-    "@types/node": "^24.19.2",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "oxlint": "^1.90.0",
-    "typescript": "~7.0.2",
-    "vite": "^8.3.6",
-    "vite-plugin-pwa": "^2.0.0"
+    "oxlint": "^1.90.0"
   }
 }

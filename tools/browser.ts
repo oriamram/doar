@@ -136,6 +136,23 @@ export async function launch(port = 9391) {
     })
     await cdp.send('Runtime.enable')
     await cdp.send('Page.enable')
+    // CLOCK=2026-11-20T10:00:05 makes every page believe it was opened at that moment (time
+    // runs on from there). Two runs then show the same hours and dates, so their pictures
+    // can be compared dot for dot.
+    if (process.env.CLOCK) {
+      await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `(() => {
+          const Real = Date, start = ${Date.parse(process.env.CLOCK)}, opened = Real.now()
+          const now = () => start + (Real.now() - opened)
+          function Clock(...args) { return new.target ? (args.length ? new Real(...args) : new Real(now())) : new Real(now()).toString() }
+          Clock.prototype = Real.prototype
+          Clock.now = now
+          Clock.parse = Real.parse
+          Clock.UTC = Real.UTC
+          window.Date = Clock
+        })()`,
+      })
+    }
 
     const resize = async (next: Screen) => {
       await cdp.send('Emulation.setDeviceMetricsOverride', { width: next.width, height: next.height, deviceScaleFactor: 1, mobile: !!next.touch })
@@ -261,7 +278,41 @@ export async function launch(port = 9391) {
 
     /** Save a picture of what's on screen. */
     const shot = async (file: string) => {
-      const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' })
+      const capture = async () => (await cdp.send('Page.captureScreenshot', { format: 'png' })).data as string
+      let data: string
+      if (process.env.CLOCK) {
+        // Pictures that will be compared, so the screen is brought to rest first:
+        // no blinking caret; what is on its way (a form sliding in) arrives; what never
+        // stops or runs for long (a spinner, the bar of time left on an undo note) is held
+        // at its start for the picture and let go afterwards.
+        await evaluate(`(async () => {
+          const style = document.createElement('style')
+          style.id = 'check-still'
+          style.textContent = '* { caret-color: transparent !important }'
+          document.head.append(style)
+          const timing = (animation) => animation.effect?.getComputedTiming()
+          const short = (animation) => { const t = timing(animation); return !!t && Number.isFinite(t.endTime) && t.endTime <= 2000 }
+          await Promise.race([
+            Promise.all(document.getAnimations().filter((animation) => animation.playState === 'running' && short(animation)).map((animation) => animation.finished.catch(() => {}))),
+            new Promise((resolve) => setTimeout(resolve, 1200)),
+          ])
+          window.__held = document.getAnimations().filter((animation) => timing(animation) && !short(animation)).map((animation) => ({ animation, at: animation.currentTime, running: animation.playState === 'running' }))
+          for (const { animation } of window.__held) { animation.pause(); animation.currentTime = 0 }
+        })()`)
+        data = await capture()
+        // Things drawn a moment later (a page of a PDF, a picture) get a few more looks.
+        for (let i = 0; i < 6; i++) {
+          await sleep(150)
+          const next = await capture()
+          if (next === data) break
+          data = next
+        }
+        await evaluate(`(() => {
+          for (const { animation, at, running } of window.__held ?? []) { animation.currentTime = at; if (running) animation.play() }
+          delete window.__held
+          document.getElementById('check-still')?.remove()
+        })()`)
+      } else data = await capture()
       mkdirSync(dirname(file), { recursive: true })
       writeFileSync(file, Buffer.from(data, 'base64'))
     }

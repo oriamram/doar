@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { matches } from '../../supabase/functions/postman/rules.ts'
+import { matches } from '../../../../supabase/functions/postman/rules.ts'
 import { shortName } from '../lib/addresses'
 import { copyText } from '../lib/clipboard'
 import { newDraft } from '../lib/compose'

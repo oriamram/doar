@@ -1,6 +1,6 @@
 import { motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { matches } from '../../supabase/functions/postman/rules.ts'
+import { matches } from '../../../../supabase/functions/postman/rules.ts'
 import { shortName } from '../lib/addresses'
 import { newDraft } from '../lib/compose'
 import { countLetters, dayGroup } from '../lib/format'

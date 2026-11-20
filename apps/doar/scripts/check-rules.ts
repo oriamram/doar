@@ -2,7 +2,7 @@
 //
 //   node --experimental-strip-types scripts/check-rules.ts
 
-import { labelsFor, matches, normalizeMatch, senderAddress, type Rule } from '../supabase/functions/postman/rules.ts'
+import { labelsFor, matches, normalizeMatch, senderAddress, type Rule } from '../../../supabase/functions/postman/rules.ts'
 
 let failed = false
 function check(name: string, got: unknown, want: unknown) {

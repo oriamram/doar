@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { formatCode } from '../../supabase/functions/postman/codes.ts'
+import { formatCode } from '../../../../supabase/functions/postman/codes.ts'
 import { shortName } from '../lib/addresses'
 import { copyText } from '../lib/clipboard'
 import { formatAgo } from '../lib/format'

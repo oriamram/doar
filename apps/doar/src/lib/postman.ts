@@ -1,4 +1,4 @@
-import type { Hours } from '../../supabase/functions/postman/hours.ts'
+import type { Hours } from '../../../../supabase/functions/postman/hours.ts'
 import { isDemo } from './demo'
 import { supabase } from './supabase'
 

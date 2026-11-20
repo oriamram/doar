@@ -12,7 +12,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createVapidKeys, sendPush } from '../supabase/functions/postman/webpush.ts'
+import { createVapidKeys, sendPush } from '../../../supabase/functions/postman/webpush.ts'
 
 const SITE = 'http://localhost:4173'
 const PORT = 9377
